@@ -1,0 +1,74 @@
+{
+  "items": [
+    {
+      "id": "fixture-item-1",
+      "name": "Samsung 55\" OLED TV",
+      "description": "55 inch OLED 4K Smart TV, model QN55S90C",
+      "categoryId": "fixture-cat-electronics",
+      "roomId": "fixture-room-living",
+      "purchaseDate": "2023-06-15T00:00:00.000Z",
+      "purchasePrice": 1299.99,
+      "currentValue": 900.00,
+      "replacementCost": 1199.99,
+      "condition": "Good",
+      "serialNumber": "SN12345678",
+      "barcode": "0887276543210",
+      "storeUrl": "https://www.samsung.com/us/televisions-home-theater/tvs/",
+      "notes": "Purchased from Best Buy during Black Friday sale",
+      "isInsured": true
+    },
+    {
+      "id": "fixture-item-2",
+      "name": "IKEA KALLAX Shelf Unit",
+      "description": "4x4 white shelf unit, 147x147 cm",
+      "categoryId": "fixture-cat-furniture",
+      "roomId": "fixture-room-living",
+      "purchaseDate": "2022-03-10T00:00:00.000Z",
+      "purchasePrice": 179.99,
+      "currentValue": 140.00,
+      "replacementCost": 189.99,
+      "condition": "Like New",
+      "notes": "Assembled with wall anchors",
+      "isInsured": false
+    },
+    {
+      "id": "fixture-item-3",
+      "name": "MacBook Pro 16\"",
+      "description": "Apple MacBook Pro 16-inch, M3 Pro, 36GB RAM, 1TB SSD",
+      "categoryId": "fixture-cat-electronics",
+      "roomId": "fixture-room-office",
+      "purchaseDate": "2024-01-20T00:00:00.000Z",
+      "purchasePrice": 2499.00,
+      "currentValue": 2200.00,
+      "replacementCost": 2499.00,
+      "condition": "New",
+      "serialNumber": "FVFXM3ABC123",
+      "warrantyExpiration": "2027-01-20T00:00:00.000Z",
+      "isInsured": true
+    }
+  ],
+  "categories": [
+    {
+      "id": "fixture-cat-electronics",
+      "name": "Electronics",
+      "iconCodePoint": 57827
+    },
+    {
+      "id": "fixture-cat-furniture",
+      "name": "Furniture",
+      "iconCodePoint": 58979
+    }
+  ],
+  "rooms": [
+    {
+      "id": "fixture-room-living",
+      "propertyId": "fixture-prop-home",
+      "name": "Living Room"
+    },
+    {
+      "id": "fixture-room-office",
+      "propertyId": "fixture-prop-home",
+      "name": "Office"
+    }
+  ]
+}

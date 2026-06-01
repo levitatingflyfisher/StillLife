@@ -1,0 +1,19 @@
+name = "still-life-hosted-llm"
+main = "src/index.ts"
+compatibility_date = "2026-04-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "still-life-hosted-llm"
+database_id = "placeholder-set-in-prod"
+migrations_dir = "migrations"
+
+[vars]
+UPSTREAM_MODE = "anthropic"
+ANTHROPIC_BASE_URL = "https://api.anthropic.com"
+
+[env.dev]
+[env.dev.vars]
+UPSTREAM_MODE = "dev-bridge"
+ANTHROPIC_BASE_URL = "http://localhost:9999"

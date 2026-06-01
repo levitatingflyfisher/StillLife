@@ -1,0 +1,12 @@
+Still Life Hosted LLM — Commercial License
+
+Copyright (C) 2026 OpenHearth Development.
+
+This Cloudflare Worker source is distributed under the Still Life Commercial
+License, separate from the AGPL-3.0 license that governs the Still Life
+Flutter client. See the main repository's CONTRIBUTING.md for the dual-license
+framework.
+
+Unauthorized reproduction, redistribution, or modification of this Worker
+source for operational use is prohibited. Self-hosters may fork under the
+companion AGPL-3.0 terms available on request.
