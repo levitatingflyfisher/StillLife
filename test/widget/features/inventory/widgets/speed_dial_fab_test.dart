@@ -66,6 +66,54 @@ void main() {
     expect(called, isTrue);
   });
 
+  testWidgets('shows Video walkthrough when onVideo is provided',
+      (tester) async {
+    bool called = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          floatingActionButton: SpeedDialFab(
+            onPhoto: () {},
+            onVoice: () {},
+            onVideo: () => called = true,
+            onManual: () {},
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byIcon(Icons.add));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.videocam_outlined), findsOneWidget);
+    expect(find.text('Video walkthrough'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.videocam_outlined));
+    await tester.pumpAndSettle();
+    expect(called, isTrue);
+  });
+
+  testWidgets('hides the video option when onVideo is null (web)',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          floatingActionButton: SpeedDialFab(
+            onPhoto: () {},
+            onVoice: null,
+            onManual: () {},
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byIcon(Icons.add));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.videocam_outlined), findsNothing);
+    expect(find.byIcon(Icons.mic), findsNothing);
+  });
+
   testWidgets('collapses when barrier tapped', (tester) async {
     await tester.pumpWidget(
       MaterialApp(

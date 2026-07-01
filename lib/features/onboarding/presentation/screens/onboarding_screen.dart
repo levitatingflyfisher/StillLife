@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../core/errors/result.dart';
 import '../../../../core/providers/profile_providers.dart';
 import '../../../profiles/domain/entities/profile.dart';
 import '../../../profiles/presentation/profile_ui_constants.dart';
@@ -75,20 +76,45 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final result = await ref
         .read(profileRepositoryProvider)
         .createProfile(profile);
-    Profile? created;
-    result.when(
-      success: (p) => created = p,
-      failure: (_) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Could not save profile')),
-          );
-        }
-      },
+    if (!mounted) return;
+    switch (result) {
+      case Success(:final data):
+        await ref.read(activeProfileProvider.notifier).setActive(data);
+        if (mounted) _next();
+      case Err(:final error):
+        // The write failed — most likely the SQLite database never opened on
+        // this device (drift caches that first-open failure, so every later
+        // write throws too). Show the real error instead of a generic message,
+        // so a stuck user can report exactly what broke, and offer an explicit
+        // way past the profile step rather than trapping them on it.
+        await _showSaveFailedDialog(error.message);
+    }
+  }
+
+  Future<void> _showSaveFailedDialog(String message) async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text("Couldn't save your profile"),
+        content: Text(
+          'Your device reported:\n\n$message\n\n'
+          'You can try again, or continue without a profile and add one later.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Try again'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              _next();
+            },
+            child: const Text('Continue without a profile'),
+          ),
+        ],
+      ),
     );
-    if (created == null) return;
-    await ref.read(activeProfileProvider.notifier).setActive(created);
-    if (mounted) _next();
   }
 
   void _showEmojiPicker() {

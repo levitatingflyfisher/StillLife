@@ -11,6 +11,15 @@ class ParsedImportItem {
   final String? categoryHint;
   final String? storeName;
   final String? asin;
+
+  /// Product identity, filled only when the source printed it (the LLM
+  /// receipt-structuring stage is told not to guess).
+  final String? brand;
+  final String? model;
+
+  /// Free-text carried onto the created item's notes (e.g. "Qty: 3" when an
+  /// Amazon order line covers more than one unit).
+  final String? notes;
   final ImportSource source;
 
   const ParsedImportItem({
@@ -20,6 +29,9 @@ class ParsedImportItem {
     this.categoryHint,
     this.storeName,
     this.asin,
+    this.brand,
+    this.model,
+    this.notes,
     required this.source,
   });
 }

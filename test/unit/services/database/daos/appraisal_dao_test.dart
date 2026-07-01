@@ -80,7 +80,7 @@ void main() {
     String id, {
     String itemId = 'item1',
     String mode = 'resale',
-    double value = 100.0,
+    int value = 10000,
     String modelKey = 'tv|good',
     String country = 'US',
     int? queriedAt,
@@ -89,7 +89,7 @@ void main() {
     id: id,
     itemId: itemId,
     mode: mode,
-    value: value,
+    valueCents: value,
     itemModelKey: modelKey,
     queriedAt: queriedAt ?? msNow(),
     expiresAt: expiresAt ?? msIn(const Duration(days: 30)),

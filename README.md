@@ -4,7 +4,13 @@
 
 Still Life is a free, open-source mobile app for cataloguing everything in your home — where it lives, what it's worth, and what condition it's in. It runs entirely on your device. No account required. No subscription. No cloud you don't control.
 
-Built with Flutter. Runs on Android and iOS.
+Built with Flutter. Android today; iOS on the roadmap.
+
+> **Vision — a catalogue you actually own.** Know what's in your home, where it lives,
+> and what it's worth, so the worst day (a fire, a flood, a claim) starts from a list
+> instead of from memory. It lives on your device, works with no account, and never
+> phones home. Read the north star in **[VISION.md](VISION.md)**; browse the full docs —
+> architecture, ADRs, privacy model, and the sync spec — in **[docs/](docs/README.md)**.
 
 ---
 
@@ -47,10 +53,12 @@ Most home inventory apps force you to choose between convenience and privacy —
 - **Insurance policies** — record coverage details and surface protection gaps
 - **Export** — CSV (for spreadsheets/insurers) or full JSON backup
 
-### AI-Assisted Cataloguing
-- Point your camera at a room and let the app identify and describe items
-- Four tiers: on-device ML → local Ollama → cloud API (your key) → hosted service
-- Works fully offline with the on-device tier
+### AI-Assisted Cataloguing (bring your own AI)
+- Photograph a single item — or a whole shelf — and let a vision model suggest name, brand, model, category, and value; everything lands in a review screen before it's saved
+- Record a video walkthrough of a room (Android): the best frames are analyzed, merged, and presented as a reviewable item list
+- Speak a description and the transcript is structured into an item; receipt text is structured into line items
+- Works with **your own Ollama on the LAN** or **your own API key** (Anthropic, or any OpenAI-compatible endpoint) — every networked tier is opt-in and off by default
+- **On-device recognition (Android)**: a bundled coarse labeler works offline with zero setup; optionally download a SmolVLM2 model (Apache-2.0, ~1.7 GB or 546 MB, verified) for richer fully-offline analysis, and supported flagships can use Gemini Nano — single-photo only for now, honest limits in [docs/limitations.md](docs/limitations.md)
 
 ### Maintenance & Warranty
 - Schedule recurring maintenance tasks with reminders
@@ -71,9 +79,22 @@ Most home inventory apps force you to choose between convenience and privacy —
 
 ### Build from source
 
+Still Life's encryption (LAN-sync + backups) and design tokens come from **sibling
+packages** consumed by relative path — clone them next to StillLife so `pub get`
+resolves (same layout as `eloEngine`):
+
+```
+OpenHearth/
+  ohStyle/openhearth_design/
+  packages/
+    sanctuary_auth_core/      # github: levitatingflyfisher/sanctuaryAuthCore
+    sanctuary_backup_ui/      # github: levitatingflyfisher/sanctuaryBackupUi
+StillLife/                    # this repo — deps at ../OpenHearth/...
+```
+
 ```bash
-git clone https://github.com/[llcdomain]/still-life.git
-cd still-life
+git clone https://github.com/levitatingflyfisher/StillLife.git
+cd StillLife
 flutter pub get
 dart run build_runner build --delete-conflicting-outputs
 flutter run
@@ -99,7 +120,7 @@ Still Life works with no configuration. Enable optional features in **Settings**
 flutter test test/unit test/widget
 ```
 
-359 tests as of Phase 14.
+~162 test files across the unit, widget, and visual suites.
 
 ---
 
@@ -132,10 +153,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on reporting bugs and subm
 Still Life is dual-licensed:
 
 - **Community (AGPL-3.0):** Free to use, modify, and distribute under the terms of the [GNU Affero General Public License v3](LICENSE). If you deploy a modified version as a network service, your modifications must be released under the same terms.
-- **Commercial:** A separate commercial license is available for organizations that need to embed Still Life in proprietary products without AGPL obligations. Contact the maintainers for details.
+- **Commercial:** A separate commercial license is available for those who need to embed Still Life in a proprietary product without AGPL obligations.
 
 ---
 
-## About the maintainers
-
-Still Life is developed and maintained by the maintainers.
+Still Life is part of the **OpenHearth** family of free, local-first tools for households.

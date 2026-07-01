@@ -23,12 +23,20 @@ class Item extends Equatable {
   final String categoryId;
   final String roomId;
   final DateTime? purchaseDate;
-  final double? purchasePrice;
-  final double? currentValue;
-  final double? replacementCost;
+  /// Money is integer cents throughout the domain (see core/utils/money.dart).
+  final int? purchasePriceCents;
+  final int? currentValueCents;
+  final int? replacementCostCents;
   final ItemCondition? condition;
   final String? serialNumber;
   final DateTime? warrantyExpiration;
+  // Product identity (v13). `asin` has no form field — it is set
+  // programmatically (e.g. marketplace imports) and must survive edits.
+  final String? brand;
+  final String? model;
+  final String? asin;
+  // Receipt linkage (v14). Set by receipt-sourced imports; no form field.
+  final String? receiptId;
   final String? barcode;
   final String? storeUrl;
   final String? notes;
@@ -60,12 +68,16 @@ class Item extends Equatable {
     required this.categoryId,
     required this.roomId,
     this.purchaseDate,
-    this.purchasePrice,
-    this.currentValue,
-    this.replacementCost,
+    this.purchasePriceCents,
+    this.currentValueCents,
+    this.replacementCostCents,
     this.condition,
     this.serialNumber,
     this.warrantyExpiration,
+    this.brand,
+    this.model,
+    this.asin,
+    this.receiptId,
     this.barcode,
     this.storeUrl,
     this.notes,
@@ -93,12 +105,16 @@ class Item extends Equatable {
     String? categoryId,
     String? roomId,
     DateTime? Function()? purchaseDate,
-    double? Function()? purchasePrice,
-    double? Function()? currentValue,
-    double? Function()? replacementCost,
+    int? Function()? purchasePriceCents,
+    int? Function()? currentValueCents,
+    int? Function()? replacementCostCents,
     ItemCondition? Function()? condition,
     String? Function()? serialNumber,
     DateTime? Function()? warrantyExpiration,
+    String? Function()? brand,
+    String? Function()? model,
+    String? Function()? asin,
+    String? Function()? receiptId,
     String? Function()? barcode,
     String? Function()? storeUrl,
     String? Function()? notes,
@@ -125,18 +141,24 @@ class Item extends Equatable {
       categoryId: categoryId ?? this.categoryId,
       roomId: roomId ?? this.roomId,
       purchaseDate: purchaseDate != null ? purchaseDate() : this.purchaseDate,
-      purchasePrice: purchasePrice != null
-          ? purchasePrice()
-          : this.purchasePrice,
-      currentValue: currentValue != null ? currentValue() : this.currentValue,
-      replacementCost: replacementCost != null
-          ? replacementCost()
-          : this.replacementCost,
+      purchasePriceCents: purchasePriceCents != null
+          ? purchasePriceCents()
+          : this.purchasePriceCents,
+      currentValueCents: currentValueCents != null
+          ? currentValueCents()
+          : this.currentValueCents,
+      replacementCostCents: replacementCostCents != null
+          ? replacementCostCents()
+          : this.replacementCostCents,
       condition: condition != null ? condition() : this.condition,
       serialNumber: serialNumber != null ? serialNumber() : this.serialNumber,
       warrantyExpiration: warrantyExpiration != null
           ? warrantyExpiration()
           : this.warrantyExpiration,
+      brand: brand != null ? brand() : this.brand,
+      model: model != null ? model() : this.model,
+      asin: asin != null ? asin() : this.asin,
+      receiptId: receiptId != null ? receiptId() : this.receiptId,
       barcode: barcode != null ? barcode() : this.barcode,
       storeUrl: storeUrl != null ? storeUrl() : this.storeUrl,
       notes: notes != null ? notes() : this.notes,
@@ -175,25 +197,25 @@ class Item extends Equatable {
 
   /// Calculate depreciated value based on purchase price and age.
   /// Uses straight-line depreciation with a 10% residual value.
-  static double? calculateDepreciatedValue({
-    required double? purchasePrice,
+  static int? calculateDepreciatedValueCents({
+    required int? purchasePriceCents,
     required DateTime? purchaseDate,
     required int usefulLifeYears,
     DateTime? asOf,
   }) {
-    if (purchasePrice == null || purchaseDate == null) return null;
+    if (purchasePriceCents == null || purchaseDate == null) return null;
 
     final now = asOf ?? DateTime.now();
     final ageYears = now.difference(purchaseDate).inDays / 365.25;
 
-    if (ageYears <= 0) return purchasePrice;
-    if (ageYears >= usefulLifeYears) return purchasePrice * 0.10;
+    if (ageYears <= 0) return purchasePriceCents;
+    if (ageYears >= usefulLifeYears) return (purchasePriceCents * 0.10).round();
 
-    final residualValue = purchasePrice * 0.10;
-    final depreciableAmount = purchasePrice - residualValue;
+    final residualValue = purchasePriceCents * 0.10;
+    final depreciableAmount = purchasePriceCents - residualValue;
     final depreciation = (depreciableAmount / usefulLifeYears) * ageYears;
 
-    return purchasePrice - depreciation;
+    return (purchasePriceCents - depreciation).round();
   }
 
   @override
@@ -204,12 +226,16 @@ class Item extends Equatable {
     categoryId,
     roomId,
     purchaseDate,
-    purchasePrice,
-    currentValue,
-    replacementCost,
+    purchasePriceCents,
+    currentValueCents,
+    replacementCostCents,
     condition,
     serialNumber,
     warrantyExpiration,
+    brand,
+    model,
+    asin,
+    receiptId,
     barcode,
     storeUrl,
     notes,

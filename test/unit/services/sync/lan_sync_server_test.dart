@@ -1,15 +1,15 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:crdt/crdt.dart';
-import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:still_life/services/database/database.dart';
 import 'package:still_life/services/export/import_service.dart';
 import 'package:still_life/services/export/json_export_service.dart';
 import 'package:still_life/services/sync/crdt_manager.dart';
 import 'package:still_life/services/sync/lan_sync_server.dart';
+import 'package:still_life/services/sync/sync_codec.dart';
 
 import '../../../test_setup.dart';
 
@@ -19,7 +19,7 @@ class _MockExportService extends Mock implements JsonExportService {}
 
 class _MockImportService extends Mock implements ImportService {}
 
-/// Finds a free TCP port.
+/// Finds a free TCP port so two-server tests never collide on 8420.
 Future<int> findFreePort() async {
   final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
   final port = server.port;
@@ -30,7 +30,6 @@ Future<int> findFreePort() async {
 void main() {
   ensureSqlite3();
 
-  late AppDatabase db;
   late _MockCrdtManager crdtManager;
   late _MockExportService exportService;
   late _MockImportService importService;
@@ -38,7 +37,10 @@ void main() {
   late int port;
 
   setUp(() async {
-    db = AppDatabase.memory();
+    // flutter_test installs a mock HttpClient that 400s every request; these
+    // tests drive a real loopback socket, so restore the platform client.
+    HttpOverrides.global = null;
+
     crdtManager = _MockCrdtManager();
     exportService = _MockExportService();
     importService = _MockImportService();
@@ -46,106 +48,165 @@ void main() {
     port = await findFreePort();
 
     server = LanSyncServer(
-      db: db,
       crdtManager: crdtManager,
       importService: importService,
       exportService: exportService,
+      port: port,
     );
   });
 
   tearDown(() async {
     await server.stop();
-    await db.close();
   });
 
+  Future<HttpClientResponse> get(String path) async {
+    final client = HttpClient();
+    final req = await client.getUrl(Uri.parse('http://127.0.0.1:$port$path'));
+    final resp = await req.close();
+    return resp;
+  }
+
   group('LanSyncServer', () {
-    test('starts and stops without error', () async {
+    test('starts and stops without error, on the requested port', () async {
       await server.start();
       expect(server.isRunning, isTrue);
+      expect(server.port, port);
       await server.stop();
       expect(server.isRunning, isFalse);
     });
 
-    test('/sync/status itemCount excludes soft-deleted items', () async {
-      // Stub the bare minimum of CrdtManager that _handleStatus calls.
+    test('/sync/status is a minimal cleartext probe (proto + challenge, '
+        'no deviceName/itemCount leak)', () async {
       when(() => crdtManager.getNodeId()).thenAnswer((_) async => 'node-x');
-      when(() => crdtManager.getSyncSecret()).thenAnswer((_) async => 's3cr');
       when(() => crdtManager.currentHlc).thenReturn(Hlc.zero('node-x'));
-
-      // Seed FK chain: property → room → category → 1 live + 1 deleted item.
-      final now = DateTime(2026);
-      await db
-          .into(db.properties)
-          .insert(
-            PropertiesCompanion.insert(
-              id: 'p1',
-              name: 'Home',
-              createdAt: now,
-              modifiedAt: now,
-            ),
-          );
-      await db
-          .into(db.rooms)
-          .insert(
-            RoomsCompanion.insert(
-              id: 'r1',
-              propertyId: 'p1',
-              name: 'Kitchen',
-              createdAt: now,
-              modifiedAt: now,
-            ),
-          );
-      await db
-          .into(db.categories)
-          .insert(
-            CategoriesCompanion.insert(
-              id: 'c1',
-              name: 'Food',
-              createdAt: now,
-              modifiedAt: now,
-            ),
-          );
-      await db
-          .into(db.items)
-          .insert(
-            ItemsCompanion.insert(
-              id: 'live',
-              name: 'Live',
-              categoryId: 'c1',
-              roomId: 'r1',
-              createdAt: now,
-              modifiedAt: now,
-            ),
-          );
-      await db
-          .into(db.items)
-          .insert(
-            ItemsCompanion.insert(
-              id: 'tomb',
-              name: 'Tomb',
-              categoryId: 'c1',
-              roomId: 'r1',
-              isDeleted: const Value(true),
-              createdAt: now,
-              modifiedAt: now,
-            ),
-          );
 
       await server.start();
       addTearDown(server.stop);
 
+      final resp = await get('/sync/status');
+      final body = await resp.transform(utf8.decoder).join();
+      expect(resp.statusCode, 200);
+
+      final parsed = json.decode(body) as Map<String, dynamic>;
+      expect(parsed['nodeId'], 'node-x');
+      expect(parsed['proto'], SyncCodec.protocolVersion);
+      expect(parsed['challenge'], isA<String>());
+      // Privacy: the old device-metadata fields are gone from the wire.
+      expect(parsed.containsKey('deviceName'), isFalse);
+      expect(parsed.containsKey('itemCount'), isFalse);
+    });
+
+    test('every /sync/status issues a fresh challenge', () async {
+      when(() => crdtManager.getNodeId()).thenAnswer((_) async => 'node-x');
+      when(() => crdtManager.currentHlc).thenReturn(Hlc.zero('node-x'));
+      await server.start();
+      addTearDown(server.stop);
+
+      final a = json.decode(await (await get('/sync/status')).transform(utf8.decoder).join())
+          as Map<String, dynamic>;
+      final b = json.decode(await (await get('/sync/status')).transform(utf8.decoder).join())
+          as Map<String, dynamic>;
+      expect(a['challenge'], isNot(equals(b['challenge'])));
+    });
+
+    test('a plaintext /sync/import body is refused (fail closed) — 400, '
+        'no merge', () async {
+      when(() => crdtManager.getNodeId()).thenAnswer((_) async => 'node-x');
+      when(() => crdtManager.currentHlc).thenReturn(Hlc.zero('node-x'));
+      when(
+        () => crdtManager.getSyncSecret(),
+      ).thenAnswer((_) async => 'a-shared-sync-code-16chars');
+      await server.start();
+      addTearDown(server.stop);
+
+      // Grab a valid challenge so we isolate the plaintext-body rejection
+      // (not the missing-challenge rejection).
+      final status = json.decode(
+        await (await get('/sync/status')).transform(utf8.decoder).join(),
+      ) as Map<String, dynamic>;
+      final challenge = status['challenge'] as String;
+
       final client = HttpClient();
-      final req = await client.getUrl(
-        Uri.parse('http://127.0.0.1:8420/sync/status'),
+      final req = await client.postUrl(
+        Uri.parse('http://127.0.0.1:$port/sync/import'),
       );
-      req.headers.set('authorization', 'Bearer s3cr');
+      req.headers.set('x-sync-challenge', challenge);
+      req.headers.contentType = ContentType('application', 'octet-stream');
+      req.add(utf8.encode('{"senderNodeId":"evil","data":{}}'));
+      final resp = await req.close();
+      await resp.drain<void>();
+      client.close();
+
+      expect(resp.statusCode, 400);
+      // The import engine was never invoked — no DB mutation path reached.
+      verifyNever(
+        () => importService.importFromJson(any(), lww: any(named: 'lww')),
+      );
+    });
+
+    test('a merge failure returns a fixed 500 message — exception internals '
+        'never reach the wire', () async {
+      const secret = 'a-shared-sync-code-16chars';
+      when(() => crdtManager.getNodeId()).thenAnswer((_) async => 'node-x');
+      when(() => crdtManager.currentHlc).thenReturn(Hlc.zero('node-x'));
+      when(() => crdtManager.getSyncSecret()).thenAnswer((_) async => secret);
+      await server.start();
+      addTearDown(server.stop);
+
+      final status = json.decode(
+        await (await get('/sync/status')).transform(utf8.decoder).join(),
+      ) as Map<String, dynamic>;
+      final challenge = status['challenge'] as String;
+
+      // A frame that opens fine under the shared key but whose plaintext is
+      // not a changeset — the merge path throws a FormatException that quotes
+      // the offending (peer-supplied) bytes. None of that may be echoed back.
+      final frame = await SyncCodec().seal(
+        Uint8List.fromList(utf8.encode('this-is-not-json {')),
+        await SyncCodec.deriveKey(secret),
+        endpointTag: SyncCodec.endpointImport,
+        challenge: base64.decode(challenge),
+      );
+
+      final client = HttpClient();
+      final req = await client.postUrl(
+        Uri.parse('http://127.0.0.1:$port/sync/import'),
+      );
+      req.headers.set('x-sync-challenge', challenge);
+      req.headers.contentType = ContentType('application', 'octet-stream');
+      req.add(frame);
       final resp = await req.close();
       final body = await resp.transform(utf8.decoder).join();
       client.close();
 
-      expect(resp.statusCode, 200);
+      expect(resp.statusCode, 500);
       final parsed = json.decode(body) as Map<String, dynamic>;
-      expect(parsed['itemCount'], 1, reason: 'tomb must not be counted');
+      expect(parsed['error'], 'Merge failed.');
+      expect(body, isNot(contains('FormatException')));
+      expect(body, isNot(contains('this-is-not-json')));
+    });
+
+    test('a /sync/import with no challenge is rejected with 401', () async {
+      when(
+        () => crdtManager.getSyncSecret(),
+      ).thenAnswer((_) async => 'a-shared-sync-code-16chars');
+      await server.start();
+      addTearDown(server.stop);
+
+      final client = HttpClient();
+      final req = await client.postUrl(
+        Uri.parse('http://127.0.0.1:$port/sync/import'),
+      );
+      req.headers.contentType = ContentType('application', 'octet-stream');
+      req.add(utf8.encode('anything'));
+      final resp = await req.close();
+      await resp.drain<void>();
+      client.close();
+
+      expect(resp.statusCode, 401);
+      verifyNever(
+        () => importService.importFromJson(any(), lww: any(named: 'lww')),
+      );
     });
   });
 }

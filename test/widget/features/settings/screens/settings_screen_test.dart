@@ -13,7 +13,7 @@ void main() {
       await tester.pumpWidget(buildSubject());
 
       expect(find.text('Appearance'), findsOneWidget);
-      expect(find.text('Security'), findsOneWidget);
+      expect(find.text('Inventory'), findsOneWidget);
       // Section header + list tile both say 'AI Analysis'
       expect(find.text('AI Analysis'), findsNWidgets(2));
     });
@@ -54,6 +54,54 @@ void main() {
         find.text('No telemetry. No ads. Your data stays on your device.'),
         findsOneWidget,
       );
+    });
+
+    testWidgets('import options offer receipt camera alongside gallery', (
+      tester,
+    ) async {
+      await tester.pumpWidget(buildSubject());
+
+      await tester.scrollUntilVisible(
+        find.text('Import items'),
+        200,
+        scrollable: find.byType(Scrollable),
+      );
+      await tester.tap(find.text('Import items'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Receipt camera'), findsOneWidget);
+      expect(find.text('Receipt photo'), findsOneWidget);
+      expect(find.text('Amazon order export'), findsOneWidget);
+      expect(find.text('Bank statement'), findsOneWidget);
+    });
+
+    testWidgets('Amazon import help explains the Privacy Central path', (
+      tester,
+    ) async {
+      await tester.pumpWidget(buildSubject());
+
+      await tester.scrollUntilVisible(
+        find.text('Import items'),
+        200,
+        scrollable: find.byType(Scrollable),
+      );
+      await tester.tap(find.text('Import items'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('How do I get this file?'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('How do I get this file?'), findsOneWidget);
+      expect(
+        find.textContaining('Privacy Central'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Request My Data'), findsOneWidget);
+      expect(find.textContaining('Your Orders'), findsOneWidget);
+      expect(find.textContaining('Retail.OrderHistory'), findsOneWidget);
+      // Desktop alternatives by name only — no links, no install steps.
+      expect(find.textContaining('azad'), findsOneWidget);
+      expect(find.textContaining('amazon-orders'), findsOneWidget);
     });
 
     testWidgets('opens theme dialog on tap', (tester) async {

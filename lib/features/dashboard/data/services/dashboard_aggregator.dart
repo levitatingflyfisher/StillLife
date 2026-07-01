@@ -13,16 +13,16 @@ class DashboardAggregator {
 
   /// Returns the top [limit] items sorted by current value descending.
   ///
-  /// Each entry is a record of (item name, current value).
-  Future<List<({String name, double value})>> getTopItemsByValue(
+  /// Each entry is a record of (item name, current value in cents).
+  Future<List<({String name, int valueCents})>> getTopItemsByValue(
     int limit,
   ) async {
     final query = _db.selectOnly(_db.items)
-      ..addColumns([_db.items.name, _db.items.currentValue])
-      ..where(_db.items.currentValue.isNotNull())
+      ..addColumns([_db.items.name, _db.items.currentValueCents])
+      ..where(_db.items.currentValueCents.isNotNull())
       ..orderBy([
         OrderingTerm(
-          expression: _db.items.currentValue,
+          expression: _db.items.currentValueCents,
           mode: OrderingMode.desc,
         ),
       ])
@@ -32,14 +32,14 @@ class DashboardAggregator {
     return rows.map((row) {
       return (
         name: row.read(_db.items.name)!,
-        value: row.read(_db.items.currentValue) ?? 0.0,
+        valueCents: row.read(_db.items.currentValueCents) ?? 0,
       );
     }).toList();
   }
 
-  /// Returns value totals grouped by room name (via JOIN with Rooms table).
-  Future<Map<String, double>> getValueByRoom() async {
-    final sumExpr = _db.items.currentValue.sum();
+  /// Returns cent totals grouped by room name (via JOIN with Rooms table).
+  Future<Map<String, int>> getValueCentsByRoom() async {
+    final sumExpr = _db.items.currentValueCents.sum();
     final query =
         _db.selectOnly(_db.items).join([
             innerJoin(_db.rooms, _db.rooms.id.equalsExp(_db.items.roomId)),
@@ -51,13 +51,13 @@ class DashboardAggregator {
     final rows = await query.get();
     return {
       for (final row in rows)
-        row.read(_db.rooms.name)!: row.read(sumExpr) ?? 0.0,
+        row.read(_db.rooms.name)!: row.read(sumExpr) ?? 0,
     };
   }
 
-  /// Returns value totals grouped by category name (via JOIN with Categories).
-  Future<Map<String, double>> getValueByCategory() async {
-    final sumExpr = _db.items.currentValue.sum();
+  /// Returns cent totals grouped by category name (via JOIN with Categories).
+  Future<Map<String, int>> getValueCentsByCategory() async {
+    final sumExpr = _db.items.currentValueCents.sum();
     final query =
         _db.selectOnly(_db.items).join([
             innerJoin(
@@ -72,7 +72,7 @@ class DashboardAggregator {
     final rows = await query.get();
     return {
       for (final row in rows)
-        row.read(_db.categories.name)!: row.read(sumExpr) ?? 0.0,
+        row.read(_db.categories.name)!: row.read(sumExpr) ?? 0,
     };
   }
 
@@ -131,12 +131,14 @@ class DashboardAggregator {
     return abbr[month];
   }
 
-  /// Sums depreciation across all items that have both purchase price and date.
-  Future<double> getTotalDepreciation() async {
+  /// Sums depreciation in cents across all items that have both purchase
+  /// price and date. The calculator's straight-line math is unit-agnostic,
+  /// so feeding cents yields cents.
+  Future<int> getTotalDepreciationCents() async {
     final query = _db.select(_db.items)
       ..where(
         (t) =>
-            t.purchasePrice.isNotNull() &
+            t.purchasePriceCents.isNotNull() &
             t.purchaseDate.isNotNull() &
             t.isDeleted.equals(false),
       );
@@ -152,13 +154,13 @@ class DashboardAggregator {
       final categoryName = category?.name ?? 'Other';
 
       final info = _calculator.calculateDepreciation(
-        item.purchasePrice!,
+        item.purchasePriceCents!.toDouble(),
         item.purchaseDate!,
         categoryName,
       );
       totalDepreciation += info.totalDepreciation;
     }
 
-    return totalDepreciation;
+    return totalDepreciation.round();
   }
 }

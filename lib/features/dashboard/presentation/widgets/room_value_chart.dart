@@ -4,13 +4,17 @@ import 'package:flutter/material.dart';
 import '../../../../core/extensions/currency_extensions.dart';
 
 class RoomValueChart extends StatelessWidget {
-  final Map<String, double> data;
+  final Map<String, int> dataCents;
 
-  const RoomValueChart({super.key, required this.data});
+  const RoomValueChart({super.key, required this.dataCents});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // The chart plots dollars; storage is cents.
+    final data = {
+      for (final e in dataCents.entries) e.key: e.value / 100,
+    };
     final entries = data.entries.where((e) => e.value > 0).toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 

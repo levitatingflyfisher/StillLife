@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:openhearth_design/openhearth_design.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../../../core/providers/repository_providers.dart';
+import '../../../../core/widgets/web_unavailable_state.dart';
 import '../../../inventory/domain/entities/item.dart';
 
 class BarcodeScannerScreen extends ConsumerStatefulWidget {
@@ -152,6 +154,19 @@ class _BarcodeScannerScreenState extends ConsumerState<BarcodeScannerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (kIsWeb) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Scan Barcode'), centerTitle: true),
+        body: const WebUnavailableState(
+          icon: Icons.qr_code_scanner,
+          featureName: 'Barcode scanning',
+          explanation:
+              'Live camera scanning needs the Android app. You can type '
+              'or paste a barcode into the item form instead.',
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Scan Barcode'),

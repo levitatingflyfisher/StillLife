@@ -10,7 +10,7 @@ import 'package:still_life/services/database/database.dart' as db_pkg;
 import '../../../../test_setup.dart';
 
 Future<db_pkg.AppDatabase> setupDb({
-  List<(String id, double value, bool insured)> items = const [],
+  List<(String id, int value, bool insured)> items = const [],
 }) async {
   final db = db_pkg.AppDatabase.memory();
   final now = DateTime(2025, 1, 1);
@@ -54,7 +54,7 @@ Future<db_pkg.AppDatabase> setupDb({
             name: 'Item $id',
             categoryId: 'c',
             roomId: 'r',
-            currentValue: Value(value),
+            currentValueCents: Value(value),
             isInsured: Value(insured),
             createdAt: now,
             modifiedAt: now,

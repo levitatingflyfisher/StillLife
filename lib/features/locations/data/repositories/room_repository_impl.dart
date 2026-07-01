@@ -21,7 +21,7 @@ class RoomRepositoryImpl implements RoomRepository {
       rows,
     ) async {
       final counts = await _db.locationDao.getRoomItemCounts();
-      final values = await _db.locationDao.getRoomValues();
+      final values = await _db.locationDao.getRoomValueCents();
       return rows.map((r) => _mapToEntity(r, counts, values)).toList();
     });
   }
@@ -33,7 +33,7 @@ class RoomRepositoryImpl implements RoomRepository {
     return query.watchSingleOrNull().asyncMap((row) async {
       if (row == null) return null;
       final counts = await _db.locationDao.getRoomItemCounts();
-      final values = await _db.locationDao.getRoomValues();
+      final values = await _db.locationDao.getRoomValueCents();
       return _mapToEntity(row, counts, values);
     });
   }
@@ -46,7 +46,7 @@ class RoomRepositoryImpl implements RoomRepository {
         return const Err(DatabaseFailure('Room not found'));
       }
       final counts = await _db.locationDao.getRoomItemCounts();
-      final values = await _db.locationDao.getRoomValues();
+      final values = await _db.locationDao.getRoomValueCents();
       return Success(_mapToEntity(row, counts, values));
     } catch (e) {
       return Err(DatabaseFailure('Failed to get room: $e'));
@@ -146,7 +146,7 @@ class RoomRepositoryImpl implements RoomRepository {
   Room _mapToEntity(
     db.Room row,
     Map<String, int> counts,
-    Map<String, double> values,
+    Map<String, int> values,
   ) {
     return Room(
       id: row.id,
@@ -159,7 +159,7 @@ class RoomRepositoryImpl implements RoomRepository {
       createdAt: row.createdAt,
       modifiedAt: row.modifiedAt,
       itemCount: counts[row.id] ?? 0,
-      totalValue: values[row.id] ?? 0.0,
+      totalValueCents: values[row.id] ?? 0,
     );
   }
 }

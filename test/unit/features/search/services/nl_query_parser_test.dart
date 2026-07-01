@@ -35,24 +35,24 @@ NlQueryParser _parser({
 
 void main() {
   group('price keywords', () {
-    test('extracts minValue from "over \$200"', () {
+    test('extracts minValueCents from "over \$200"', () {
       final r = _parser().parse('stuff over \$200');
-      expect(r.query.minValue, equals(200.0));
+      expect(r.query.minValueCents, equals(20000));
     });
 
-    test('extracts maxValue from "under \$50"', () {
+    test('extracts maxValueCents from "under \$50"', () {
       final r = _parser().parse('things under \$50');
-      expect(r.query.maxValue, equals(50.0));
+      expect(r.query.maxValueCents, equals(5000));
     });
 
-    test('"expensive" sets minValue=500', () {
+    test('"expensive" sets minValueCents to 50000 (\$500)', () {
       final r = _parser().parse('expensive electronics');
-      expect(r.query.minValue, equals(500.0));
+      expect(r.query.minValueCents, equals(50000));
     });
 
-    test('"cheap" sets maxValue=100', () {
+    test('"cheap" sets maxValueCents to 10000 (\$100)', () {
       final r = _parser().parse('cheap stuff');
-      expect(r.query.maxValue, equals(100.0));
+      expect(r.query.maxValueCents, equals(10000));
     });
   });
 
@@ -129,9 +129,9 @@ void main() {
   });
 
   group('sort keywords', () {
-    test('"most valuable" sets sortBy=currentValue descending', () {
+    test('"most valuable" sets sortBy=currentValueCents descending', () {
       final r = _parser().parse('most valuable items');
-      expect(r.query.sortBy, equals(ItemSortField.currentValue));
+      expect(r.query.sortBy, equals(ItemSortField.currentValueCents));
       expect(r.query.ascending, isFalse);
     });
 

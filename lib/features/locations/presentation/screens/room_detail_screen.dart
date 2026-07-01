@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -228,7 +229,13 @@ class RoomDetailScreen extends ConsumerWidget {
       ),
       floatingActionButton: SpeedDialFab(
         onPhoto: () => onPhotoAddItem(context, ref, roomId: roomId),
-        onVoice: () => onVoiceAddItem(context, ref, roomId: roomId),
+        onVoice: kIsWeb ? null : () => onVoiceAddItem(context, ref, roomId: roomId),
+        onVideo: kIsWeb
+            ? null
+            : () => context.pushNamed(
+                  'videoCapture',
+                  queryParameters: {'roomId': roomId},
+                ),
         onManual: () =>
             context.pushNamed('addItem', queryParameters: {'roomId': roomId}),
       ),

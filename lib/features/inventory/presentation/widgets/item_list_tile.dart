@@ -1,4 +1,5 @@
-import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:openhearth_design/openhearth_design.dart';
 
 import 'package:flutter/material.dart';
@@ -10,7 +11,9 @@ class ItemListTile extends StatelessWidget {
   final Item item;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
-  final String? primaryPhotoPath;
+
+  /// Thumbnail bytes for the item's primary photo, if any.
+  final Uint8List? primaryPhotoBytes;
   final bool isOnLoan;
   final double? quantity;
   final String? quantityUnit;
@@ -22,7 +25,7 @@ class ItemListTile extends StatelessWidget {
     required this.item,
     this.onTap,
     this.onLongPress,
-    this.primaryPhotoPath,
+    this.primaryPhotoBytes,
     this.isOnLoan = false,
     this.quantity,
     this.quantityUnit,
@@ -56,7 +59,7 @@ class ItemListTile extends StatelessWidget {
 
   Widget? _buildTrailing(BuildContext context) {
     final theme = Theme.of(context);
-    final hasValue = item.currentValue != null;
+    final hasValue = item.currentValueCents != null;
     final double? effectiveQuantity = quantity ?? item.quantity;
     if (!hasValue && !isOnLoan && effectiveQuantity == null) return null;
 
@@ -67,7 +70,7 @@ class ItemListTile extends StatelessWidget {
       children: [
         if (hasValue)
           Text(
-            item.currentValue!.toCurrency(),
+            item.currentValueCents!.centsToCurrency(),
             style: theme.textTheme.bodyMedium?.copyWith(
               fontWeight: FontWeight.w600,
             ),
@@ -115,18 +118,16 @@ class ItemListTile extends StatelessWidget {
   }
 
   Widget _buildLeading(ThemeData theme) {
-    if (primaryPhotoPath != null) {
-      final file = File(primaryPhotoPath!);
-      if (file.existsSync()) {
-        return ClipRRect(
-          borderRadius: OhRadii.md,
-          child: SizedBox(
-            width: 48,
-            height: 48,
-            child: Image.file(file, fit: BoxFit.cover),
-          ),
-        );
-      }
+    final bytes = primaryPhotoBytes;
+    if (bytes != null) {
+      return ClipRRect(
+        borderRadius: OhRadii.md,
+        child: SizedBox(
+          width: 48,
+          height: 48,
+          child: Image.memory(bytes, fit: BoxFit.cover),
+        ),
+      );
     }
 
     return CircleAvatar(

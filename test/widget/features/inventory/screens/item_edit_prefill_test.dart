@@ -19,6 +19,20 @@ class _FakeProductLookupService extends Fake implements ProductLookupService {
   }) async => null;
 }
 
+/// Lookup fake that resolves from the "cache" (allowNetwork: false) with a
+/// full product record including brand.
+class _FakeBrandLookupService extends Fake implements ProductLookupService {
+  @override
+  Future<ProductInfo?> lookup(
+    String barcode, {
+    bool allowNetwork = false,
+  }) async => const ProductInfo(
+    name: 'WH-1000XM4 Wireless Headphones',
+    description: 'Noise cancelling',
+    brand: 'Sony',
+  );
+}
+
 class _FakeCategoryRepository implements CategoryRepository {
   @override
   Stream<List<domain.Category>> watchCategories() => Stream.value([]);
@@ -112,6 +126,57 @@ void main() {
           (w) => w is EditableText && w.controller.text == '0123456789',
         ),
         findsOneWidget,
+      );
+    });
+
+    testWidgets('barcode lookup applies the cached brand to the Brand field', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 5000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            roomsProvider.overrideWith((ref) => Stream.value([fakeRoom])),
+            propertiesProvider.overrideWith((ref) => Stream.value([])),
+            categoryRepositoryProvider.overrideWithValue(
+              _FakeCategoryRepository(),
+            ),
+            productLookupServiceProvider.overrideWithValue(
+              _FakeBrandLookupService(),
+            ),
+          ],
+          child: const MaterialApp(
+            home: ItemEditScreen(initialBarcode: '0027242920568'),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await tester.tap(find.byTooltip('Look up product'));
+      // Bounded pumps (not pumpAndSettle): the confirmation SnackBar's
+      // indicator animation would otherwise never settle.
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      // Name comes from the lookup (already worked) — brand must now too.
+      expect(
+        find.byWidgetPredicate(
+          (w) =>
+              w is EditableText &&
+              w.controller.text == 'WH-1000XM4 Wireless Headphones',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is EditableText && w.controller.text == 'Sony',
+        ),
+        findsOneWidget,
+        reason: 'ProductLookupCache stores brand; the form must apply it',
       );
     });
 

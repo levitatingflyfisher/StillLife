@@ -13,7 +13,8 @@ class Room extends Equatable {
 
   // Derived
   final int itemCount;
-  final double totalValue;
+  /// Integer cents (see core/utils/money.dart).
+  final int totalValueCents;
   final String? propertyName;
 
   const Room({
@@ -27,7 +28,7 @@ class Room extends Equatable {
     required this.createdAt,
     required this.modifiedAt,
     this.itemCount = 0,
-    this.totalValue = 0.0,
+    this.totalValueCents = 0,
     this.propertyName,
   });
 
@@ -42,7 +43,7 @@ class Room extends Equatable {
     DateTime? createdAt,
     DateTime? modifiedAt,
     int? itemCount,
-    double? totalValue,
+    int? totalValueCents,
     String? propertyName,
   }) {
     return Room(
@@ -56,7 +57,7 @@ class Room extends Equatable {
       createdAt: createdAt ?? this.createdAt,
       modifiedAt: modifiedAt ?? this.modifiedAt,
       itemCount: itemCount ?? this.itemCount,
-      totalValue: totalValue ?? this.totalValue,
+      totalValueCents: totalValueCents ?? this.totalValueCents,
       propertyName: propertyName ?? this.propertyName,
     );
   }

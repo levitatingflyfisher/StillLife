@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,8 +9,11 @@ import '../../features/appraisal/domain/entities/appraisal.dart';
 import '../../features/appraisal/domain/repositories/appraisal_repository.dart';
 import '../../features/billing/data/stripe_billing_service_impl.dart'
     show kHostedBearerStorageKey;
+import '../../services/appraisal/appraiser_prompt.dart'
+    show kAppraiserDefaultModel;
 import '../../services/appraisal/appraiser_service.dart';
 import '../../core/errors/result.dart';
+import 'cloud_api_settings.dart' show kAppraiserModelStorageKey;
 import '../../services/appraisal/messages_transport_adapter.dart';
 import '../../services/ml/cloud_api_provider.dart';
 import '../../services/ml/hosted_messages_client.dart';
@@ -22,12 +25,13 @@ final appraisalRepositoryProvider = Provider<AppraisalRepository>((ref) {
   return AppraisalRepositoryImpl(ref.watch(databaseProvider));
 });
 
-/// Infers the device country from `Platform.localeName` (e.g. "en_US" → "US").
-/// Defaults to "US" when we cannot parse.
+/// Infers the device country from the platform locale (e.g. "en_US" → "US").
+/// Uses PlatformDispatcher, which exists on native AND web — dart:io's
+/// Platform.localeName does not. Defaults to "US" when we cannot parse.
 final appraiserCountryCodeProvider = Provider<String Function()>((ref) {
   return () {
     try {
-      final locale = Platform.localeName;
+      final locale = ui.PlatformDispatcher.instance.locale.toString();
       final match = RegExp(r'[_-]([A-Z]{2})').firstMatch(locale);
       return match?.group(1) ?? 'US';
     } catch (_) {
@@ -69,6 +73,8 @@ final messagesTransportProvider = Provider<MessagesTransport>((ref) {
     hosted: hosted,
     buildCloud: () => _buildCloudApiProvider(dio),
     isHostedAvailable: () async {
+      // No configured backend → hosted path is off; go straight to BYO.
+      if (kHostedBaseUrl.isEmpty) return false;
       const storage = FlutterSecureStorage();
       final bearer = await storage.read(key: kHostedBearerStorageKey);
       return (bearer ?? '').isNotEmpty;
@@ -119,6 +125,15 @@ final appraiserServiceProvider = Provider<AppraiserService>((ref) {
     repo: ref.watch(appraisalRepositoryProvider),
     transport: ref.watch(messagesTransportProvider),
     countryCode: ref.watch(appraiserCountryCodeProvider),
+    // Read storage on every call (like the BYO key) so a model change in
+    // settings takes effect without a restart.
+    model: () async {
+      const storage = FlutterSecureStorage();
+      final saved = await storage.read(key: kAppraiserModelStorageKey);
+      return (saved == null || saved.trim().isEmpty)
+          ? kAppraiserDefaultModel
+          : saved;
+    },
   );
 });
 

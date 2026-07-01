@@ -153,4 +153,52 @@ void main() {
   test('buildCheckoutUrl returns configured uri', () {
     expect(svc.buildCheckoutUrl(), Uri.parse('https://checkout.test'));
   });
+
+  group('empty baseUrl (hosted backend not configured) fails closed', () {
+    late List<RequestOptions> attempted;
+    late StripeBillingServiceImpl unconfigured;
+
+    setUp(() {
+      final bareDio = Dio();
+      attempted = [];
+      bareDio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            attempted.add(options);
+            handler.next(options);
+          },
+        ),
+      );
+      unconfigured = StripeBillingServiceImpl(
+        dio: bareDio,
+        storage: storage,
+        baseUrl: '',
+        checkoutUrl: Uri.parse('https://checkout.test'),
+      );
+    });
+
+    test('getAccount returns typed failure without HTTP', () async {
+      final res = await unconfigured.getAccount();
+      expect(res.isFailure, isTrue);
+      expect(attempted, isEmpty);
+    });
+
+    test('activate returns typed failure without HTTP', () async {
+      final res = await unconfigured.activate('cs_abc');
+      expect(res.isFailure, isTrue);
+      expect(attempted, isEmpty);
+    });
+
+    test('rotateBearer returns typed failure without HTTP', () async {
+      final res = await unconfigured.rotateBearer();
+      expect(res.isFailure, isTrue);
+      expect(attempted, isEmpty);
+    });
+
+    test('deleteAccount returns typed failure without HTTP', () async {
+      final res = await unconfigured.deleteAccount();
+      expect(res.isFailure, isTrue);
+      expect(attempted, isEmpty);
+    });
+  });
 }

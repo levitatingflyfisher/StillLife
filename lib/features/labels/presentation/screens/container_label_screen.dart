@@ -1,11 +1,9 @@
-import 'dart:io';
 import 'package:openhearth_design/openhearth_design.dart';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -41,15 +39,12 @@ class _ContainerLabelScreenState extends ConsumerState<ContainerLabelScreen> {
       if (byteData == null) return;
       final bytes = byteData.buffer.asUint8List();
 
-      final dir = await getTemporaryDirectory();
-      final file = File(
-        '${dir.path}/still_life_container_${widget.containerId.substring(0, 8)}.png',
-      );
-      await file.writeAsBytes(bytes);
-
+      // Share bytes directly (no temp file) — same path on Android and web.
+      final name =
+          'still_life_container_${widget.containerId.substring(0, 8)}.png';
       await Share.shareXFiles([
-        XFile(file.path, mimeType: 'image/png'),
-      ], subject: 'Still Life Container Label');
+        XFile.fromData(bytes, mimeType: 'image/png', name: name),
+      ], subject: 'Still Life Container Label', fileNameOverrides: [name]);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(

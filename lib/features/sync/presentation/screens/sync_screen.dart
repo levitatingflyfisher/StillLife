@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:openhearth_design/openhearth_design.dart';
 import 'package:flutter/services.dart';
@@ -5,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../../core/providers/sync_providers.dart';
+import '../../../../../core/widgets/web_unavailable_state.dart';
 import '../../../../../services/network/lan_discovery.dart';
 import '../../../../../services/sync/lan_sync_server.dart';
 import '../controllers/sync_controller.dart';
@@ -25,6 +27,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
   @override
   void initState() {
     super.initState();
+    if (kIsWeb) return; // LAN sync is native-only; build() explains why.
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       // Start server + mDNS advertising when the sync screen opens.
@@ -50,6 +53,20 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (kIsWeb) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Sync & Backup'), centerTitle: true),
+        body: const WebUnavailableState(
+          icon: Icons.wifi_tethering_off_outlined,
+          featureName: 'Wi-Fi sync',
+          explanation:
+              'Pairing devices over your home network needs the Android '
+              'app. You can still back up from web: Settings → Export '
+              'creates a JSON file this or any other device can import.',
+        ),
+      );
+    }
+
     final asyncState = ref.watch(syncControllerProvider);
     final secretAsync = ref.watch(syncSecretProvider);
 
@@ -241,7 +258,7 @@ class _SyncCodeCard extends ConsumerWidget {
             const SizedBox(height: 12),
             secretAsync.when(
               loading: () => const LinearProgressIndicator(),
-              error: (_, __) => const Text('Could not load sync code'),
+              error: (_, _) => const Text('Could not load sync code'),
               data: (secret) => Row(
                 children: [
                   Expanded(

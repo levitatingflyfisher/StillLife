@@ -6,7 +6,8 @@ class MaintenanceLog extends Equatable {
   final String? propertyId;
   final String title;
   final String? description;
-  final double? cost;
+  /// Integer cents (see core/utils/money.dart).
+  final int? costCents;
   final DateTime performedAt;
   final DateTime? nextDueAt;
   final String? servicedBy;
@@ -19,7 +20,7 @@ class MaintenanceLog extends Equatable {
     this.propertyId,
     required this.title,
     this.description,
-    this.cost,
+    this.costCents,
     required this.performedAt,
     this.nextDueAt,
     this.servicedBy,
@@ -35,7 +36,7 @@ class MaintenanceLog extends Equatable {
     Object? propertyId = _sentinel,
     String? title,
     Object? description = _sentinel,
-    Object? cost = _sentinel,
+    Object? costCents = _sentinel,
     DateTime? performedAt,
     Object? nextDueAt = _sentinel,
     Object? servicedBy = _sentinel,
@@ -52,7 +53,7 @@ class MaintenanceLog extends Equatable {
       description: description == _sentinel
           ? this.description
           : description as String?,
-      cost: cost == _sentinel ? this.cost : cost as double?,
+      costCents: costCents == _sentinel ? this.costCents : costCents as int?,
       performedAt: performedAt ?? this.performedAt,
       nextDueAt: nextDueAt == _sentinel
           ? this.nextDueAt

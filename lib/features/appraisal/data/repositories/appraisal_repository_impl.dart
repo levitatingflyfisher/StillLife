@@ -52,11 +52,13 @@ class AppraisalRepositoryImpl implements AppraisalRepository {
   Future<Result<Appraisal>> save(Appraisal a) async {
     try {
       final id = a.id.isEmpty ? _uuid.v4() : a.id;
+      // Money is integer cents by construction — the rounding law is now
+      // structural, not a call the write path can forget.
       final companion = db_pkg.AppraisalsCompanion.insert(
         id: id,
         itemId: a.itemId,
         mode: a.mode.wire,
-        value: a.value,
+        valueCents: a.valueCents,
         itemModelKey: a.itemModelKey,
         queriedAt: a.queriedAt.millisecondsSinceEpoch,
         expiresAt: a.expiresAt.millisecondsSinceEpoch,
@@ -66,9 +68,50 @@ class AppraisalRepositoryImpl implements AppraisalRepository {
         countryCode: Value(a.countryCode),
       );
       await _db.appraisalDao.insertAppraisal(companion);
+      // The returned entity must match what was written, not the raw input.
       return Success(a.copyWith(id: id));
     } catch (e) {
       return Err(DatabaseFailure('Failed to save appraisal: $e'));
+    }
+  }
+
+  @override
+  Future<Result<void>> applyToItem(Appraisal a) async {
+    try {
+      final cents = a.valueCents;
+      final isResale = a.mode == AppraisalMode.resale;
+
+      // Sparse companion — only the targeted value column and modifiedAt
+      // change; going through itemDao directly (not ItemRepository.updateItem)
+      // keeps its automatic 'manual' price-history write out of this path.
+      final updated = await _db.itemDao.updateItem(
+        db_pkg.ItemsCompanion(
+          id: Value(a.itemId),
+          currentValueCents: isResale ? Value(cents) : const Value.absent(),
+          replacementCostCents: isResale ? const Value.absent() : Value(cents),
+          modifiedAt: Value(DateTime.now()),
+        ),
+      );
+      if (!updated) {
+        return Err(DatabaseFailure('Item ${a.itemId} not found'));
+      }
+
+      // currentValueCents changes leave a price-history trail so the chart shows
+      // where the number came from.
+      if (isResale) {
+        await _db.priceHistoryDao.insertPriceEntry(
+          db_pkg.PriceHistoryEntriesCompanion.insert(
+            id: _uuid.v4(),
+            itemId: a.itemId,
+            priceCents: cents,
+            source: 'llm_estimate',
+            recordedAt: DateTime.now(),
+          ),
+        );
+      }
+      return const Success(null);
+    } catch (e) {
+      return Err(DatabaseFailure('Failed to apply appraisal: $e'));
     }
   }
 
@@ -88,7 +131,7 @@ class AppraisalRepositoryImpl implements AppraisalRepository {
     id: row.id,
     itemId: row.itemId,
     mode: AppraisalMode.fromWire(row.mode),
-    value: row.value,
+    valueCents: row.valueCents,
     currency: row.currency,
     confidence: row.confidence,
     sources: _decodeSources(row.sourceUrls),

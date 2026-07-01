@@ -3,7 +3,10 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show compute;
 import 'package:still_life/services/ml/analysis_provider.dart';
+import 'package:still_life/services/ml/image_media_type.dart';
+import 'package:still_life/services/ml/multi_item_parser.dart';
 import 'package:still_life/services/ml/ollama_provider.dart'
     show AnalysisException;
 
@@ -33,7 +36,7 @@ class QuotaExceededException implements Exception {
 /// provider. 401 fires `onUnauthorized` (fire-and-forget) and throws
 /// `AuthRequiredException`; 429 throws `QuotaExceededException`; 503
 /// retries with exponential backoff before throwing `AnalysisException`.
-class HostedProvider implements AnalysisProvider {
+class HostedProvider extends AnalysisProvider {
   final Dio _dio;
   final String baseUrl;
   final Future<String> Function() apiKeyProvider;
@@ -56,9 +59,12 @@ class HostedProvider implements AnalysisProvider {
   @override
   AnalysisTier get tier => AnalysisTier.hosted;
 
-  /// Available if a bearer is configured and `/v1/account` returns 200.
+  /// Available if a base URL is configured, a bearer is configured, and
+  /// `/v1/account` returns 200. An empty [baseUrl] means the hosted
+  /// backend is not configured — fail closed, attempt no HTTP.
   @override
   Future<bool> isAvailable() async {
+    if (baseUrl.isEmpty) return false;
     final key = await apiKeyProvider();
     if (key.isEmpty) return false;
     try {
@@ -83,32 +89,111 @@ class HostedProvider implements AnalysisProvider {
     String? existingLabel,
   }) async {
     final body = <String, dynamic>{
-      'image': base64Encode(imageBytes),
+      'image': await compute(base64Encode, imageBytes),
       'existing_label': ?existingLabel,
-      if (contextFrame != null) 'context_frame': base64Encode(contextFrame),
+      if (contextFrame != null)
+        'context_frame': await compute(base64Encode, contextFrame),
     };
-    return _postWithRetry(body);
+    return _postWithRetry('/api/v1/analyze', body, _parseResponse);
   }
 
-  /// Video analysis is not directly supported. Use the orchestrator.
+  /// Analyzes a free-text prompt through the hosted `/v1/messages`
+  /// Anthropic passthrough (no image). Same auth/quota error mapping as
+  /// [analyzeImage].
   @override
-  Stream<AnalysisProgress> analyzeVideo({
-    required String videoPath,
-    required AnalysisConfig config,
-  }) {
-    throw UnsupportedError(
-      'Hosted provider does not support direct video analysis. '
-      'Use the analysis orchestrator for video processing.',
+  Future<AnalysisResult> analyzeText(
+    String prompt, {
+    AnalysisContext? context,
+  }) async {
+    final label = context?.existingLabel;
+    final fullPrompt = label != null
+        ? 'This item has been labeled "$label". $prompt'
+        : prompt;
+    final body = <String, dynamic>{
+      'model': kDefaultClaudeAnalysisModel,
+      'max_tokens': 500,
+      'messages': [
+        {'role': 'user', 'content': fullPrompt},
+      ],
+    };
+    return _postWithRetry('/v1/messages', body, _parseMessagesText);
+  }
+
+  /// Analyzes one shelf/room photo into 0..25 per-item results through
+  /// the hosted `/v1/messages` Anthropic passthrough — the photo rides as
+  /// a base64 image block next to the shared multi-item prompt. Same
+  /// auth/quota error mapping as [analyzeImage].
+  @override
+  Future<List<AnalysisResult>> analyzeImageMulti(
+    Uint8List imageBytes, {
+    AnalysisContext? context,
+  }) async {
+    final label = context?.existingLabel;
+    final prompt = label != null
+        ? 'This photo has been labeled "$label". $kMultiItemAnalysisPrompt'
+        : kMultiItemAnalysisPrompt;
+    final body = <String, dynamic>{
+      'model': kDefaultClaudeAnalysisModel,
+      'max_tokens': kMultiItemMaxTokens,
+      'messages': [
+        {
+          'role': 'user',
+          'content': [
+            {
+              'type': 'image',
+              'source': {
+                'type': 'base64',
+                // Sniffed: walkthrough frames are PNGs; a declared-JPEG
+                // PNG 400s on the Anthropic passthrough. The encode runs
+                // off the UI isolate — the walkthrough loop animates
+                // over these calls.
+                'media_type': detectImageMediaType(imageBytes),
+                'data': await compute(base64Encode, imageBytes),
+              },
+            },
+            {'type': 'text', 'text': prompt},
+          ],
+        },
+      ],
+    };
+    return _postWithRetry(
+      '/v1/messages',
+      body,
+      (d) => parseMultiItemResponse(_messagesText(d), defaultConfidence: 0.85),
     );
   }
 
-  Future<AnalysisResult> _postWithRetry(Map<String, dynamic> body) async {
+  /// Sends a raw text prompt through the hosted `/v1/messages` Anthropic
+  /// passthrough and returns the reply text verbatim — no item-analysis
+  /// parsing applied. Same auth/quota error mapping as [analyzeImage].
+  @override
+  Future<String> completeText(String prompt, {int maxTokens = 1000}) async {
+    final body = <String, dynamic>{
+      'model': kDefaultClaudeAnalysisModel,
+      'max_tokens': maxTokens,
+      'messages': [
+        {'role': 'user', 'content': prompt},
+      ],
+    };
+    return _postWithRetry('/v1/messages', body, _messagesText);
+  }
+
+  Future<T> _postWithRetry<T>(
+    String path,
+    Map<String, dynamic> body,
+    T Function(Map<String, dynamic>) parse,
+  ) async {
+    if (baseUrl.isEmpty) {
+      throw const AnalysisException(
+        'Hosted service is not configured (no HOSTED_BASE_URL).',
+      );
+    }
     DioException? last;
     for (var i = 0; i < maxRetries; i++) {
       try {
         final bearer = await apiKeyProvider();
         final r = await _dio.post<Map<String, dynamic>>(
-          '$baseUrl/api/v1/analyze',
+          '$baseUrl$path',
           data: body,
           options: Options(
             headers: {
@@ -122,7 +207,7 @@ class HostedProvider implements AnalysisProvider {
         if (r.data == null) {
           throw const AnalysisException('Empty response from hosted service');
         }
-        return _parseResponse(r.data!);
+        return parse(r.data!);
       } on DioException catch (e) {
         last = e;
         final code = e.response?.statusCode;
@@ -159,6 +244,53 @@ class HostedProvider implements AnalysisProvider {
       'Hosted service request failed after $maxRetries attempts: '
       '${last?.message ?? 'unknown error'}',
     );
+  }
+
+  /// Parses an Anthropic Messages envelope from the hosted passthrough:
+  /// concatenates the text blocks, then extracts compact JSON with a
+  /// guarded decode — malformed model output degrades to a low-confidence
+  /// raw-text result instead of crashing.
+  AnalysisResult _parseMessagesText(Map<String, dynamic> d) {
+    final text = _messagesText(d);
+
+    final jsonMatch = RegExp(r'\{[\s\S]*\}').firstMatch(text);
+    if (jsonMatch != null) {
+      try {
+        final json = jsonDecode(jsonMatch.group(0)!) as Map<String, dynamic>;
+        return AnalysisResult(
+          itemName: json['name'] as String? ?? 'Unknown Item',
+          brand: json['brand'] as String?,
+          model: json['model'] as String?,
+          description: json['description'] as String? ?? text,
+          category: json['category'] as String? ?? 'Other',
+          estimatedPrice: _parsePrice(json['estimatedRetailPrice']),
+          confidence: 0.85,
+          rawResponse: json,
+        );
+      } on FormatException {
+        // Fall through to the raw-text fallback.
+      }
+    }
+
+    return AnalysisResult(
+      itemName: 'Unknown Item',
+      description: text.trim(),
+      category: 'Other',
+      confidence: 0.4,
+      rawResponse: {'raw_text': text},
+    );
+  }
+
+  /// Concatenates the text blocks of an Anthropic Messages envelope.
+  String _messagesText(Map<String, dynamic> d) {
+    final blocks = d['content'] as List<dynamic>?;
+    return blocks == null
+        ? ''
+        : blocks
+              .whereType<Map<String, dynamic>>()
+              .where((b) => b['type'] == 'text')
+              .map((b) => b['text'] as String? ?? '')
+              .join();
   }
 
   AnalysisResult _parseResponse(Map<String, dynamic> d) => AnalysisResult(

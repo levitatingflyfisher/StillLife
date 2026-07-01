@@ -42,16 +42,16 @@ class ReportsScreen extends ConsumerWidget {
                       ),
                       _SummaryRow(
                         label: 'Current Value',
-                        value: summary.totalCurrentValue.toCurrency(),
+                        value: summary.totalCurrentValueCents.centsToCurrency(),
                         isHighlighted: true,
                       ),
                       _SummaryRow(
                         label: 'Replacement Cost',
-                        value: summary.totalReplacementCost.toCurrency(),
+                        value: summary.totalReplacementCostCents.centsToCurrency(),
                       ),
                       _SummaryRow(
                         label: 'Acquisition Cost',
-                        value: summary.totalAcquisitionCost.toCurrency(),
+                        value: summary.totalAcquisitionCostCents.centsToCurrency(),
                       ),
                     ],
                   ),
@@ -96,7 +96,7 @@ class ReportsScreen extends ConsumerWidget {
                           }
                           final total = policies.fold<double>(
                             0,
-                            (s, p) => s + (p.coverageAmount ?? 0),
+                            (s, p) => s + (p.coverageAmountCents ?? 0),
                           );
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,

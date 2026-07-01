@@ -58,29 +58,29 @@ void main() {
 
   tearDown(() => db.close());
 
-  domain.Item makeItem({double? value}) => domain.Item(
+  domain.Item makeItem({int? value}) => domain.Item(
     id: '',
     name: 'TV',
     description: '',
     categoryId: 'c1',
     roomId: 'r1',
-    currentValue: value,
+    currentValueCents: value,
     createdAt: now,
     modifiedAt: now,
   );
 
-  group('price history auto-recording', () {
-    test('createItem with value records a price history entry', () async {
-      final result = await repo.createItem(makeItem(value: 500.0));
+  group('priceCents history auto-recording', () {
+    test('createItem with value records a priceCents history entry', () async {
+      final result = await repo.createItem(makeItem(value: 500));
       final item = (result as Success<domain.Item>).value;
 
       final history = await db.priceHistoryDao.watchPriceHistory(item.id).first;
       expect(history.length, 1);
-      expect(history.first.price, 500.0);
+      expect(history.first.priceCents, 500);
       expect(history.first.source, 'manual');
     });
 
-    test('createItem without value does not record price history', () async {
+    test('createItem without value does not record priceCents history', () async {
       final result = await repo.createItem(makeItem());
       final item = (result as Success<domain.Item>).value;
 
@@ -89,28 +89,28 @@ void main() {
     });
 
     test(
-      'updateItem with changed value records new price history entry',
+      'updateItem with changed value records new priceCents history entry',
       () async {
-        final created = await repo.createItem(makeItem(value: 500.0));
+        final created = await repo.createItem(makeItem(value: 500));
         final item = (created as Success<domain.Item>).value;
 
-        await repo.updateItem(item.copyWith(currentValue: () => 400.0));
+        await repo.updateItem(item.copyWith(currentValueCents: () => 400));
 
         final history = await db.priceHistoryDao
             .watchPriceHistory(item.id)
             .first;
         expect(history.length, 2);
         expect(
-          history.map((e) => e.price).toSet(),
+          history.map((e) => e.priceCents).toSet(),
           containsAll([400.0, 500.0]),
         );
       },
     );
 
     test(
-      'updateItem with same value does not add price history entry',
+      'updateItem with same value does not add priceCents history entry',
       () async {
-        final created = await repo.createItem(makeItem(value: 500.0));
+        final created = await repo.createItem(makeItem(value: 500));
         final item = (created as Success<domain.Item>).value;
 
         // Update name only — value unchanged
@@ -124,7 +124,7 @@ void main() {
     );
 
     test(
-      'updateItem with null value does not add price history entry',
+      'updateItem with null value does not add priceCents history entry',
       () async {
         final created = await repo.createItem(makeItem());
         final item = (created as Success<domain.Item>).value;

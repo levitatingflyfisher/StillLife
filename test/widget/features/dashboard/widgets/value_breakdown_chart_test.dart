@@ -11,7 +11,7 @@ void main() {
             body: SizedBox(
               width: 400,
               height: 300,
-              child: ValueBreakdownChart(data: {}),
+              child: ValueBreakdownChart(dataCents: {}),
             ),
           ),
         ),
@@ -27,7 +27,7 @@ void main() {
             body: SizedBox(
               width: 400,
               height: 300,
-              child: ValueBreakdownChart(data: {'A': 0, 'B': 0}),
+              child: ValueBreakdownChart(dataCents: {'A': 0, 'B': 0}),
             ),
           ),
         ),
@@ -44,7 +44,7 @@ void main() {
               width: 400,
               height: 300,
               child: ValueBreakdownChart(
-                data: {'Electronics': 5000.0, 'Furniture': 3000.0},
+                dataCents: {'Electronics': 500000, 'Furniture': 300000},
               ),
             ),
           ),
@@ -63,7 +63,7 @@ void main() {
               width: 400,
               height: 300,
               child: ValueBreakdownChart(
-                data: {
+                dataCents: {
                   'Cat 1': 100,
                   'Cat 2': 200,
                   'Cat 3': 300,

@@ -1,5 +1,6 @@
 import '../../features/inventory/domain/entities/item.dart';
 import '../appraisal/appraiser_service.dart' show MessagesTransport;
+import '../ml/analysis_provider.dart' show kDefaultClaudeAnalysisModel;
 
 /// A single turn in an [ItemChatService] stream.
 class ChatMessage {
@@ -55,11 +56,11 @@ class ItemChatService {
     if (item.purchaseDate != null) {
       buf.writeln('- Purchased: ${item.purchaseDate}');
     }
-    if (item.purchasePrice != null) {
-      buf.writeln('- Price: ${item.purchasePrice}');
+    if (item.purchasePriceCents != null) {
+      buf.writeln('- Price: ${item.purchasePriceCents}');
     }
-    if (item.currentValue != null) {
-      buf.writeln('- Current value: ${item.currentValue}');
+    if (item.currentValueCents != null) {
+      buf.writeln('- Current value: ${item.currentValueCents}');
     }
     if (item.warrantyExpiration != null) {
       buf.writeln('- Warranty expires: ${item.warrantyExpiration}');
@@ -89,7 +90,7 @@ class ItemChatService {
     required Item item,
     required List<ChatMessage> history,
     int maxTokens = 1024,
-    String model = 'claude-sonnet-4-20250514',
+    String model = kDefaultClaudeAnalysisModel,
   }) => {
     'model': model,
     'max_tokens': maxTokens,

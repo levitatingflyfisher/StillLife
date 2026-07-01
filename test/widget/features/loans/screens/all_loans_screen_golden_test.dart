@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -6,6 +7,11 @@ import 'package:still_life/features/loans/presentation/controllers/loan_controll
 import 'package:still_life/features/loans/presentation/screens/all_loans_screen.dart';
 
 import '../../../../visual/visual_golden_helper.dart';
+
+/// Pinned "today". The screen renders absolute dates and groups rows by
+/// clock.now()-relative overdue/due-soon, so both the loan dates and the
+/// clock must be fixed or the goldens go stale the day after recording.
+final DateTime _now = DateTime(2026, 1, 15, 12);
 
 Loan _loan({
   String id = 'l1',
@@ -41,29 +47,29 @@ Widget _screen(List<Loan> loans) => ProviderScope(
 
 void main() {
   testWidgets('AllLoansScreen empty golden sweep', (tester) async {
-    await goldenAtSizes(
+    await withClock(Clock.fixed(_now), () => goldenAtSizes(
       tester,
       name: 'all_loans_screen_empty',
       home: _screen(const <Loan>[]),
       textScales: const <double>[1.0, 3.0],
-    );
+    ));
   });
 
   testWidgets('AllLoansScreen single active golden sweep', (tester) async {
-    await goldenAtSizes(
+    await withClock(Clock.fixed(_now), () => goldenAtSizes(
       tester,
       name: 'all_loans_screen_active',
       home: _screen([
-        _loan(expectedReturnDate: DateTime.now().add(const Duration(days: 10))),
+        _loan(expectedReturnDate: DateTime(2026, 1, 25)),
       ]),
       textScales: const <double>[1.0, 3.0],
-    );
+    ));
   });
 
   testWidgets('AllLoansScreen grouped (overdue/due-soon/upcoming) golden sweep', (
     tester,
   ) async {
-    await goldenAtSizes(
+    await withClock(Clock.fixed(_now), () => goldenAtSizes(
       tester,
       name: 'all_loans_screen_grouped',
       home: _screen([
@@ -71,22 +77,22 @@ void main() {
           id: 'overdue',
           itemName: 'Drill',
           borrower: 'Bob',
-          expectedReturnDate: DateTime.now().subtract(const Duration(days: 3)),
+          expectedReturnDate: DateTime(2026, 1, 12),
         ),
         _loan(
           id: 'dueSoon',
           itemName: 'Ladder',
           borrower: 'Carol',
-          expectedReturnDate: DateTime.now().add(const Duration(days: 2)),
+          expectedReturnDate: DateTime(2026, 1, 17),
         ),
         _loan(
           id: 'upcoming',
           itemName: 'Tent',
           borrower: 'Dave',
-          expectedReturnDate: DateTime.now().add(const Duration(days: 20)),
+          expectedReturnDate: DateTime(2026, 2, 4),
         ),
       ]),
       textScales: const <double>[1.0, 3.0],
-    );
+    ));
   });
 }

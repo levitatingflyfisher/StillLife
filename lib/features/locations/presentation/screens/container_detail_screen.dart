@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -113,12 +114,25 @@ class ContainerDetailScreen extends ConsumerWidget {
             roomId: container?.roomId,
             containerId: containerId,
           ),
-          onVoice: () => onVoiceAddItem(
+          onVoice: kIsWeb
+              ? null
+              : () => onVoiceAddItem(
             context,
             ref,
             roomId: container?.roomId,
             containerId: containerId,
           ),
+          // The capture flow scopes to a room; the container's room is the
+          // closest honest target (containers aren't selectable there).
+          onVideo: kIsWeb
+              ? null
+              : () => context.pushNamed(
+                    'videoCapture',
+                    queryParameters: {
+                      if (container?.roomId != null)
+                        'roomId': container!.roomId,
+                    },
+                  ),
           onManual: () => context.pushNamed(
             'addItem',
             queryParameters: {

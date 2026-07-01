@@ -5,7 +5,6 @@ import '../../services/sync/crdt_manager.dart';
 import '../../services/sync/lan_sync_server.dart';
 import '../../services/sync/lan_sync_client.dart';
 import '../../services/network/lan_discovery.dart';
-import 'database_provider.dart';
 import 'repository_providers.dart';
 
 /// The shared sync secret for this device (used to authenticate LAN sync).
@@ -23,7 +22,6 @@ final crdtManagerProvider = Provider<CrdtManager>((ref) {
 
 final lanSyncServerProvider = Provider<LanSyncServer>((ref) {
   final server = LanSyncServer(
-    db: ref.watch(databaseProvider),
     crdtManager: ref.watch(crdtManagerProvider),
     importService: ref.watch(importServiceProvider),
     exportService: ref.watch(exportServiceProvider),

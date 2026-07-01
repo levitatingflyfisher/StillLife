@@ -51,7 +51,9 @@ class MessagesTransportAdapter implements MessagesTransport {
     }
     return const Err(
       ValidationFailure(
-        'No LLM provider configured. Add a Claude API key or sign in to Pro.',
+        'Market-value estimates need an Anthropic (Claude) API key or a '
+        'Pro account — the OpenAI-compatible tier cannot run the '
+        'appraiser. Add a Claude key in Settings → AI Analysis.',
       ),
     );
   }
@@ -73,7 +75,9 @@ class MessagesTransportAdapter implements MessagesTransport {
       return;
     }
     throw StateError(
-      'No LLM provider configured. Add a Claude API key or sign in to Pro.',
+      'Market-value estimates need an Anthropic (Claude) API key or a '
+      'Pro account — the OpenAI-compatible tier cannot run the appraiser. '
+      'Add a Claude key in Settings → AI Analysis.',
     );
   }
 }

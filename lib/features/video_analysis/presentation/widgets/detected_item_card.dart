@@ -53,7 +53,7 @@ class DetectedItemCard extends StatelessWidget {
                   width: 72,
                   height: 72,
                   child: Image.memory(
-                    object.croppedImage,
+                    object.frameImage,
                     fit: BoxFit.cover,
                     errorBuilder: (_, _, _) => Container(
                       color: colorScheme.surfaceContainerHighest,

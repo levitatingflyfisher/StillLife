@@ -26,7 +26,8 @@ class PriceHistoryChart extends ConsumerWidget {
             .toDouble();
         final maxDate = sorted.last.recordedAt.millisecondsSinceEpoch
             .toDouble();
-        final prices = sorted.map((e) => e.price).toList();
+        // The chart axis speaks dollars; storage is cents.
+        final prices = sorted.map((e) => e.priceCents / 100).toList();
         final minPrice = prices.reduce((a, b) => a < b ? a : b);
         final maxPrice = prices.reduce((a, b) => a > b ? a : b);
         final pricePad = (maxPrice - minPrice) * 0.1 + 0.01;
@@ -35,7 +36,7 @@ class PriceHistoryChart extends ConsumerWidget {
             .map(
               (e) => FlSpot(
                 e.recordedAt.millisecondsSinceEpoch.toDouble(),
-                e.price,
+                e.priceCents / 100,
               ),
             )
             .toList();

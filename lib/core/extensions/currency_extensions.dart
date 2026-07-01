@@ -18,3 +18,22 @@ extension NullableCurrencyExtensions on double? {
     return this?.toCurrency(locale: locale, symbol: symbol) ?? '';
   }
 }
+
+/// Display formatting for the storage representation: integer cents.
+/// (Money is stored as cents and only becomes decimal dollars on a wire
+/// or a screen — see lib/core/utils/money.dart.)
+extension CentsCurrencyExtensions on int {
+  String centsToCurrency({String locale = 'en_US', String symbol = '\$'}) {
+    return (this / 100).toCurrency(locale: locale, symbol: symbol);
+  }
+
+  String centsToCompactCurrency({String locale = 'en_US', String symbol = '\$'}) {
+    return (this / 100).toCompactCurrency(locale: locale, symbol: symbol);
+  }
+}
+
+extension NullableCentsCurrencyExtensions on int? {
+  String centsToCurrencyOrEmpty({String locale = 'en_US', String symbol = '\$'}) {
+    return this?.centsToCurrency(locale: locale, symbol: symbol) ?? '';
+  }
+}

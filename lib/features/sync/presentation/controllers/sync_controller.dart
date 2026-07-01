@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/providers/sync_providers.dart';
+import '../../../../services/sync/lan_sync_client.dart';
 import '../../domain/entities/sync_peer.dart';
 
 class SyncState {
@@ -91,11 +92,22 @@ class SyncController extends AsyncNotifier<SyncState> {
       final client = ref.read(lanSyncClientProvider);
       final status = await client.getStatus(host, port);
 
+      // Refuse a peer that cannot encrypt — never sync in the clear.
+      if (!status.supportsEncryptedSync) {
+        final current = state.value ?? const SyncState();
+        state = AsyncValue.data(
+          current.copyWith(lastError: kOutdatedSyncPeerMessage),
+        );
+        return;
+      }
+
+      // /sync/status no longer leaks a device name; label the manual peer by
+      // its address instead.
       final peer = SyncPeer(
         nodeId: status.nodeId,
         host: host,
         port: port,
-        deviceName: status.deviceName,
+        deviceName: 'Device at $host',
       );
 
       final current = state.value ?? const SyncState();

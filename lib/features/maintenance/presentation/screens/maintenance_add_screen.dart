@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 import '../../../../core/providers/notification_providers.dart';
 import '../../domain/entities/maintenance_log.dart';
 import '../controllers/maintenance_controller.dart';
+import '../../../../core/utils/money_input.dart';
 
 const _uuid = Uuid();
 
@@ -39,7 +40,11 @@ class _MaintenanceAddScreenState extends ConsumerState<MaintenanceAddScreen> {
     final e = widget.existing;
     _titleCtrl = TextEditingController(text: e?.title ?? '');
     _descriptionCtrl = TextEditingController(text: e?.description ?? '');
-    _costCtrl = TextEditingController(text: e?.cost?.toStringAsFixed(2) ?? '');
+    _costCtrl = TextEditingController(
+      text: e?.costCents == null
+          ? ''
+          : (e!.costCents! / 100).toStringAsFixed(2),
+    );
     _servicedByCtrl = TextEditingController(text: e?.servicedBy ?? '');
     _performedAt = e?.performedAt ?? DateTime.now();
     _nextDueAt = e?.nextDueAt;
@@ -85,7 +90,9 @@ class _MaintenanceAddScreenState extends ConsumerState<MaintenanceAddScreen> {
       description: _descriptionCtrl.text.trim().isEmpty
           ? null
           : _descriptionCtrl.text.trim(),
-      cost: double.tryParse(_costCtrl.text),
+      // Locale-tolerant parse straight to cents (was an unrounded raw
+      // double.tryParse).
+      costCents: parseMoneyInputCents(_costCtrl.text),
       performedAt: _performedAt,
       nextDueAt: _nextDueAt,
       servicedBy: _servicedByCtrl.text.trim().isEmpty

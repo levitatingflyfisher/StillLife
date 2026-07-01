@@ -26,8 +26,21 @@ dependencies:
   # UI / Theme
   openhearth_design:
     path: ../OpenHearth/ohStyle/openhearth_design
+
+  # Encryption primitives (Ghost-tier backup + LAN-sync encryption).
+  # Sibling path deps, mirroring openhearth_design above — clone the package
+  # repos next to StillLife (see README "Sibling packages").
+  sanctuary_auth_core:
+    path: ../OpenHearth/packages/sanctuary_auth_core
+  # Drop-in encrypted-backup UI (seed setup + .ohbk export/restore).
+  sanctuary_backup_ui:
+    path: ../OpenHearth/packages/sanctuary_backup_ui
   fl_chart: ^0.70.2
   intl: ^0.20.2
+  # Injectable wall clock (clock.now()) so date-relative domain logic
+  # (loan overdue/due-soon) is testable with a fixed time — golden tests
+  # must not depend on the day they run.
+  clock: ^1.1.1
   qr_flutter: ^4.1.0
 
   # HTTP
@@ -37,15 +50,19 @@ dependencies:
   camera: ^0.11.0+2
   ffmpeg_kit_flutter_new: ^4.1.0
 
-  # ML / AI
-  tflite_flutter: ^0.11.0
-
   # Network Discovery
   nsd: ^3.0.0
 
   # Barcode & OCR
   mobile_scanner: ^6.0.0
-  google_mlkit_text_recognition: ^0.14.0
+  google_mlkit_text_recognition: ^0.16.0 # commons ^0.12, in step with image_labeling
+
+  # On-device AI (Android-only plugins; all touched via io/stub trios so
+  # the web build never imports them)
+  google_mlkit_image_labeling: ^0.15.0 # rung 1: bundled ~400-label model
+  google_mlkit_genai_prompt: ^0.2.0 # rung 2: Gemini Nano via AICore
+  llama_cpp_dart: 0.9.0-dev.9 # rung 1.5: GGUF VLM (SmolVLM2) via mtmd;
+  # exact pin — the 0.9.x line warns of a breaking pass before 1.0
 
   # Speech Recognition
   speech_to_text: ^7.0.0
@@ -56,6 +73,9 @@ dependencies:
 
   # HTML parsing
   html: ^0.15.5
+
+  # Hashing (model-download integrity verification)
+  crypto: ^3.0.6
 
   # PDF Generation
   pdf: ^3.11.3
@@ -118,6 +138,14 @@ dev_dependencies:
   mocktail: ^1.0.4
   sqlite3: ^2.9.4
   http_mock_adapter: ^0.6.1
+  # Direct dev-deps so widget tests can fake the image picker platform.
+  image_picker_platform_interface: ^2.11.1
+  plugin_platform_interface: ^2.1.8
+
+  # Fleet standards as tests that can fail (C1 style .. C6 harness) —
+  # sibling path dep, same clone layout as the sanctuary packages above.
+  oh_fleet_conformance:
+    path: ../OpenHearth/packages/oh_fleet_conformance
 
 flutter:
   uses-material-design: true
@@ -125,7 +153,6 @@ flutter:
 
   assets:
     - assets/icons/
-    - assets/models/
 
   fonts:
     - family: Lora

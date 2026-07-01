@@ -1,10 +1,8 @@
-import 'dart:io';
-
 import 'package:drift/drift.dart';
-import 'package:drift/native.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 
+import '../storage/legacy_photo_files/legacy_photo_files.dart';
+import '../storage/photo_bytes.dart';
+import 'connection/connection.dart';
 import 'tables.dart';
 import 'daos/item_dao.dart';
 import 'daos/category_dao.dart';
@@ -59,20 +57,29 @@ part 'database.g.dart';
   ],
 )
 class AppDatabase extends _$AppDatabase {
-  AppDatabase(super.e);
+  AppDatabase(super.e, {Future<Uint8List?> Function(String path)? migrationFileReader})
+      : _migrationFileReader = migrationFileReader ?? readLegacyPhotoFile;
 
-  /// Production constructor — uses native SQLite file.
+  /// Reads a legacy photo file during the v12 backfill. Injectable so the
+  /// migration is testable without a real filesystem; the default reads from
+  /// disk on native and always returns null on the web (which has no legacy
+  /// files to migrate).
+  final Future<Uint8List?> Function(String path) _migrationFileReader;
+
+  /// Production constructor — native SQLite file on mobile/desktop, the
+  /// sqlite3 WASM build (in a web worker) in the browser. The platform split
+  /// lives in `connection/connection.dart`.
   factory AppDatabase.production() {
-    return AppDatabase(_openConnection());
+    return AppDatabase(openConnection());
   }
 
   /// In-memory constructor for testing.
   factory AppDatabase.memory() {
-    return AppDatabase(NativeDatabase.memory());
+    return AppDatabase(openMemoryConnection());
   }
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration {
@@ -91,27 +98,7 @@ class AppDatabase extends _$AppDatabase {
             content_rowid=rowid
           )
         ''');
-        // Triggers to keep FTS in sync
-        await customStatement('''
-          CREATE TRIGGER IF NOT EXISTS items_fts_insert AFTER INSERT ON items BEGIN
-            INSERT INTO items_fts(rowid, name, description, notes, serial_number, barcode)
-            VALUES (new.rowid, new.name, new.description, new.notes, new.serial_number, new.barcode);
-          END
-        ''');
-        await customStatement('''
-          CREATE TRIGGER IF NOT EXISTS items_fts_update AFTER UPDATE ON items BEGIN
-            INSERT INTO items_fts(items_fts, rowid, name, description, notes, serial_number, barcode)
-            VALUES ('delete', old.rowid, old.name, old.description, old.notes, old.serial_number, old.barcode);
-            INSERT INTO items_fts(rowid, name, description, notes, serial_number, barcode)
-            VALUES (new.rowid, new.name, new.description, new.notes, new.serial_number, new.barcode);
-          END
-        ''');
-        await customStatement('''
-          CREATE TRIGGER IF NOT EXISTS items_fts_delete AFTER DELETE ON items BEGIN
-            INSERT INTO items_fts(items_fts, rowid, name, description, notes, serial_number, barcode)
-            VALUES ('delete', old.rowid, old.name, old.description, old.notes, old.serial_number, old.barcode);
-          END
-        ''');
+        await _createFtsTriggers();
       },
       onUpgrade: (Migrator m, int from, int to) async {
         if (from < 2) {
@@ -177,8 +164,172 @@ class AppDatabase extends _$AppDatabase {
             "UPDATE appraisals SET hlc = '' WHERE hlc IS NULL",
           );
         }
+        if (from < 12) {
+          // Photos move into the database as BLOBs so they work identically
+          // on native and web (the web has no filesystem). Backfill reads
+          // each legacy file from disk; a missing file leaves bytes null but
+          // KEEPS the row — never crash a migration over a lost photo.
+          await m.addColumn(photos, photos.bytes);
+          await m.addColumn(photos, photos.thumbBytes);
+          await m.addColumn(receipts, receipts.photoBytes);
+          await _backfillPhotoBlobs();
+        }
+        if (from < 13) {
+          // Product identity columns — nullable, so existing rows simply
+          // gain nulls and old backups keep importing unchanged.
+          await m.addColumn(items, items.brand);
+          await m.addColumn(items, items.model);
+          await m.addColumn(items, items.asin);
+        }
+        if (from < 14) {
+          // Receipt linkage — nullable, so existing rows gain null and
+          // pre-v14 backups keep importing unchanged.
+          await m.addColumn(items, items.receiptId);
+        }
+        if (from < 15) {
+          // Money moves from REAL dollars to INTEGER cents so arithmetic is
+          // exact. Stored dollars convert via the same decimal
+          // half-away-from-zero law as centsFromDollars (the epsilon nudges
+          // scaled values a binary hair below a half-cent over the line);
+          // NULL stays NULL. Every wire format (backup JSON, CSV, sync)
+          // keeps speaking dollars — only storage changes.
+          //
+          // Migrations here are not transactional, so each table rebuild is
+          // guarded by "does the dollar column still exist": a re-entry after
+          // a mid-migration crash skips what already converted instead of
+          // failing on the renamed column.
+          Expression<int> centsOf(String dollarColumn) => CustomExpression(
+                'CAST(ROUND($dollarColumn * 100 + '
+                '(CASE WHEN $dollarColumn < 0 THEN -1e-9 ELSE 1e-9 END)) '
+                'AS INTEGER)',
+              );
+          Future<bool> stillDollars(String table, String column) async {
+            final cols = await customSelect(
+              'SELECT name FROM pragma_table_info(?1)',
+              variables: [Variable<String>(table)],
+            ).get();
+            return cols.any((r) => r.read<String>('name') == column);
+          }
+
+          if (await stillDollars('items', 'purchase_price')) {
+            await m.alterTable(TableMigration(items, columnTransformer: {
+              items.purchasePriceCents: centsOf('purchase_price'),
+              items.currentValueCents: centsOf('current_value'),
+              items.replacementCostCents: centsOf('replacement_cost'),
+            }));
+            // Rebuilding items dropped its FTS triggers with the old table;
+            // recreate them and rebuild the external-content index.
+            final hasFts = await customSelect(
+              "SELECT name FROM sqlite_master WHERE name = 'items_fts'",
+            ).get();
+            if (hasFts.isNotEmpty) {
+              await _createFtsTriggers();
+              await customStatement(
+                "INSERT INTO items_fts(items_fts) VALUES('rebuild')",
+              );
+            }
+          }
+          if (await stillDollars('receipts', 'total_amount')) {
+            await m.alterTable(TableMigration(receipts, columnTransformer: {
+              receipts.totalAmountCents: centsOf('total_amount'),
+            }));
+          }
+          if (await stillDollars('price_history_entries', 'price')) {
+            await m.alterTable(
+              TableMigration(priceHistoryEntries, columnTransformer: {
+                priceHistoryEntries.priceCents: centsOf('price'),
+              }),
+            );
+          }
+          if (await stillDollars('policies', 'coverage_amount')) {
+            await m.alterTable(TableMigration(policies, columnTransformer: {
+              policies.coverageAmountCents: centsOf('coverage_amount'),
+              policies.deductibleCents: centsOf('deductible'),
+              policies.premiumCents: centsOf('premium'),
+            }));
+          }
+          if (await stillDollars('maintenance_logs', 'cost')) {
+            await m.alterTable(
+              TableMigration(maintenanceLogs, columnTransformer: {
+                maintenanceLogs.costCents: centsOf('cost'),
+              }),
+            );
+          }
+          if (await stillDollars('appraisals', 'value')) {
+            await m.alterTable(TableMigration(appraisals, columnTransformer: {
+              appraisals.valueCents: centsOf('value'),
+            }));
+          }
+        }
       },
     );
+  }
+
+  /// The FTS sync triggers, shared by onCreate and the v15 items rebuild
+  /// (dropping a table drops its triggers, so any migration that rebuilds
+  /// `items` must recreate them and rebuild the index).
+  Future<void> _createFtsTriggers() async {
+    await customStatement('''
+      CREATE TRIGGER IF NOT EXISTS items_fts_insert AFTER INSERT ON items BEGIN
+        INSERT INTO items_fts(rowid, name, description, notes, serial_number, barcode)
+        VALUES (new.rowid, new.name, new.description, new.notes, new.serial_number, new.barcode);
+      END
+    ''');
+    await customStatement('''
+      CREATE TRIGGER IF NOT EXISTS items_fts_update AFTER UPDATE ON items BEGIN
+        INSERT INTO items_fts(items_fts, rowid, name, description, notes, serial_number, barcode)
+        VALUES ('delete', old.rowid, old.name, old.description, old.notes, old.serial_number, old.barcode);
+        INSERT INTO items_fts(rowid, name, description, notes, serial_number, barcode)
+        VALUES (new.rowid, new.name, new.description, new.notes, new.serial_number, new.barcode);
+      END
+    ''');
+    await customStatement('''
+      CREATE TRIGGER IF NOT EXISTS items_fts_delete AFTER DELETE ON items BEGIN
+        INSERT INTO items_fts(items_fts, rowid, name, description, notes, serial_number, barcode)
+        VALUES ('delete', old.rowid, old.name, old.description, old.notes, old.serial_number, old.barcode);
+      END
+    ''');
+  }
+
+  /// v12 backfill: pull legacy photo/receipt files into the new BLOB columns.
+  ///
+  /// Uses raw SQL (not the generated queries) because it runs mid-migration.
+  /// Every row is handled independently and best-effort: unreadable or
+  /// missing files leave the row in place with null bytes.
+  Future<void> _backfillPhotoBlobs() async {
+    final photoRows = await customSelect(
+      "SELECT id, file_path FROM photos WHERE bytes IS NULL AND file_path != ''",
+    ).get();
+    for (final row in photoRows) {
+      try {
+        final bytes = await _migrationFileReader(row.read<String>('file_path'));
+        if (bytes == null) continue; // file gone — keep the row as-is
+        await customStatement(
+          'UPDATE photos SET bytes = ?, thumb_bytes = ? WHERE id = ?',
+          [bytes, buildThumbnailBytes(bytes), row.read<String>('id')],
+        );
+      } catch (_) {
+        // Best-effort per row; a corrupt file must not brick the migration.
+      }
+    }
+
+    final receiptRows = await customSelect(
+      'SELECT id, photo_path FROM receipts '
+      "WHERE photo_bytes IS NULL AND photo_path != ''",
+    ).get();
+    for (final row in receiptRows) {
+      try {
+        final bytes =
+            await _migrationFileReader(row.read<String>('photo_path'));
+        if (bytes == null) continue;
+        await customStatement(
+          'UPDATE receipts SET photo_bytes = ? WHERE id = ?',
+          [bytes, row.read<String>('id')],
+        );
+      } catch (_) {
+        // Best-effort per row.
+      }
+    }
   }
 
   // ── Product lookup cache helpers ─────────────────────────────────────────
@@ -203,10 +354,3 @@ class AppDatabase extends _$AppDatabase {
   );
 }
 
-LazyDatabase _openConnection() {
-  return LazyDatabase(() async {
-    final dbDir = await getApplicationDocumentsDirectory();
-    final file = File(p.join(dbDir.path, 'still_life.db'));
-    return NativeDatabase.createInBackground(file);
-  });
-}

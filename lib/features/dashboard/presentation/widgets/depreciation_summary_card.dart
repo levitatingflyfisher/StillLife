@@ -4,26 +4,27 @@ import 'package:openhearth_design/openhearth_design.dart';
 import '../../../../core/extensions/currency_extensions.dart';
 
 class DepreciationSummaryCard extends StatelessWidget {
-  final double totalOriginalValue;
-  final double totalCurrentValue;
-  final double totalDepreciation;
+  /// Integer cents throughout (see core/utils/money.dart).
+  final int totalOriginalValueCents;
+  final int totalCurrentValueCents;
+  final int totalDepreciationCents;
 
   const DepreciationSummaryCard({
     super.key,
-    required this.totalOriginalValue,
-    required this.totalCurrentValue,
-    required this.totalDepreciation,
+    required this.totalOriginalValueCents,
+    required this.totalCurrentValueCents,
+    required this.totalDepreciationCents,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    final remainingPercent = totalOriginalValue > 0
-        ? (totalCurrentValue / totalOriginalValue).clamp(0.0, 1.0)
+    final remainingPercent = totalOriginalValueCents > 0
+        ? (totalCurrentValueCents / totalOriginalValueCents).clamp(0.0, 1.0)
         : 0.0;
-    final depreciationPercent = totalOriginalValue > 0
-        ? (totalDepreciation / totalOriginalValue * 100).clamp(0.0, 100.0)
+    final depreciationPercent = totalOriginalValueCents > 0
+        ? (totalDepreciationCents / totalOriginalValueCents * 100).clamp(0.0, 100.0)
         : 0.0;
 
     final Color indicatorColor;
@@ -63,7 +64,7 @@ class DepreciationSummaryCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  totalDepreciation.toCurrency(),
+                  totalDepreciationCents.centsToCurrency(),
                   style: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: indicatorColor,
@@ -111,11 +112,11 @@ class DepreciationSummaryCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  totalCurrentValue.toCurrency(),
+                  totalCurrentValueCents.centsToCurrency(),
                   style: theme.textTheme.labelSmall,
                 ),
                 Text(
-                  totalOriginalValue.toCurrency(),
+                  totalOriginalValueCents.centsToCurrency(),
                   style: theme.textTheme.labelSmall,
                 ),
               ],

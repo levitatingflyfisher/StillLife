@@ -54,3 +54,6 @@ docs/superpowers/
 CLAUDE.md
 /docs/superpowers/
 test/visual/failures/
+
+# Flutter golden-test failure output
+test/**/failures/

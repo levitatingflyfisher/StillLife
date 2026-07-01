@@ -24,7 +24,14 @@ class HostedMessagesClient {
 
   /// POSTs `body` to `/v1/messages`. Maps 401 → [UnauthenticatedFailure],
   /// 429 → [QuotaExceededFailure], everything else → [NetworkFailure].
+  /// An empty [baseUrl] means the hosted backend is not configured —
+  /// fail closed without attempting HTTP.
   Future<Result<Map<String, dynamic>>> send(Map<String, dynamic> body) async {
+    if (baseUrl.isEmpty) {
+      return const Err(
+        ValidationFailure('Hosted service is not configured'),
+      );
+    }
     try {
       final bearer = await apiKeyProvider();
       final r = await _dio.post<Map<String, dynamic>>(
@@ -49,6 +56,9 @@ class HostedMessagesClient {
   /// Streams SSE text deltas from `/v1/messages` with `stream: true`.
   /// Yields raw text chunks as the model produces them.
   Stream<String> sendStream(Map<String, dynamic> body) async* {
+    if (baseUrl.isEmpty) {
+      throw StateError('Hosted service is not configured');
+    }
     final bearer = await apiKeyProvider();
     final streamBody = {...body, 'stream': true};
     final response = await _dio.post<ResponseBody>(

@@ -95,8 +95,8 @@ void main() {
     String id,
     String roomId,
     String categoryId, {
-    double? currentValue,
-    double? purchasePrice,
+    int? currentValueCents,
+    int? purchasePriceCents,
     DateTime? purchaseDate,
     bool deleted = false,
   }) {
@@ -107,8 +107,8 @@ void main() {
       categoryId: categoryId,
       roomId: roomId,
       isDeleted: Value(deleted),
-      currentValue: Value(currentValue),
-      purchasePrice: Value(purchasePrice),
+      currentValueCents: Value(currentValueCents),
+      purchasePriceCents: Value(purchasePriceCents),
       purchaseDate: Value(purchaseDate),
       createdAt: now,
       modifiedAt: now,
@@ -116,10 +116,10 @@ void main() {
   }
 
   group('DashboardAggregator soft-delete filter', () {
-    test('getValueByRoom excludes soft-deleted items', () async {
+    test('getValueCentsByRoom excludes soft-deleted items', () async {
       await database
           .into(database.items)
-          .insert(item('i1', 'room-kitchen', 'cat-food', currentValue: 100.0));
+          .insert(item('i1', 'room-kitchen', 'cat-food', currentValueCents: 10000));
       await database
           .into(database.items)
           .insert(
@@ -127,21 +127,21 @@ void main() {
               'i2',
               'room-kitchen',
               'cat-food',
-              currentValue: 200.0,
+              currentValueCents: 20000,
               deleted: true,
             ),
           );
 
       final agg = DashboardAggregator(database);
-      final result = await agg.getValueByRoom();
+      final result = await agg.getValueCentsByRoom();
 
-      expect(result['Kitchen'], closeTo(100.0, 0.01));
+      expect(result['Kitchen'], 10000);
     });
 
-    test('getValueByCategory excludes soft-deleted items', () async {
+    test('getValueCentsByCategory excludes soft-deleted items', () async {
       await database
           .into(database.items)
-          .insert(item('i3', 'room-living', 'cat-elec', currentValue: 500.0));
+          .insert(item('i3', 'room-living', 'cat-elec', currentValueCents: 50000));
       await database
           .into(database.items)
           .insert(
@@ -149,18 +149,18 @@ void main() {
               'i4',
               'room-living',
               'cat-elec',
-              currentValue: 999.0,
+              currentValueCents: 99900,
               deleted: true,
             ),
           );
 
       final agg = DashboardAggregator(database);
-      final result = await agg.getValueByCategory();
+      final result = await agg.getValueCentsByCategory();
 
-      expect(result['Electronics'], closeTo(500.0, 0.01));
+      expect(result['Electronics'], 50000);
     });
 
-    test('getTotalDepreciation excludes soft-deleted items', () async {
+    test('getTotalDepreciationCents excludes soft-deleted items', () async {
       final past = DateTime(2022, 1, 1);
       await database
           .into(database.items)
@@ -169,7 +169,7 @@ void main() {
               'i5',
               'room-office',
               'cat-comp',
-              purchasePrice: 1000.0,
+              purchasePriceCents: 100000,
               purchaseDate: past,
             ),
           );
@@ -180,17 +180,17 @@ void main() {
               'i6',
               'room-office',
               'cat-comp',
-              purchasePrice: 5000.0,
+              purchasePriceCents: 500000,
               purchaseDate: past,
               deleted: true,
             ),
           );
 
       final agg = DashboardAggregator(database);
-      // Only the active laptop (1000.0 purchase) should be counted.
-      // Deleted one (5000.0) must not be included.
-      final result = await agg.getTotalDepreciation();
-      expect(result, lessThan(5000.0));
+      // Only the active laptop (100000c purchase) should be counted.
+      // The deleted one (500000c) must not be included.
+      final result = await agg.getTotalDepreciationCents();
+      expect(result, lessThan(500000));
       expect(result, greaterThan(0));
     });
   });

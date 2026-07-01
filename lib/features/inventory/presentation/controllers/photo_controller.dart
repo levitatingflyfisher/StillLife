@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -35,25 +36,26 @@ class PhotoController extends StateNotifier<AsyncValue<void>> {
 
   PhotoController(this._repo, this._storage) : super(const AsyncData(null));
 
-  /// Add a photo from a file path (camera or gallery).
+  /// Add a photo from raw image bytes (camera or gallery).
+  ///
+  /// Byte-based on purpose: image_picker's `XFile.readAsBytes()` works on
+  /// every platform (a web XFile has no usable path), and the bytes are
+  /// stored in the database as a BLOB.
   Future<bool> addPhoto({
     required String itemId,
-    required String sourcePath,
+    required Uint8List bytes,
     required PhotoSource source,
     bool setAsPrimary = false,
   }) async {
     state = const AsyncLoading();
     try {
-      final savedPath = await _storage.savePhoto(
-        itemId: itemId,
-        sourcePath: sourcePath,
-      );
-
       final now = DateTime.now();
       final photo = Photo(
         id: '',
         itemId: itemId,
-        filePath: savedPath,
+        filePath: '',
+        bytes: bytes,
+        thumbBytes: _storage.thumbnailFor(bytes),
         isPrimary: setAsPrimary,
         source: source,
         capturedAt: now,
@@ -78,7 +80,7 @@ class PhotoController extends StateNotifier<AsyncValue<void>> {
     }
   }
 
-  /// Delete a photo (both file and DB record).
+  /// Delete a photo (the DB record, plus the legacy file for pre-v12 rows).
   Future<bool> deletePhoto(String photoId, String filePath) async {
     state = const AsyncLoading();
     try {

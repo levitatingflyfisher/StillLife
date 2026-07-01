@@ -3,14 +3,12 @@ import 'package:openhearth_design/openhearth_design.dart';
 
 import '../../domain/entities/analysis_session.dart';
 
-/// The pipeline stages to display (excludes recording and complete).
+/// The pipeline stages to display (excludes recording, complete, and the
+/// terminal noAiConfigured/failed states, which get their own screens).
 const _pipelineStages = [
   AnalysisStatus.extracting,
-  AnalysisStatus.detecting,
-  AnalysisStatus.tracking,
   AnalysisStatus.selecting,
-  AnalysisStatus.classifying,
-  AnalysisStatus.enhancing,
+  AnalysisStatus.analyzing,
   AnalysisStatus.reviewing,
 ];
 

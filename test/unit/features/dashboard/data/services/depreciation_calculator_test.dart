@@ -132,7 +132,7 @@ void main() {
         final purchaseDate = DateTime(2022, 1, 1);
         final asOf = DateTime(2025, 1, 1);
 
-        final currentValue = calculator.calculateCurrentValue(
+        final currentValueCents = calculator.calculateCurrentValue(
           500.0,
           purchaseDate,
           'Furniture',
@@ -145,7 +145,7 @@ void main() {
           asOf: asOf,
         );
 
-        expect(currentValue, info.currentValue);
+        expect(currentValueCents, info.currentValue);
       },
     );
 

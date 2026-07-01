@@ -78,6 +78,29 @@ void main() {
       expect(r.failure, isA<ValidationFailure>());
     });
 
+    test('the unconfigured-appraiser message names the REAL constraint — '
+        'a working OpenAI-compatible tier is not "no LLM provider"',
+        () async {
+      final adapter = MessagesTransportAdapter(
+        hosted: _FakeHosted(),
+        cloudApiFactory: () => CloudApiProvider(
+          dio: Dio(),
+          apiKey: 'sk-working-openai-key',
+          apiType: CloudApiType.openai,
+        ),
+        isHostedAvailable: () async => false,
+      );
+      final r = await adapter.send({'model': 'x'});
+      expect(r.isFailure, isTrue);
+      final message = (r.failure as ValidationFailure).message;
+      expect(message, contains('Anthropic'),
+          reason: 'the copy must say the appraiser specifically needs an '
+              'Anthropic key or Pro');
+      expect(message, isNot(contains('No LLM provider configured')),
+          reason: 'the user may have a fully working OpenAI-compatible '
+              'tier — telling them nothing is configured is false');
+    });
+
     test('falls back to BYO when hosted returns 401 DioException', () async {
       final hosted = _FakeHosted();
       hosted.sendThrow = DioException(

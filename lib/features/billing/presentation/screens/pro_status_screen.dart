@@ -27,9 +27,26 @@ class ProStatusScreen extends ConsumerWidget {
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (acc) {
           if (acc == null) {
+            // No checkout URL compiled in → there is nothing safe to
+            // launch; say so instead of rendering a live Upgrade button
+            // pointed at an unowned placeholder domain.
+            final checkoutUrl = svc.buildCheckoutUrl();
+            if (checkoutUrl.toString().isEmpty) {
+              return const Padding(
+                padding: OhSpacing.insetMd,
+                child: ListTile(
+                  leading: Icon(Icons.cloud_off_outlined),
+                  title: Text('Pro is not available in this build'),
+                  subtitle: Text(
+                    'No checkout backend is configured. Operators can '
+                    'enable one with --dart-define=CHECKOUT_URL=https://...',
+                  ),
+                ),
+              );
+            }
             return Padding(
               padding: OhSpacing.insetMd,
-              child: UpgradeCta(checkoutUrl: svc.buildCheckoutUrl()),
+              child: UpgradeCta(checkoutUrl: checkoutUrl),
             );
           }
           return ListView(

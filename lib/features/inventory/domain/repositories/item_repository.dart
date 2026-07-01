@@ -2,7 +2,7 @@ import '../../../../core/errors/result.dart';
 import '../entities/item.dart';
 
 /// Which price field the value-range filter applies to.
-enum PriceField { purchasePrice, currentValue, replacementCost }
+enum PriceField { purchasePriceCents, currentValueCents, replacementCostCents }
 
 /// Filter/sort criteria for querying items.
 class ItemQuery {
@@ -12,8 +12,8 @@ class ItemQuery {
   final String? containerId;
   final List<String>? tagIds;
   final ItemCondition? condition;
-  final double? minValue;
-  final double? maxValue;
+  final int? minValueCents;
+  final int? maxValueCents;
   final PriceField priceField;
   final DateTime? addedAfter;
   final DateTime? addedBefore;
@@ -33,9 +33,9 @@ class ItemQuery {
     this.containerId,
     this.tagIds,
     this.condition,
-    this.minValue,
-    this.maxValue,
-    this.priceField = PriceField.currentValue,
+    this.minValueCents,
+    this.maxValueCents,
+    this.priceField = PriceField.currentValueCents,
     this.addedAfter,
     this.addedBefore,
     this.hasPhoto,
@@ -59,8 +59,8 @@ class ItemQuery {
     String? containerId,
     List<String>? tagIds,
     ItemCondition? condition,
-    double? minValue,
-    double? maxValue,
+    int? minValueCents,
+    int? maxValueCents,
     PriceField? priceField,
     DateTime? addedAfter,
     DateTime? addedBefore,
@@ -80,8 +80,8 @@ class ItemQuery {
       containerId: containerId ?? this.containerId,
       tagIds: tagIds ?? this.tagIds,
       condition: condition ?? this.condition,
-      minValue: minValue ?? this.minValue,
-      maxValue: maxValue ?? this.maxValue,
+      minValueCents: minValueCents ?? this.minValueCents,
+      maxValueCents: maxValueCents ?? this.maxValueCents,
       priceField: priceField ?? this.priceField,
       addedAfter: addedAfter ?? this.addedAfter,
       addedBefore: addedBefore ?? this.addedBefore,
@@ -99,8 +99,8 @@ class ItemQuery {
 
 enum ItemSortField {
   name,
-  currentValue,
-  replacementCost,
+  currentValueCents,
+  replacementCostCents,
   createdAt,
   purchaseDate,
 }
@@ -117,7 +117,11 @@ abstract class ItemRepository {
   Stream<Item?> watchItem(String id);
 
   /// Create a new item.
-  Future<Result<Item>> createItem(Item item);
+  /// [priceSource] is the provenance recorded with the automatic
+  /// price-history entry when [Item.currentValueCents] is set — 'manual' for
+  /// user-typed values, 'llm_estimate' for AI-suggested ones (see
+  /// PriceHistoryEntries.source vocabulary in tables.dart).
+  Future<Result<Item>> createItem(Item item, {String priceSource});
 
   /// Update an existing item.
   Future<Result<Item>> updateItem(Item item);

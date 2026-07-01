@@ -62,6 +62,52 @@ void main() {
       expect(header, contains('"Tags"'));
     });
 
+    test('exports brand, model, and ASIN columns', () async {
+      final now = DateTime(2025, 6, 1);
+      await db.into(db.items).insert(
+            ItemsCompanion.insert(
+              id: 'hp',
+              name: 'Headphones',
+              categoryId: 'cat1',
+              roomId: 'room1',
+              brand: const Value('Sony'),
+              model: const Value('WH-1000XM4'),
+              asin: const Value('B0863TXGM3'),
+              createdAt: now,
+              modifiedAt: now,
+            ),
+          );
+
+      final csv = await svc.exportItemsToCsv();
+      final header = csv.split('\n').first;
+      expect(header, contains('"Brand"'));
+      expect(header, contains('"Model"'));
+      expect(header, contains('"ASIN"'));
+      expect(csv, contains('"Sony"'));
+      expect(csv, contains('"WH-1000XM4"'));
+      expect(csv, contains('"B0863TXGM3"'));
+    });
+
+    test('exports the Receipt ID column', () async {
+      final now = DateTime(2026, 7, 2);
+      await db.into(db.items).insert(
+            ItemsCompanion.insert(
+              id: 'coffee',
+              name: 'Coffee Beans',
+              categoryId: 'cat1',
+              roomId: 'room1',
+              receiptId: const Value('rcpt-1'),
+              createdAt: now,
+              modifiedAt: now,
+            ),
+          );
+
+      final csv = await svc.exportItemsToCsv();
+      final header = csv.split('\n').first;
+      expect(header, contains('"Receipt ID"'));
+      expect(csv, contains('"rcpt-1"'));
+    });
+
     test('returns only header when no items', () async {
       final csv = await svc.exportItemsToCsv();
       final lines = csv.trim().split('\n');
@@ -79,8 +125,8 @@ void main() {
               categoryId: 'cat1',
               roomId: 'room1',
               isInsured: const Value(true),
-              purchasePrice: const Value(1200.0),
-              currentValue: const Value(900.0),
+              purchasePriceCents: const Value(120000),
+              currentValueCents: const Value(90000),
               createdAt: now,
               modifiedAt: now,
             ),
@@ -93,6 +139,27 @@ void main() {
       expect(csv, contains('"1200.00"'));
       expect(csv, contains('"900.00"'));
       expect(csv, contains('"Yes"')); // insured
+    });
+
+    test('neutralizes spreadsheet formula injection in cell values', () async {
+      final now = DateTime(2025, 6, 1);
+      await db.into(db.items).insert(
+            ItemsCompanion.insert(
+              id: 'evil',
+              name: '=HYPERLINK("http://evil","x")',
+              categoryId: 'cat1',
+              roomId: 'room1',
+              currentValueCents: const Value(1000),
+              createdAt: now,
+              modifiedAt: now,
+            ),
+          );
+      final csv = await svc.exportItemsToCsv();
+      expect(csv, contains('"\'=HYPERLINK'),
+          reason: 'a leading = must be apostrophe-prefixed so a spreadsheet '
+              'treats it as text, not an evaluated formula');
+      expect(csv, isNot(contains('"=HYPERLINK')),
+          reason: 'the raw formula must not appear unneutralized');
     });
 
     test('excludes soft-deleted items', () async {

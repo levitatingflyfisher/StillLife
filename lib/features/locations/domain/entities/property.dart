@@ -30,7 +30,8 @@ class Property extends Equatable {
   // Derived
   final int roomCount;
   final int itemCount;
-  final double totalValue;
+  /// Integer cents (see core/utils/money.dart).
+  final int totalValueCents;
 
   const Property({
     required this.id,
@@ -41,7 +42,7 @@ class Property extends Equatable {
     required this.modifiedAt,
     this.roomCount = 0,
     this.itemCount = 0,
-    this.totalValue = 0.0,
+    this.totalValueCents = 0,
   });
 
   Property copyWith({
@@ -53,7 +54,7 @@ class Property extends Equatable {
     DateTime? modifiedAt,
     int? roomCount,
     int? itemCount,
-    double? totalValue,
+    int? totalValueCents,
   }) {
     return Property(
       id: id ?? this.id,
@@ -64,7 +65,7 @@ class Property extends Equatable {
       modifiedAt: modifiedAt ?? this.modifiedAt,
       roomCount: roomCount ?? this.roomCount,
       itemCount: itemCount ?? this.itemCount,
-      totalValue: totalValue ?? this.totalValue,
+      totalValueCents: totalValueCents ?? this.totalValueCents,
     );
   }
 

@@ -5,9 +5,10 @@ import '../../../../core/extensions/currency_extensions.dart';
 class TopItem {
   final int rank;
   final String name;
-  final double value;
+  /// Integer cents.
+  final int valueCents;
 
-  const TopItem({required this.rank, required this.name, required this.value});
+  const TopItem({required this.rank, required this.name, required this.valueCents});
 }
 
 class TopItemsList extends StatelessWidget {
@@ -51,7 +52,7 @@ class TopItemsList extends StatelessWidget {
           ),
           title: Text(item.name, overflow: TextOverflow.ellipsis),
           trailing: Text(
-            item.value.toCurrency(),
+            item.valueCents.centsToCurrency(),
             style: theme.textTheme.bodyMedium?.copyWith(
               fontWeight: FontWeight.bold,
               color: theme.colorScheme.primary,

@@ -10,18 +10,20 @@ import '../../domain/repositories/item_repository.dart';
 
 const _uuid = Uuid();
 
-/// Records a price history snapshot for [itemId] with [value].
+/// Records a price history snapshot for [itemId] with [valueCents] and its
+/// provenance [source] ('manual' | 'llm_estimate' | ...).
 Future<void> _recordPrice(
   db.AppDatabase database,
   String itemId,
-  double value,
-) {
+  int valueCents, {
+  String source = 'manual',
+}) {
   return database.priceHistoryDao.insertPriceEntry(
     db.PriceHistoryEntriesCompanion.insert(
       id: _uuid.v4(),
       itemId: itemId,
-      price: value,
-      source: 'manual',
+      priceCents: valueCents,
+      source: source,
       recordedAt: DateTime.now(),
     ),
   );
@@ -41,8 +43,8 @@ class ItemRepositoryImpl implements ItemRepository {
           categoryId: query.categoryId,
           containerId: query.containerId,
           condition: query.condition?.label,
-          minValue: query.minValue,
-          maxValue: query.maxValue,
+          minValueCents: query.minValueCents,
+          maxValueCents: query.maxValueCents,
           priceField: query.priceField.name,
           addedAfter: query.addedAfter,
           addedBefore: query.addedBefore,
@@ -81,7 +83,10 @@ class ItemRepositoryImpl implements ItemRepository {
   }
 
   @override
-  Future<Result<Item>> createItem(Item item) async {
+  Future<Result<Item>> createItem(
+    Item item, {
+    String priceSource = 'manual',
+  }) async {
     try {
       final now = DateTime.now();
       final id = item.id.isEmpty ? _uuid.v4() : item.id;
@@ -92,15 +97,19 @@ class ItemRepositoryImpl implements ItemRepository {
         categoryId: item.categoryId,
         roomId: item.roomId,
         purchaseDate: Value(item.purchaseDate),
-        purchasePrice: Value(item.purchasePrice),
-        currentValue: Value(item.currentValue),
-        replacementCost: Value(item.replacementCost),
+        purchasePriceCents: Value(item.purchasePriceCents),
+        currentValueCents: Value(item.currentValueCents),
+        replacementCostCents: Value(item.replacementCostCents),
         condition: Value(item.condition?.label),
         serialNumber: Value(item.serialNumber),
         warrantyExpiration: Value(item.warrantyExpiration),
         containerId: Value(item.containerId),
         creatorProfileId: Value(item.creatorProfileId),
         ownerProfileId: Value(item.ownerProfileId),
+        brand: Value(item.brand),
+        model: Value(item.model),
+        asin: Value(item.asin),
+        receiptId: Value(item.receiptId),
         barcode: Value(item.barcode),
         storeUrl: Value(item.storeUrl),
         notes: Value(item.notes),
@@ -112,8 +121,8 @@ class ItemRepositoryImpl implements ItemRepository {
         modifiedAt: now,
       );
       await _db.itemDao.insertItem(companion);
-      if (item.currentValue != null) {
-        await _recordPrice(_db, id, item.currentValue!);
+      if (item.currentValueCents != null) {
+        await _recordPrice(_db, id, item.currentValueCents!, source: priceSource);
       }
       return getItem(id);
     } catch (e) {
@@ -126,9 +135,9 @@ class ItemRepositoryImpl implements ItemRepository {
     try {
       // Record price history when value changes.
       final existing = await _db.itemDao.getItemById(item.id);
-      if (item.currentValue != null &&
-          item.currentValue != existing?.currentValue) {
-        await _recordPrice(_db, item.id, item.currentValue!);
+      if (item.currentValueCents != null &&
+          item.currentValueCents != existing?.currentValueCents) {
+        await _recordPrice(_db, item.id, item.currentValueCents!);
       }
 
       final companion = db.ItemsCompanion(
@@ -138,15 +147,19 @@ class ItemRepositoryImpl implements ItemRepository {
         categoryId: Value(item.categoryId),
         roomId: Value(item.roomId),
         purchaseDate: Value(item.purchaseDate),
-        purchasePrice: Value(item.purchasePrice),
-        currentValue: Value(item.currentValue),
-        replacementCost: Value(item.replacementCost),
+        purchasePriceCents: Value(item.purchasePriceCents),
+        currentValueCents: Value(item.currentValueCents),
+        replacementCostCents: Value(item.replacementCostCents),
         condition: Value(item.condition?.label),
         serialNumber: Value(item.serialNumber),
         warrantyExpiration: Value(item.warrantyExpiration),
         containerId: Value(item.containerId),
         creatorProfileId: Value(item.creatorProfileId),
         ownerProfileId: Value(item.ownerProfileId),
+        brand: Value(item.brand),
+        model: Value(item.model),
+        asin: Value(item.asin),
+        receiptId: Value(item.receiptId),
         barcode: Value(item.barcode),
         storeUrl: Value(item.storeUrl),
         notes: Value(item.notes),
@@ -238,15 +251,19 @@ class ItemRepositoryImpl implements ItemRepository {
       categoryId: row.categoryId,
       roomId: row.roomId,
       purchaseDate: row.purchaseDate,
-      purchasePrice: row.purchasePrice,
-      currentValue: row.currentValue,
-      replacementCost: row.replacementCost,
+      purchasePriceCents: row.purchasePriceCents,
+      currentValueCents: row.currentValueCents,
+      replacementCostCents: row.replacementCostCents,
       condition: ItemCondition.fromString(row.condition),
       serialNumber: row.serialNumber,
       warrantyExpiration: row.warrantyExpiration,
       containerId: row.containerId,
       creatorProfileId: row.creatorProfileId,
       ownerProfileId: row.ownerProfileId,
+      brand: row.brand,
+      model: row.model,
+      asin: row.asin,
+      receiptId: row.receiptId,
       barcode: row.barcode,
       storeUrl: row.storeUrl,
       notes: row.notes,

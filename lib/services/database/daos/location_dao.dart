@@ -164,9 +164,9 @@ class LocationDao extends DatabaseAccessor<AppDatabase>
     };
   }
 
-  /// Get value per room (excludes soft-deleted items).
-  Future<Map<String, double>> getRoomValues() async {
-    final sumExpr = items.currentValue.sum();
+  /// Get value in cents per room (excludes soft-deleted items).
+  Future<Map<String, int>> getRoomValueCents() async {
+    final sumExpr = items.currentValueCents.sum();
     final query = selectOnly(items)
       ..addColumns([items.roomId, sumExpr])
       ..where(items.isDeleted.equals(false))
@@ -174,7 +174,7 @@ class LocationDao extends DatabaseAccessor<AppDatabase>
     final results = await query.get();
     return {
       for (final row in results)
-        row.read(items.roomId)!: row.read(sumExpr) ?? 0.0,
+        row.read(items.roomId)!: row.read(sumExpr) ?? 0,
     };
   }
 }

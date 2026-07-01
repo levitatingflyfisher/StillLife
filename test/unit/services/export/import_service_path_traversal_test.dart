@@ -75,13 +75,23 @@ void main() {
   String makeBackup({
     List<Map<String, dynamic>> photos = const [],
     List<Map<String, dynamic>> receipts = const [],
+    List<Map<String, dynamic>> rooms = const [],
   }) {
     return json.encode({
       'app': 'still_life',
       'version': '1',
-      'data': {'photos': photos, 'receipts': receipts},
+      'data': {'photos': photos, 'receipts': receipts, 'rooms': rooms},
     });
   }
+
+  Map<String, dynamic> room(String id, String photoPath) => {
+    'id': id,
+    'propertyId': 'prop1',
+    'name': 'Study',
+    'photoPath': photoPath,
+    'createdAt': '2025-01-01T00:00:00.000',
+    'modifiedAt': '2025-01-01T00:00:00.000',
+  };
 
   Map<String, dynamic> photo(String id, String filePath) => {
     'id': id,
@@ -139,6 +149,35 @@ void main() {
         expect(rows, isEmpty);
       },
     );
+
+    test('drops a photo whose filePath is the database (DB-wipe exploit)',
+        () async {
+      final backup = makeBackup(photos: [photo('p1', '$sandbox/still_life.db')]);
+      final result = await svc.importFromJson(backup);
+      expect(result.isSuccess, isTrue);
+      expect(await db.select(db.photos).get(), isEmpty,
+          reason:
+              'a filePath pointing at the DB must never be stored — a later '
+              'item delete would unlink it and wipe the database');
+    });
+
+    test('drops a receipt whose photoPath is the database', () async {
+      final backup =
+          makeBackup(receipts: [receipt('r1', '$sandbox/still_life.db')]);
+      final result = await svc.importFromJson(backup);
+      expect(result.isSuccess, isTrue);
+      expect(await db.select(db.receipts).get(), isEmpty);
+    });
+
+    test('sanitizes a room whose photoPath is the database', () async {
+      final backup = makeBackup(rooms: [room('room2', '$sandbox/still_life.db')]);
+      final result = await svc.importFromJson(backup);
+      expect(result.isSuccess, isTrue);
+      final r2 =
+          (await db.select(db.rooms).get()).firstWhere((x) => x.id == 'room2');
+      expect(r2.photoPath, isNull,
+          reason: 'a room photoPath pointing at the DB must be dropped to null');
+    });
 
     test('rejects receipts whose photoPath escapes the sandbox', () async {
       final backup = makeBackup(receipts: [receipt('r1', '/tmp/evil.jpg')]);

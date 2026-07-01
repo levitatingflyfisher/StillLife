@@ -5,9 +5,10 @@ class Policy extends Equatable {
   final String propertyId;
   final String provider;
   final String? policyNumber;
-  final double? coverageAmount;
-  final double? deductible;
-  final double? premium;
+  /// Money is integer cents throughout the domain (see core/utils/money.dart).
+  final int? coverageAmountCents;
+  final int? deductibleCents;
+  final int? premiumCents;
   final DateTime? expiryDate;
   final DateTime createdAt;
 
@@ -16,9 +17,9 @@ class Policy extends Equatable {
     required this.propertyId,
     required this.provider,
     this.policyNumber,
-    this.coverageAmount,
-    this.deductible,
-    this.premium,
+    this.coverageAmountCents,
+    this.deductibleCents,
+    this.premiumCents,
     this.expiryDate,
     required this.createdAt,
   });
@@ -31,9 +32,9 @@ class Policy extends Equatable {
     String? propertyId,
     String? provider,
     String? policyNumber,
-    double? coverageAmount,
-    double? deductible,
-    double? premium,
+    int? coverageAmountCents,
+    int? deductibleCents,
+    int? premiumCents,
     DateTime? expiryDate,
     DateTime? createdAt,
   }) {
@@ -42,9 +43,9 @@ class Policy extends Equatable {
       propertyId: propertyId ?? this.propertyId,
       provider: provider ?? this.provider,
       policyNumber: policyNumber ?? this.policyNumber,
-      coverageAmount: coverageAmount ?? this.coverageAmount,
-      deductible: deductible ?? this.deductible,
-      premium: premium ?? this.premium,
+      coverageAmountCents: coverageAmountCents ?? this.coverageAmountCents,
+      deductibleCents: deductibleCents ?? this.deductibleCents,
+      premiumCents: premiumCents ?? this.premiumCents,
       expiryDate: expiryDate ?? this.expiryDate,
       createdAt: createdAt ?? this.createdAt,
     );

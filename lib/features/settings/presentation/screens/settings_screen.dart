@@ -1,21 +1,25 @@
+import 'dart:async' show unawaited;
 import 'dart:convert';
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:sanctuary_backup_ui/sanctuary_backup_ui.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as p;
 
 import 'package:still_life/core/config/feature_flags.dart';
 import 'package:still_life/core/providers/billing_providers.dart';
+import 'package:still_life/features/import/domain/import_review_args.dart';
 import 'package:still_life/features/import/domain/import_review_item.dart';
-import 'package:still_life/features/import/domain/parsed_import_item.dart';
 import 'package:still_life/services/import/bank_statement_parser.dart';
+import 'package:still_life/services/import/import_receipt_ocr_service.dart'
+    show ReceiptImportResult;
+import 'package:still_life/features/backup/presentation/photo_backup_tile.dart';
 import '../../../../../core/providers/product_lookup_providers.dart';
 import '../../../../../core/providers/repository_providers.dart';
 import '../controllers/theme_controller.dart';
@@ -79,18 +83,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             onTap: () => context.pushNamed('tagManagement'),
           ),
 
-          const Divider(),
-
-          // Security
-          const _SectionHeader(title: 'Security'),
-          const ListTile(
-            leading: Icon(Icons.lock_outline),
-            title: Text('Database Encryption'),
-            subtitle: Text(
-              'End-to-end encryption — planned for a future update',
-            ),
-            enabled: false,
-          ),
+          // Encrypted backup: seed-phrase setup + .ohbk export/restore, plus
+          // the photos-included .ohbkz container below. Replaces the old
+          // disabled "Database Encryption" placeholder (SANCTUARY-BRIEF §4.W3).
+          // Renders its own "Encrypted Backup" header + leading Divider.
+          const BackupSettingsSection(),
+          // The photos-included .ohbkz container (SANCTUARY-BRIEF §4.W3).
+          const PhotoBackupTile(),
 
           const Divider(),
 
@@ -126,7 +125,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   )
                 : const Icon(Icons.file_download_outlined),
             title: const Text('Export Data'),
-            subtitle: const Text('Export your inventory as JSON'),
+            subtitle: const Text('Portable JSON — unencrypted (for an '
+                'encrypted copy, use Encrypted Backup above)'),
             trailing: const Icon(Icons.chevron_right),
             onTap: _isExporting ? null : _handleExport,
           ),
@@ -271,17 +271,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       final exportService = ref.read(exportServiceProvider);
       final jsonString = await exportService.exportToJson();
 
-      final dir = await getTemporaryDirectory();
       final timestamp = DateTime.now()
           .toIso8601String()
           .replaceAll(':', '-')
           .substring(0, 19);
-      final file = File(p.join(dir.path, 'still_life_backup_$timestamp.json'));
-      await file.writeAsString(jsonString);
-
+      // Share bytes directly (no temp file) — same path on Android and web.
+      final name = 'still_life_backup_$timestamp.json';
       await Share.shareXFiles([
-        XFile(file.path, mimeType: 'application/json'),
-      ], subject: 'Still Life Backup');
+        XFile.fromData(
+          Uint8List.fromList(utf8.encode(jsonString)),
+          mimeType: 'application/json',
+          name: name,
+        ),
+      ], subject: 'Still Life Backup', fileNameOverrides: [name]);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -298,16 +300,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     try {
       final csvService = ref.read(csvExportServiceProvider);
       final csv = await csvService.exportItemsToCsv();
-      final dir = await getTemporaryDirectory();
       final timestamp = DateTime.now()
           .toIso8601String()
           .replaceAll(':', '-')
           .substring(0, 19);
-      final file = File(p.join(dir.path, 'still_life_items_$timestamp.csv'));
-      await file.writeAsString(csv);
+      final name = 'still_life_items_$timestamp.csv';
       await Share.shareXFiles([
-        XFile(file.path, mimeType: 'text/csv'),
-      ], subject: 'Still Life Inventory');
+        XFile.fromData(
+          Uint8List.fromList(utf8.encode(csv)),
+          mimeType: 'text/csv',
+          name: name,
+        ),
+      ], subject: 'Still Life Inventory', fileNameOverrides: [name]);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -322,19 +326,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _handleImport() async {
     setState(() => _isImporting = true);
     try {
+      // withData: the picker hands back bytes, which is all the web has
+      // (no paths there) and works identically on Android.
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['json'],
+        withData: true,
       );
 
-      if (result == null || result.files.isEmpty) {
-        return;
-      }
+      final bytes = result?.files.single.bytes;
+      if (bytes == null) return;
 
-      final path = result.files.single.path;
-      if (path == null) return;
-
-      final jsonString = await File(path).readAsString();
+      final jsonString = utf8.decode(bytes);
       final importService = ref.read(importServiceProvider);
       final importResult = await importService.importFromJson(jsonString);
 
@@ -377,18 +380,36 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              leading: const Icon(Icons.receipt_long),
-              title: const Text('Receipt photo'),
-              onTap: () {
-                Navigator.of(context).pop();
-                _handleReceiptImport(context);
-              },
-            ),
+            // Receipt OCR is on-device MLKit — native-only, so the options
+            // are honestly absent on web rather than silently failing.
+            if (!kIsWeb) ...[
+              ListTile(
+                leading: const Icon(Icons.photo_camera_outlined),
+                title: const Text('Receipt camera'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _handleReceiptImport(context, source: ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.receipt_long),
+                title: const Text('Receipt photo'),
+                subtitle: const Text('From your gallery'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _handleReceiptImport(context, source: ImageSource.gallery);
+                },
+              ),
+            ],
             ListTile(
               leading: const Icon(Icons.shopping_bag_outlined),
               title: const Text('Amazon order export'),
-              subtitle: const Text('CSV or email text'),
+              subtitle: const Text('Order history CSV or email text'),
+              trailing: IconButton(
+                icon: const Icon(Icons.help_outline, size: 20),
+                tooltip: 'How do I get this file?',
+                onPressed: () => _showAmazonExportHelp(context),
+              ),
               onTap: () {
                 Navigator.of(context).pop();
                 _handleAmazonImport(context);
@@ -409,20 +430,66 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Future<void> _handleReceiptImport(BuildContext context) async {
+  Future<void> _handleReceiptImport(
+    BuildContext context, {
+    required ImageSource source,
+  }) async {
     try {
       final picker = ImagePicker();
-      final photo = await picker.pickImage(source: ImageSource.gallery);
+      final photo = await picker.pickImage(source: source);
       if (photo == null || !context.mounted) return;
 
-      final ocrService = ref.read(receiptOcrServiceProvider);
-      final items = await ocrService.parseReceipt(File(photo.path));
-      if (items.isEmpty || !context.mounted) return;
+      final imageBytes = await photo.readAsBytes();
+      if (!context.mounted) return;
 
-      final reviewItems = items
+      // OCR + LLM structuring can take many seconds; a blank screen
+      // reads as a frozen app, so block behind a visible spinner.
+      final ocrService = ref.read(receiptOcrServiceProvider);
+      unawaited(
+        showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => const Center(child: CircularProgressIndicator()),
+        ),
+      );
+      final ReceiptImportResult result;
+      try {
+        result = await ocrService.parseReceipt(photo.path);
+      } finally {
+        if (context.mounted) {
+          Navigator.of(context, rootNavigator: true).pop();
+        }
+      }
+      if (!context.mounted) return;
+      if (result.items.isEmpty) {
+        // Silence here made the feature look broken — say what happened.
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No items found on the receipt — try a clearer, closer photo.',
+            ),
+          ),
+        );
+        return;
+      }
+
+      final reviewItems = result.items
           .map((p) => ImportReviewItem(parsed: p))
           .toList();
-      context.pushNamed('importReview', extra: reviewItems);
+      context.pushNamed(
+        'importReview',
+        extra: ImportReviewArgs(
+          items: reviewItems,
+          receipt: ImportReviewReceipt(
+            engineLabel: result.engineLabel,
+            storeName: result.storeName,
+            purchaseDate: result.purchaseDate,
+            totalAmount: result.totalAmount,
+            ocrText: result.ocrText,
+            imageBytes: imageBytes,
+          ),
+        ),
+      );
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(
@@ -432,30 +499,77 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
+  /// Amazon retired self-serve order reports in 2023; the working path is
+  /// the Privacy Central data request. Plain steps, no marketing.
+  void _showAmazonExportHelp(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('How do I get this file?'),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Amazon no longer offers order reports on its website. '
+              'Request your data instead:',
+            ),
+            SizedBox(height: 12),
+            Text('1. Amazon → Account → Privacy Central → Request My Data'),
+            Text('2. Select "Your Orders" and submit'),
+            Text('3. The export arrives as a ZIP, usually within hours'),
+            Text('4. Import the Retail.OrderHistory CSV from that ZIP'),
+            SizedBox(height: 12),
+            Text(
+              'On a computer, the azad browser extension or the '
+              'amazon-orders command-line tool can also produce an order CSV.',
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Got it'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _handleAmazonImport(BuildContext context) async {
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['csv', 'txt', 'html'],
+        withData: true,
       );
       if (result == null || result.files.isEmpty || !context.mounted) return;
 
       final file = result.files.first;
-      final path = file.path;
-      if (path == null || !context.mounted) return;
+      final bytes = file.bytes;
+      if (bytes == null || !context.mounted) return;
 
-      final bytes = await File(path).readAsBytes();
       final content = utf8.decode(bytes, allowMalformed: true);
       final amazonService = ref.read(amazonImportServiceProvider);
 
-      final List<ParsedImportItem> parsed;
-      if (file.extension?.toLowerCase() == 'csv') {
-        parsed = amazonService.parseFromCsv(content);
-      } else {
-        parsed = amazonService.parseFromText(content);
-      }
+      // Format detection is header-driven — the file keeps working no
+      // matter what the ZIP extractor named it.
+      final parsed = amazonService.parse(content);
 
-      if (parsed.isEmpty || !context.mounted) return;
+      if (!context.mounted) return;
+      if (parsed.isEmpty) {
+        // The help dialog just sold this flow; a silent dead-end on the
+        // wrong CSV (e.g. Digital-Orders) reads as a broken feature.
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'No orders found in that file — import the '
+              'Retail.OrderHistory CSV from your Amazon data request.',
+            ),
+          ),
+        );
+        return;
+      }
       final reviewItems = parsed
           .map((p) => ImportReviewItem(parsed: p))
           .toList();
@@ -474,13 +588,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['csv'],
+        withData: true,
       );
       if (result == null || result.files.isEmpty || !context.mounted) return;
 
-      final path = result.files.first.path;
-      if (path == null || !context.mounted) return;
+      final bytes = result.files.first.bytes;
+      if (bytes == null || !context.mounted) return;
 
-      final bytes = await File(path).readAsBytes();
       final content = utf8.decode(bytes, allowMalformed: true);
       if (!context.mounted) return;
 

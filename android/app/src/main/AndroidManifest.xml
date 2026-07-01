@@ -1,4 +1,15 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- The Gemini Nano plugin and the llama.cpp AAR declare minSdk 26;
+         the app stays at Flutter's default minSdk so the bundled-labeler
+         floor still reaches older phones. Safe to override: AICore only
+         exists on Android 14+ flagships (channel errors read as
+         "unsupported"), and the VLM engine only activates after an
+         explicit model download — a dlopen failure marks the runtime
+         broken and the cascade falls through to the labeler. -->
+    <uses-sdk
+        tools:overrideLibrary=
+            "com.google_mlkit_genai_prompt,com.google.mlkit.genai.prompt,com.google.mlkit.genai.common,dev.netdur.llama_cpp_dart" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
@@ -6,10 +17,18 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <!-- usesCleartextTraffic: the LAN features are plain http by design —
+         the Ollama tier talks to a desktop on the local network, and LAN
+         sync is end-to-end encrypted at the APPLICATION layer (ChaCha20-
+         Poly1305 envelopes), so TLS-less transport carries no plaintext
+         secrets. Android blocks non-localhost cleartext by default
+         (targetSdk >= 28), which silently killed both features on release
+         builds. No remote endpoint in the app uses http. -->
     <application
         android:label="Still Life"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"

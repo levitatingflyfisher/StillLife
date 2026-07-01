@@ -60,6 +60,60 @@ void main() {
 
   tearDown(() => db.close());
 
+  test('export is a self-consistent snapshot (no orphan photo/receipt rows)',
+      () async {
+    // The export reads ~16 tables; it must present a single point-in-time view
+    // so a photo/receipt never references an item id absent from the same file
+    // (W4 F13). This guards the read-transaction wrapper: it exercises the
+    // export while a concurrent LAN-sync-style import commits new item+photo
+    // rows, and asserts the emitted snapshot is internally consistent.
+    await db.into(db.items).insert(ItemsCompanion.insert(
+        id: 'iA', name: 'A', categoryId: 'cat1', roomId: 'room1',
+        createdAt: DateTime(2025), modifiedAt: DateTime(2025)));
+    await db.into(db.photos).insert(PhotosCompanion.insert(
+        id: 'phA', itemId: 'iA', filePath: '',
+        capturedAt: DateTime(2025), createdAt: DateTime(2025),
+        modifiedAt: DateTime(2025)));
+
+    final incoming = json.encode({
+      'app': 'still_life',
+      'version': '1.0',
+      'data': {
+        'items': [
+          {
+            'id': 'iB', 'name': 'B', 'categoryId': 'cat1', 'roomId': 'room1',
+            'createdAt': DateTime(2026).toIso8601String(),
+            'modifiedAt': DateTime(2026).toIso8601String(), 'hlc': 'z',
+          }
+        ],
+        'photos': [
+          {
+            'id': 'phB', 'itemId': 'iB', 'filePath': '',
+            'capturedAt': DateTime(2026).toIso8601String(),
+            'createdAt': DateTime(2026).toIso8601String(),
+            'modifiedAt': DateTime(2026).toIso8601String(), 'hlc': 'z',
+          }
+        ],
+      },
+    });
+
+    // Fire the export and a concurrent import; whichever snapshot the export
+    // captures, it must be all-or-nothing for item B — never B's photo alone.
+    final exportFuture = exporter.exportToJson();
+    final importFuture = importer.importFromJson(incoming, lww: true);
+    final jsonStr = await exportFuture;
+    await importFuture;
+
+    final data = (json.decode(jsonStr) as Map<String, dynamic>)['data']
+        as Map<String, dynamic>;
+    final itemIds =
+        (data['items'] as List).map((e) => (e as Map)['id']).toSet();
+    final photoItemIds =
+        (data['photos'] as List).map((e) => (e as Map)['itemId']).toSet();
+    expect(photoItemIds.difference(itemIds), isEmpty,
+        reason: 'export contained a photo whose parent item was not exported');
+  });
+
   test('export includes isDeleted on all _toMap methods', () async {
     // Seed one row per exported table with isDeleted = true.
     await db
@@ -202,6 +256,156 @@ void main() {
     expect(row.lowStockThreshold, 2.0);
   });
 
+  test('brand/model/asin round-trip through JSON export + import', () async {
+    await db.into(db.items).insert(
+          ItemsCompanion.insert(
+            id: 'hp',
+            name: 'Headphones',
+            categoryId: 'cat1',
+            roomId: 'room1',
+            brand: const Value('Sony'),
+            model: const Value('WH-1000XM4'),
+            asin: const Value('B0863TXGM3'),
+            createdAt: DateTime(2025),
+            modifiedAt: DateTime(2025),
+          ),
+        );
+
+    final exported = await exporter.exportToJson();
+    final data = (json.decode(exported) as Map<String, dynamic>)['data']
+        as Map<String, dynamic>;
+    final itemMap = (data['items'] as List).single as Map<String, dynamic>;
+    expect(itemMap['brand'], 'Sony');
+    expect(itemMap['model'], 'WH-1000XM4');
+    expect(itemMap['asin'], 'B0863TXGM3');
+
+    await db.delete(db.items).go();
+    final r = await importer.importFromJson(exported);
+    expect(r.isSuccess, isTrue);
+    final row = await (db.select(db.items)..where((t) => t.id.equals('hp')))
+        .getSingle();
+    expect(row.brand, 'Sony');
+    expect(row.model, 'WH-1000XM4');
+    expect(row.asin, 'B0863TXGM3');
+  });
+
+  test('restoring an old backup without brand/model/asin yields nulls',
+      () async {
+    // Pre-v13 backups carry no identity keys; the restore must succeed
+    // and simply leave the new columns null.
+    final payload = {
+      'version': '1.0',
+      'app': 'still_life',
+      'exportedAt': DateTime(2025).toIso8601String(),
+      'data': {
+        'items': [
+          {
+            'id': 'old-item',
+            'name': 'Legacy lamp',
+            'description': '',
+            'categoryId': 'cat1',
+            'roomId': 'room1',
+            'createdAt': DateTime(2025).toIso8601String(),
+            'modifiedAt': DateTime(2025).toIso8601String(),
+            // no brand / model / asin keys — older backups
+          },
+        ],
+      },
+    };
+    final r = await importer.importFromJson(json.encode(payload));
+    expect(r.isSuccess, isTrue);
+
+    final row = await (db.select(db.items)
+          ..where((t) => t.id.equals('old-item')))
+        .getSingle();
+    expect(row.brand, isNull);
+    expect(row.model, isNull);
+    expect(row.asin, isNull);
+  });
+
+  test('receiptId and its Receipts row round-trip through JSON '
+      'export + import', () async {
+    await db.into(db.receipts).insert(
+          ReceiptsCompanion.insert(
+            id: 'rcpt-1',
+            photoPath: '',
+            storeName: const Value('Kroger'),
+            purchaseDate: Value(DateTime(2026, 7, 2)),
+            totalAmountCents: const Value(1648),
+            ocrText: const Value('KROGER\nCoffee 12.99'),
+            createdAt: DateTime(2026),
+          ),
+        );
+    await db.into(db.items).insert(
+          ItemsCompanion.insert(
+            id: 'coffee',
+            name: 'Coffee Beans',
+            categoryId: 'cat1',
+            roomId: 'room1',
+            receiptId: const Value('rcpt-1'),
+            createdAt: DateTime(2026),
+            modifiedAt: DateTime(2026),
+          ),
+        );
+
+    final exported = await exporter.exportToJson();
+    final data = (json.decode(exported) as Map<String, dynamic>)['data']
+        as Map<String, dynamic>;
+    final itemMap = (data['items'] as List).single as Map<String, dynamic>;
+    expect(itemMap['receiptId'], 'rcpt-1');
+    final receiptMap =
+        (data['receipts'] as List).single as Map<String, dynamic>;
+    expect(receiptMap['storeName'], 'Kroger');
+    expect(receiptMap['totalAmount'], 16.48);
+
+    await db.delete(db.items).go();
+    await db.delete(db.receipts).go();
+    final r = await importer.importFromJson(exported);
+    expect(r.isSuccess, isTrue);
+
+    final itemRow = await (db.select(db.items)
+          ..where((t) => t.id.equals('coffee')))
+        .getSingle();
+    expect(itemRow.receiptId, 'rcpt-1');
+    final receiptRow = await (db.select(db.receipts)
+          ..where((t) => t.id.equals('rcpt-1')))
+        .getSingle();
+    expect(receiptRow.storeName, 'Kroger');
+    expect(receiptRow.totalAmountCents, 1648);
+    expect(receiptRow.ocrText, 'KROGER\nCoffee 12.99');
+    expect(receiptRow.itemId, isNull,
+        reason: 'multi-item receipts keep itemId null; the link is on Items');
+  });
+
+  test('restoring a pre-v14 backup without receiptId yields null', () async {
+    final payload = {
+      'version': '1.0',
+      'app': 'still_life',
+      'exportedAt': DateTime(2025).toIso8601String(),
+      'data': {
+        'items': [
+          {
+            'id': 'old-item',
+            'name': 'Legacy lamp',
+            'description': '',
+            'categoryId': 'cat1',
+            'roomId': 'room1',
+            'createdAt': DateTime(2025).toIso8601String(),
+            'modifiedAt': DateTime(2025).toIso8601String(),
+            // no receiptId key — older backups
+          },
+        ],
+      },
+    };
+    final r = await importer.importFromJson(json.encode(payload));
+    expect(r.isSuccess, isTrue);
+
+    final row = await (db.select(db.items)
+          ..where((t) => t.id.equals('old-item')))
+        .getSingle();
+    expect(row.receiptId, isNull);
+  });
+
   test('loans round-trip through JSON export + import', () async {
     // Seed an item and one active + one returned loan + one tombstoned loan.
     await db
@@ -333,7 +537,7 @@ void main() {
             id: 'app1',
             itemId: 'tv',
             mode: 'resale',
-            value: 275.5,
+            valueCents: 27550,
             itemModelKey: 'tv|good',
             queriedAt: queriedAt,
             expiresAt: expiresAt,
@@ -356,8 +560,96 @@ void main() {
     expect(r.isSuccess, isTrue);
     final rows = await db.select(db.appraisals).get();
     expect(rows, hasLength(1));
-    expect(rows.first.value, 275.5);
+    expect(rows.first.valueCents, 27550);
     expect(rows.first.confidence, 0.75);
     expect(rows.first.sourceUrls, contains('https://x'));
+  });
+
+  Future<void> seedItem(String id) async {
+    await db.into(db.items).insert(
+          ItemsCompanion.insert(
+            id: id,
+            name: 'Camera',
+            categoryId: 'cat1',
+            roomId: 'room1',
+            createdAt: DateTime(2025),
+            modifiedAt: DateTime(2025),
+          ),
+        );
+  }
+
+  test(
+    'v12 blob-backed photo (empty filePath) round-trips metadata',
+    () async {
+      // Since v12, photo bytes live in the DB and filePath is ''. Export
+      // still ships photosIncluded:false, so import must recreate the row
+      // (metadata only, null bytes) — and the empty path must not trip the
+      // path-traversal guard.
+      await seedItem('item1');
+      await db.photoDao.insertPhoto(
+        PhotosCompanion.insert(
+          id: 'photo1',
+          itemId: 'item1',
+          filePath: '',
+          bytes: Value(Uint8List.fromList([1, 2, 3])),
+          capturedAt: DateTime(2025),
+          createdAt: DateTime(2025),
+          modifiedAt: DateTime(2025),
+        ),
+      );
+
+      final exported = await exporter.exportToJson();
+      expect(
+        (json.decode(exported) as Map<String, dynamic>)['photosIncluded'],
+        isFalse,
+        reason: 'photo bytes must not travel in exports (unchanged by v12)',
+      );
+
+      await db.delete(db.photos).go();
+      final result = await importer.importFromJson(exported);
+      expect(result.isSuccess, isTrue);
+
+      final rows = await db.select(db.photos).get();
+      expect(rows, hasLength(1));
+      expect(rows.first.id, 'photo1');
+      expect(rows.first.filePath, isEmpty);
+      expect(rows.first.bytes, isNull,
+          reason: 'bytes are device-local; import carries metadata only');
+    },
+  );
+
+  test('pre-v12 export with a legacy absolute filePath still imports',
+      () async {
+    // Old backups carry device paths that don't exist here. The row must
+    // import (photo shows a placeholder) rather than crash or be dropped.
+    await seedItem('item1');
+    final legacyExport = json.encode({
+      'version': '1.0',
+      'app': 'still_life',
+      'exportedAt': DateTime(2025).toIso8601String(),
+      'photosIncluded': false,
+      'data': {
+        'photos': [
+          {
+            'id': 'photo-legacy',
+            'itemId': 'item1',
+            'filePath': '/some/other/device/photos/item1/a.jpg',
+            'isPrimary': true,
+            'source': 'camera',
+            'capturedAt': DateTime(2025).toIso8601String(),
+            'createdAt': DateTime(2025).toIso8601String(),
+            'modifiedAt': DateTime(2025).toIso8601String(),
+          },
+        ],
+      },
+    });
+
+    final result = await importer.importFromJson(legacyExport);
+    expect(result.isSuccess, isTrue);
+
+    final rows = await db.select(db.photos).get();
+    expect(rows, hasLength(1));
+    expect(rows.first.filePath, '/some/other/device/photos/item1/a.jpg');
+    expect(rows.first.bytes, isNull);
   });
 }

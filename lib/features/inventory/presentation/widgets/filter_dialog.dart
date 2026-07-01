@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:openhearth_design/openhearth_design.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/utils/money_input.dart';
 import '../../../locations/presentation/controllers/location_controller.dart';
 import '../../domain/entities/item.dart';
 import '../../domain/repositories/item_repository.dart';
@@ -13,8 +14,8 @@ class FilterResult {
   final String? categoryId;
   final List<String>? tagIds;
   final ItemCondition? condition;
-  final double? minValue;
-  final double? maxValue;
+  final int? minValueCents;
+  final int? maxValueCents;
   final PriceField priceField;
   final bool? hasPhoto;
   final bool? hasReceipt;
@@ -27,9 +28,9 @@ class FilterResult {
     this.categoryId,
     this.tagIds,
     this.condition,
-    this.minValue,
-    this.maxValue,
-    this.priceField = PriceField.currentValue,
+    this.minValueCents,
+    this.maxValueCents,
+    this.priceField = PriceField.currentValueCents,
     this.hasPhoto,
     this.hasReceipt,
     this.hasBarcode,
@@ -42,8 +43,8 @@ class FilterResult {
       categoryId != null ||
       (tagIds != null && tagIds!.isNotEmpty) ||
       condition != null ||
-      minValue != null ||
-      maxValue != null ||
+      minValueCents != null ||
+      maxValueCents != null ||
       hasPhoto != null ||
       hasReceipt != null ||
       hasBarcode != null ||
@@ -56,7 +57,7 @@ class FilterResult {
     if (categoryId != null) count++;
     if (tagIds != null && tagIds!.isNotEmpty) count++;
     if (condition != null) count++;
-    if (minValue != null || maxValue != null) count++;
+    if (minValueCents != null || maxValueCents != null) count++;
     if (hasPhoto != null) count++;
     if (hasReceipt != null) count++;
     if (hasBarcode != null) count++;
@@ -71,8 +72,8 @@ class FilterResult {
       categoryId: categoryId,
       tagIds: tagIds,
       condition: condition,
-      minValue: minValue,
-      maxValue: maxValue,
+      minValueCents: minValueCents,
+      maxValueCents: maxValueCents,
       priceField: priceField,
       addedAfter: addedAfter,
       addedBefore: addedBefore,
@@ -95,11 +96,16 @@ class FilterDialog extends ConsumerStatefulWidget {
 }
 
 class _FilterDialogState extends ConsumerState<FilterDialog> {
+  /// Cents rendered as plain editable dollars text ("500.00").
+  static String _editText(int? cents) =>
+      cents == null ? '' : (cents / 100).toStringAsFixed(2);
+
   String? _roomId;
   String? _categoryId;
   List<String>? _tagIds;
   ItemCondition? _condition;
-  PriceField _priceField = PriceField.currentValue;
+  PriceField _priceField = PriceField.currentValueCents;
+  final _moneyFormKey = GlobalKey<FormState>();
   final _minValueController = TextEditingController();
   final _maxValueController = TextEditingController();
   bool? _hasPhoto;
@@ -118,8 +124,8 @@ class _FilterDialogState extends ConsumerState<FilterDialog> {
         : null;
     _condition = widget.currentFilter.condition;
     _priceField = widget.currentFilter.priceField;
-    _minValueController.text = widget.currentFilter.minValue?.toString() ?? '';
-    _maxValueController.text = widget.currentFilter.maxValue?.toString() ?? '';
+    _minValueController.text = _editText(widget.currentFilter.minValueCents);
+    _maxValueController.text = _editText(widget.currentFilter.maxValueCents);
     _hasPhoto = widget.currentFilter.hasPhoto;
     _hasReceipt = widget.currentFilter.hasReceipt;
     _hasBarcode = widget.currentFilter.hasBarcode;
@@ -253,15 +259,15 @@ class _FilterDialogState extends ConsumerState<FilterDialog> {
                   SegmentedButton<PriceField>(
                     segments: const [
                       ButtonSegment(
-                        value: PriceField.purchasePrice,
+                        value: PriceField.purchasePriceCents,
                         label: Text('Purchase'),
                       ),
                       ButtonSegment(
-                        value: PriceField.currentValue,
+                        value: PriceField.currentValueCents,
                         label: Text('Current'),
                       ),
                       ButtonSegment(
-                        value: PriceField.replacementCost,
+                        value: PriceField.replacementCostCents,
                         label: Text('Replace'),
                       ),
                     ],
@@ -270,28 +276,33 @@ class _FilterDialogState extends ConsumerState<FilterDialog> {
                         setState(() => _priceField = s.first),
                   ),
                   const SizedBox(height: OhSpacing.sm),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: _minValueController,
-                          decoration: const InputDecoration(labelText: 'Min'),
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
+                  Form(
+                    key: _moneyFormKey,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _minValueController,
+                            decoration: const InputDecoration(labelText: 'Min'),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            validator: validateMoneyInput,
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextFormField(
-                          controller: _maxValueController,
-                          decoration: const InputDecoration(labelText: 'Max'),
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _maxValueController,
+                            decoration: const InputDecoration(labelText: 'Max'),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            validator: validateMoneyInput,
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                   const SizedBox(height: OhSpacing.md),
 
@@ -445,7 +456,7 @@ class _FilterDialogState extends ConsumerState<FilterDialog> {
       _categoryId = null;
       _tagIds = null;
       _condition = null;
-      _priceField = PriceField.currentValue;
+      _priceField = PriceField.currentValueCents;
       _minValueController.clear();
       _maxValueController.clear();
       _hasPhoto = null;
@@ -457,6 +468,9 @@ class _FilterDialogState extends ConsumerState<FilterDialog> {
   }
 
   void _apply() {
+    // A garbage money field must surface its error, not silently apply
+    // no price filter.
+    if (!(_moneyFormKey.currentState?.validate() ?? true)) return;
     Navigator.pop(
       context,
       FilterResult(
@@ -464,8 +478,8 @@ class _FilterDialogState extends ConsumerState<FilterDialog> {
         categoryId: _categoryId,
         tagIds: _tagIds,
         condition: _condition,
-        minValue: double.tryParse(_minValueController.text),
-        maxValue: double.tryParse(_maxValueController.text),
+        minValueCents: parseMoneyInputCents(_minValueController.text),
+        maxValueCents: parseMoneyInputCents(_maxValueController.text),
         priceField: _priceField,
         hasPhoto: _hasPhoto,
         hasReceipt: _hasReceipt,

@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
@@ -54,7 +54,7 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
         onPageChanged: (index) => setState(() => _currentIndex = index),
         itemBuilder: (context, index) {
           final photo = widget.photos[index];
-          return _ZoomablePhoto(filePath: photo.filePath);
+          return _ZoomablePhoto(bytes: photo.bytes ?? photo.thumbBytes);
         },
       ),
     );
@@ -62,20 +62,22 @@ class _PhotoViewerScreenState extends State<PhotoViewerScreen> {
 }
 
 class _ZoomablePhoto extends StatelessWidget {
-  final String filePath;
+  /// Null for legacy rows whose backing file was lost before the v12
+  /// BLOB migration — show a placeholder, never crash.
+  final Uint8List? bytes;
 
-  const _ZoomablePhoto({required this.filePath});
+  const _ZoomablePhoto({required this.bytes});
 
   @override
   Widget build(BuildContext context) {
-    final file = File(filePath);
+    final bytes = this.bytes;
 
     return InteractiveViewer(
       minScale: 0.5,
       maxScale: 5.0,
       child: Center(
-        child: file.existsSync()
-            ? Image.file(file, fit: BoxFit.contain)
+        child: bytes != null
+            ? Image.memory(bytes, fit: BoxFit.contain)
             : const Icon(
                 Icons.broken_image_outlined,
                 color: Colors.white54,

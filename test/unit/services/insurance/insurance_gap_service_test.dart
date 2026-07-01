@@ -52,7 +52,7 @@ void main() {
 
   Future<void> insertItem({
     required String id,
-    double? currentValue,
+    int? currentValueCents,
     bool isInsured = false,
     bool isDeleted = false,
   }) => db
@@ -63,7 +63,7 @@ void main() {
           name: 'item $id',
           categoryId: 'c',
           roomId: 'r',
-          currentValue: Value(currentValue),
+          currentValueCents: Value(currentValueCents),
           isInsured: Value(isInsured),
           isDeleted: Value(isDeleted),
           createdAt: now,
@@ -72,45 +72,45 @@ void main() {
       );
 
   test('returns uncovered items sorted by current_value DESC', () async {
-    await insertItem(id: 'a', currentValue: 500);
-    await insertItem(id: 'b', currentValue: 1500);
-    await insertItem(id: 'c', currentValue: 800);
+    await insertItem(id: 'a', currentValueCents: 500);
+    await insertItem(id: 'b', currentValueCents: 1500);
+    await insertItem(id: 'c', currentValueCents: 800);
     final res = await svc.topUncovered(limit: 10);
     expect(res.map((i) => i.id), ['b', 'c', 'a']);
   });
 
   test('excludes insured items', () async {
-    await insertItem(id: 'a', currentValue: 500);
-    await insertItem(id: 'b', currentValue: 999, isInsured: true);
+    await insertItem(id: 'a', currentValueCents: 500);
+    await insertItem(id: 'b', currentValueCents: 999, isInsured: true);
     final res = await svc.topUncovered();
     expect(res.map((i) => i.id), ['a']);
   });
 
   test('excludes soft-deleted items', () async {
-    await insertItem(id: 'a', currentValue: 500);
-    await insertItem(id: 'b', currentValue: 999, isDeleted: true);
+    await insertItem(id: 'a', currentValueCents: 500);
+    await insertItem(id: 'b', currentValueCents: 999, isDeleted: true);
     final res = await svc.topUncovered();
     expect(res.map((i) => i.id), ['a']);
   });
 
-  test('excludes items with no currentValue', () async {
-    await insertItem(id: 'a', currentValue: 500);
+  test('excludes items with no currentValueCents', () async {
+    await insertItem(id: 'a', currentValueCents: 500);
     await insertItem(id: 'b');
     final res = await svc.topUncovered();
     expect(res.map((i) => i.id), ['a']);
   });
 
-  test('respects minValue filter', () async {
-    await insertItem(id: 'a', currentValue: 100);
-    await insertItem(id: 'b', currentValue: 700);
-    final res = await svc.topUncovered(minValue: 500);
+  test('respects minValueCents filter', () async {
+    await insertItem(id: 'a', currentValueCents: 100);
+    await insertItem(id: 'b', currentValueCents: 700);
+    final res = await svc.topUncovered(minValueCents: 500);
     expect(res.map((i) => i.id), ['b']);
   });
 
   test('respects limit', () async {
-    await insertItem(id: 'a', currentValue: 100);
-    await insertItem(id: 'b', currentValue: 200);
-    await insertItem(id: 'c', currentValue: 300);
+    await insertItem(id: 'a', currentValueCents: 100);
+    await insertItem(id: 'b', currentValueCents: 200);
+    await insertItem(id: 'c', currentValueCents: 300);
     final res = await svc.topUncovered(limit: 2);
     expect(res.length, 2);
     expect(res.map((i) => i.id), ['c', 'b']);

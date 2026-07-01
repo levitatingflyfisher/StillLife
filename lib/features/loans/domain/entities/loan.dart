@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:equatable/equatable.dart';
 
 class Loan extends Equatable {
@@ -25,17 +26,19 @@ class Loan extends Equatable {
 
   bool get isActive => returnedAt == null;
 
+  // clock.now() (not DateTime.now()) so tests can pin "today" with
+  // withClock — otherwise date-relative renders go stale daily.
   bool get isOverdue =>
       isActive &&
       expectedReturnDate != null &&
-      expectedReturnDate!.isBefore(DateTime.now());
+      expectedReturnDate!.isBefore(clock.now());
 
   /// Due within 3 days, not yet overdue (threshold matches AllLoansScreen grouping).
   bool get isDueSoon =>
       isActive &&
       expectedReturnDate != null &&
       !isOverdue &&
-      expectedReturnDate!.difference(DateTime.now()).inDays <= 3;
+      expectedReturnDate!.difference(clock.now()).inDays <= 3;
 
   Loan copyWith({
     String? id,

@@ -1,19 +1,21 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:app_links/app_links.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
+import 'package:sanctuary_backup_ui/sanctuary_backup_ui.dart';
 
 import 'app/app.dart';
+import 'app/bootstrap/sqlite3_workaround.dart';
 import 'app/boot.dart';
 import 'app/router.dart';
 import 'core/providers/billing_providers.dart';
 import 'core/providers/notification_providers.dart';
 import 'core/providers/repository_providers.dart';
+import 'features/backup/backup_wiring.dart';
 import 'services/deeplinks/deeplink_handler.dart';
 import 'services/import/share_intent_handler.dart';
 import 'services/import/amazon_import_service.dart';
@@ -56,9 +58,13 @@ void main() async {
   // the app frozen on the splash forever because they were awaited unguarded.
   // If they fail now, the LazyDatabase callback simply re-resolves the
   // directory later, once the channel is ready.
-  await _bestEffort(() => getApplicationDocumentsDirectory());
-  if (Platform.isAndroid) {
-    await _bestEffort(() => applyWorkaroundToOpenSqlite3OnOldAndroidVersions());
+  final isAndroid =
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+  if (!kIsWeb) {
+    await _bestEffort(() => getApplicationDocumentsDirectory());
+  }
+  if (isAndroid) {
+    await _bestEffort(applySqlite3WorkaroundIfNeeded);
   }
 
   // Resolve onboarding without ever throwing (a keystore failure must not brick
@@ -71,6 +77,8 @@ void main() async {
       routerProvider.overrideWithValue(
         buildAppRouter(initialLocation: initialLocation),
       ),
+      // Wire the encrypted-backup UI to StillLife's data (SANCTUARY-BRIEF §4.W3).
+      ...sanctuaryBackupOverrides(),
     ],
   );
 
@@ -93,6 +101,15 @@ void main() async {
     ),
   );
 
+  // Silent freshness snapshot (BACKUP_RETENTION_SPEC §3): if a key exists and
+  // the newest vault snapshot is stale (>7 days), take one. Post-first-frame
+  // + fire-and-forget — never blocks boot, never surfaces errors (the
+  // Sundial/Lullaby hook, on the ProviderContainer since StillLife boots via
+  // UncontrolledProviderScope). Wiring proven by startup_maintenance_test.
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    container.read(backupControllerProvider.notifier).runStartupMaintenance();
+  });
+
   // Wire still-life:// deep links (Stripe Checkout return). Non-fatal if
   // the platform plugin isn't available (e.g. tests).
   final appLinks = AppLinks();
@@ -114,11 +131,16 @@ void main() async {
 
   // Wire Android share intent after the app is running so the router's
   // navigator key is attached to the widget tree.
-  if (Platform.isAndroid) {
+  if (isAndroid) {
     _shareIntentHandler = ShareIntentHandler(
       router: container.read(routerProvider),
+      // Resolved on every share, NOT read once here: at this point the
+      // async settings providers (cloud key, Ollama host, tier priority)
+      // are still loading, so a one-time read would freeze a manager
+      // whose cloud key is '' and whose Ollama host is localhost forever
+      // — every share-intent receipt would silently skip the LLM stage.
       ocrService: ImportReceiptOcrService(
-        providerManager: container.read(providerManagerProvider),
+        resolveProviderManager: () => container.read(providerManagerProvider),
       ),
       amazonService: AmazonImportService(),
       bankParser: BankStatementParser(),

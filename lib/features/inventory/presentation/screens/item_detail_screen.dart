@@ -18,6 +18,7 @@ import '../controllers/photo_controller.dart';
 import '../controllers/tag_controller.dart';
 import '../widgets/photo_gallery_widget.dart';
 import '../widgets/price_history_chart.dart';
+import '../widgets/receipt_tile.dart';
 import '../widgets/tag_chip.dart';
 import '../controllers/quantity_controller.dart';
 import '../../../appraisal/presentation/widgets/appraisal_card.dart';
@@ -151,16 +152,16 @@ class ItemDetailScreen extends ConsumerWidget {
                       const SizedBox(height: 12),
                       _DetailRow(
                         label: 'Current Value',
-                        value: item.currentValue?.toCurrency() ?? 'Not set',
+                        value: item.currentValueCents?.centsToCurrency() ?? 'Not set',
                         isHighlighted: true,
                       ),
                       _DetailRow(
                         label: 'Replacement Cost',
-                        value: item.replacementCost?.toCurrency() ?? 'Not set',
+                        value: item.replacementCostCents?.centsToCurrency() ?? 'Not set',
                       ),
                       _DetailRow(
                         label: 'Purchase Price',
-                        value: item.purchasePrice?.toCurrency() ?? 'Not set',
+                        value: item.purchasePriceCents?.centsToCurrency() ?? 'Not set',
                       ),
                       if (item.purchaseDate != null)
                         _DetailRow(
@@ -236,6 +237,11 @@ class ItemDetailScreen extends ConsumerWidget {
                   ),
                 ),
               ),
+
+              // Purchase proof — only when a receipt-sourced import
+              // linked one.
+              if (item.receiptId != null)
+                ReceiptTile(receiptId: item.receiptId!),
 
               // Market value (appraiser) + item chat tile
               AppraisalCard(item: item),
@@ -543,11 +549,14 @@ class ItemDetailScreen extends ConsumerWidget {
       imageQuality: 85,
     );
     if (picked != null) {
+      // Bytes, not a path: works on every platform (web XFiles have no
+      // usable filesystem path) and feeds the BLOB-backed photo store.
+      final bytes = await picked.readAsBytes();
       await ref
           .read(photoControllerProvider.notifier)
           .addPhoto(
             itemId: itemId,
-            sourcePath: picked.path,
+            bytes: bytes,
             source: source == ImageSource.camera
                 ? PhotoSource.camera
                 : PhotoSource.gallery,

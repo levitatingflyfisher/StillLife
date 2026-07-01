@@ -28,6 +28,20 @@ class MergeEngine {
 
   /// Applies [remote] changeset to the local DB and merges the remote HLC.
   Future<MergeResult> apply(SyncChangeset remote) async {
+    // Fail closed on a payload from a newer app version: its semantics may
+    // have changed (row shapes, units), and misreading them would corrupt
+    // local data silently. Nothing is written before this check.
+    if (remote.payloadSchemaVersion >
+        SyncChangeset.currentPayloadSchemaVersion) {
+      return MergeResult(
+        recordsApplied: 0,
+        error:
+            'The other device runs a newer version of Still Life '
+            '(sync payload v${remote.payloadSchemaVersion}, this app '
+            'understands v${SyncChangeset.currentPayloadSchemaVersion}). '
+            'Update this app, then sync again.',
+      );
+    }
     try {
       // Re-encode the data portion as JSON for ImportService.
       final jsonString = const JsonEncoder().convert({
@@ -36,7 +50,10 @@ class MergeEngine {
         'data': remote.data,
       });
 
-      final result = await _importService.importFromJson(jsonString);
+      // lww: this is a peer MERGE, not a restore — apply a row only when it is
+      // strictly newer (HLC) than the local one, so a stale peer can't clobber
+      // newer local edits or resurrect a newer tombstone.
+      final result = await _importService.importFromJson(jsonString, lww: true);
       await _crdtManager.mergeHlc(remote.senderHlc);
 
       return result.when(

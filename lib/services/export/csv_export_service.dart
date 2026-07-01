@@ -15,6 +15,8 @@ class CsvExportService {
   static const _headers = [
     'Name',
     'Description',
+    'Brand',
+    'Model',
     'Category',
     'Room',
     'Container',
@@ -29,6 +31,8 @@ class CsvExportService {
     'Warranty Expiry',
     'Serial Number',
     'Barcode',
+    'ASIN',
+    'Receipt ID',
     'Label ID',
     'Notes',
     'Insured',
@@ -78,13 +82,16 @@ class CsvExportService {
         [
           _q(item.name),
           _q(item.description),
+          _q(item.brand),
+          _q(item.model),
           _q(cat),
           _q(room),
           _q(container),
           _q(item.condition),
-          _q(item.purchasePrice?.toStringAsFixed(2)),
-          _q(item.currentValue?.toStringAsFixed(2)),
-          _q(item.replacementCost?.toStringAsFixed(2)),
+          // CSV speaks decimal dollars, storage is cents.
+          _q(_dollars(item.purchasePriceCents)),
+          _q(_dollars(item.currentValueCents)),
+          _q(_dollars(item.replacementCostCents)),
           _q(item.quantity?.toString()),
           _q(item.quantityUnit),
           _q(item.lowStockThreshold?.toString()),
@@ -92,14 +99,16 @@ class CsvExportService {
           _q(item.warrantyExpiration?.toIso8601String().substring(0, 10)),
           _q(item.serialNumber),
           _q(item.barcode),
+          _q(item.asin),
+          _q(item.receiptId),
           _q(labelId(item.id)),
           _q(item.notes),
           _q(item.isInsured ? 'Yes' : 'No'),
           _q(tags),
           _q(item.createdAt.toIso8601String().substring(0, 10)),
-          _q(byMode['resale']?.toStringAsFixed(2)),
-          _q(byMode['replace_new']?.toStringAsFixed(2)),
-          _q(byMode['replace_equivalent']?.toStringAsFixed(2)),
+          _q(_dollars(byMode['resale'])),
+          _q(_dollars(byMode['replace_new'])),
+          _q(_dollars(byMode['replace_equivalent'])),
         ].join(','),
       );
     }
@@ -107,17 +116,20 @@ class CsvExportService {
     return buf.toString();
   }
 
+  String? _dollars(int? cents) =>
+      cents == null ? null : (cents / 100).toStringAsFixed(2);
+
   /// For each item, the most recent non-deleted appraisal per mode.
-  Future<Map<String, Map<String, double>>> _buildAppraisalMap() async {
+  Future<Map<String, Map<String, int>>> _buildAppraisalMap() async {
     final rows =
         await (_db.select(_db.appraisals)
               ..where((t) => t.isDeleted.equals(false))
               ..orderBy([(t) => OrderingTerm.desc(t.queriedAt)]))
             .get();
-    final map = <String, Map<String, double>>{};
+    final map = <String, Map<String, int>>{};
     for (final r in rows) {
       final byMode = map.putIfAbsent(r.itemId, () => {});
-      byMode.putIfAbsent(r.mode, () => r.value);
+      byMode.putIfAbsent(r.mode, () => r.valueCents);
     }
     return map;
   }
@@ -202,7 +214,13 @@ class CsvExportService {
 
   /// Wraps [value] in double-quotes and escapes embedded double-quotes.
   static String _q(Object? value) {
-    final s = value?.toString() ?? '';
+    var s = value?.toString() ?? '';
+    // Neutralize spreadsheet formula injection (OWASP): a cell beginning with a
+    // formula trigger is prefixed with an apostrophe so Excel/Sheets treat the
+    // imported/synced value as text instead of evaluating it on open.
+    if (s.isNotEmpty && '=+-@\t\r'.contains(s[0])) {
+      s = "'$s";
+    }
     return '"${s.replaceAll('"', '""')}"';
   }
 }

@@ -3,8 +3,8 @@ import 'package:still_life/services/ml/analysis_provider.dart';
 /// Manages the 4-tier hierarchy of analysis providers.
 ///
 /// Providers are checked in priority order. The priority list is
-/// user-configurable and defaults to the natural tier ordering:
-/// on-device -> local LLM -> cloud API -> hosted.
+/// user-configurable and defaults to [kDefaultTierPriority]
+/// (quality-first, on-device last).
 class ProviderManager {
   final Map<AnalysisTier, AnalysisProvider> _providers;
   List<AnalysisTier> _priorityOrder;
@@ -13,14 +13,7 @@ class ProviderManager {
     required List<AnalysisProvider> providers,
     List<AnalysisTier>? priorityOrder,
   }) : _providers = {for (final p in providers) p.tier: p},
-       _priorityOrder =
-           priorityOrder ??
-           [
-             AnalysisTier.onDevice,
-             AnalysisTier.localLlm,
-             AnalysisTier.cloudApi,
-             AnalysisTier.hosted,
-           ];
+       _priorityOrder = priorityOrder ?? List.of(kDefaultTierPriority);
 
   /// The current priority ordering of tiers.
   List<AnalysisTier> get priorityOrder => List.unmodifiable(_priorityOrder);
@@ -30,13 +23,20 @@ class ProviderManager {
     _priorityOrder = List.of(order);
   }
 
-  /// Returns the first available provider according to the priority order.
+  /// Returns the first available provider that can serve [capability],
+  /// according to the priority order.
   ///
-  /// Returns `null` if no provider is currently available.
-  Future<AnalysisProvider?> getBestAvailable() async {
+  /// Returns `null` if no capable provider is currently available. The
+  /// capability check runs before the (potentially network-probing)
+  /// availability check.
+  Future<AnalysisProvider?> getBestAvailable(
+    AnalysisCapability capability,
+  ) async {
     for (final tier in _priorityOrder) {
       final provider = _providers[tier];
-      if (provider != null && await provider.isAvailable()) {
+      if (provider != null &&
+          provider.capabilities.contains(capability) &&
+          await provider.isAvailable()) {
         return provider;
       }
     }

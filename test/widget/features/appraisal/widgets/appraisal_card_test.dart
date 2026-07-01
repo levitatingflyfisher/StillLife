@@ -16,6 +16,8 @@ class _StubRepo implements AppraisalRepository {
   @override
   Future<Result<void>> delete(String id) async => const Success(null);
   @override
+  Future<Result<void>> applyToItem(Appraisal a) async => const Success(null);
+  @override
   Future<Appraisal?> getLatestByCacheKey(
     String itemModelKey,
     AppraisalMode mode,
@@ -43,13 +45,13 @@ Item sampleItem() => Item(
   modifiedAt: DateTime(2024),
 );
 
-Appraisal mkAppraisal(AppraisalMode mode, double value) {
+Appraisal mkAppraisal(AppraisalMode mode, int value) {
   final now = DateTime.now();
   return Appraisal(
     id: 'a-${mode.wire}',
     itemId: 'i1',
     mode: mode,
-    value: value,
+    valueCents: value,
     currency: 'USD',
     confidence: 0.8,
     sources: const [
@@ -85,7 +87,7 @@ void main() {
     await tester.pumpWidget(
       harness(
         _StubRepo({
-          AppraisalMode.resale: mkAppraisal(AppraisalMode.resale, 450),
+          AppraisalMode.resale: mkAppraisal(AppraisalMode.resale, 45000),
         }),
       ),
     );

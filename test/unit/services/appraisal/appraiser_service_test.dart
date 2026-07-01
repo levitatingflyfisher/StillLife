@@ -13,6 +13,8 @@ class _FakeRepo implements AppraisalRepository {
   @override
   Future<Result<void>> delete(String id) async => const Success(null);
   @override
+  Future<Result<void>> applyToItem(Appraisal a) async => const Success(null);
+  @override
   Future<Appraisal?> getLatestByCacheKey(
     String itemModelKey,
     AppraisalMode mode,
@@ -102,8 +104,35 @@ void main() {
       expect(r.isSuccess, isTrue);
       expect(transport.calls, hasLength(1));
       expect(repo.saveCalls, 1);
-      expect(repo.store.first.value, 350);
+      expect(repo.store.first.valueCents, 35000);
       expect(repo.store.first.sources.first.url, 'https://ebay.com/x');
+    });
+
+    test('sends the injected (stored-setting) model id to the transport',
+        () async {
+      final repo = _FakeRepo();
+      final transport = _FakeTransport((_) => Success(cannedResponse()));
+      final svc = AppraiserService(
+        repo: repo,
+        transport: transport,
+        countryCode: () => 'US',
+        model: () async => 'claude-opus-4-6',
+      );
+      await svc.appraise(sampleItem(), AppraisalMode.resale);
+      expect(transport.calls.single['model'], 'claude-opus-4-6');
+    });
+
+    test('defaults the model to the hosted smart alias when none is injected',
+        () async {
+      final repo = _FakeRepo();
+      final transport = _FakeTransport((_) => Success(cannedResponse()));
+      final svc = AppraiserService(
+        repo: repo,
+        transport: transport,
+        countryCode: () => 'US',
+      );
+      await svc.appraise(sampleItem(), AppraisalMode.resale);
+      expect(transport.calls.single['model'], 'claude-sonnet-4-6');
     });
 
     test('cache hit for same item: no network call', () async {
@@ -137,7 +166,7 @@ void main() {
       );
       expect(transport.calls, isEmpty);
       expect(r.value.itemId, 'second');
-      expect(r.value.value, 350);
+      expect(r.value.valueCents, 35000);
     });
 
     test('forceRefresh: bypasses cache', () async {
@@ -244,49 +273,114 @@ void main() {
       );
       final r = await svc.appraise(sampleItem(), AppraisalMode.resale);
       expect(r.isSuccess, isTrue);
-      expect(r.value.value, 42);
+      expect(r.value.valueCents, 4200);
     });
 
-    test('null value field defaults to 0.0 instead of crashing', () async {
-      final repo = _FakeRepo();
-      final transport = _FakeTransport(
-        (_) => const Success({
+    // The prompt contract demands value/currency/confidence in every reply
+    // (even the "cannot find" case returns explicit zeros). A reply that
+    // omits or garbles any of them is malformed — it must take the
+    // ValidationFailure path, never be coerced into a fabricated $0.00
+    // appraisal that gets persisted as if the model said it.
+    AppraiserService strictSvc(_FakeRepo repo, String text) => AppraiserService(
+      repo: repo,
+      transport: _FakeTransport(
+        (_) => Success({
           'content': [
-            {
-              'type': 'text',
-              'text': '{"value": null, "currency": "USD", "sources": []}',
-            },
+            {'type': 'text', 'text': text},
           ],
         }),
+      ),
+      countryCode: () => 'US',
+    );
+
+    test('reply missing value: ValidationFailure, nothing saved', () async {
+      final repo = _FakeRepo();
+      final svc = strictSvc(
+        repo,
+        '{"currency": "USD", "confidence": 0.8, "sources": []}',
       );
-      final svc = AppraiserService(
-        repo: repo,
-        transport: transport,
-        countryCode: () => 'US',
+      final r = await svc.appraise(sampleItem(), AppraisalMode.resale);
+      expect(r.isFailure, isTrue);
+      expect(r.failure, isA<ValidationFailure>());
+      expect(repo.saveCalls, 0, reason: 'a fabricated \$0.00 must not persist');
+    });
+
+    test('reply with null value: ValidationFailure, nothing saved', () async {
+      final repo = _FakeRepo();
+      final svc = strictSvc(
+        repo,
+        '{"value": null, "currency": "USD", "confidence": 0.8, "sources": []}',
+      );
+      final r = await svc.appraise(sampleItem(), AppraisalMode.resale);
+      expect(r.isFailure, isTrue);
+      expect(r.failure, isA<ValidationFailure>());
+      expect(repo.saveCalls, 0);
+    });
+
+    test('reply with non-numeric value: ValidationFailure, nothing saved',
+        () async {
+      final repo = _FakeRepo();
+      final svc = strictSvc(
+        repo,
+        '{"value": "abc", "currency": "USD", "confidence": 0.8, "sources": []}',
+      );
+      final r = await svc.appraise(sampleItem(), AppraisalMode.resale);
+      expect(r.isFailure, isTrue);
+      expect(r.failure, isA<ValidationFailure>());
+      expect(repo.saveCalls, 0);
+    });
+
+    test('reply missing confidence: ValidationFailure, nothing saved',
+        () async {
+      final repo = _FakeRepo();
+      final svc = strictSvc(
+        repo,
+        '{"value": 100, "currency": "USD", "sources": []}',
+      );
+      final r = await svc.appraise(sampleItem(), AppraisalMode.resale);
+      expect(r.isFailure, isTrue);
+      expect(r.failure, isA<ValidationFailure>());
+      expect(repo.saveCalls, 0);
+    });
+
+    test('reply with non-numeric confidence: ValidationFailure, nothing saved',
+        () async {
+      final repo = _FakeRepo();
+      final svc = strictSvc(
+        repo,
+        '{"value": 100, "currency": "USD", "confidence": "high", '
+        '"sources": []}',
+      );
+      final r = await svc.appraise(sampleItem(), AppraisalMode.resale);
+      expect(r.isFailure, isTrue);
+      expect(r.failure, isA<ValidationFailure>());
+      expect(repo.saveCalls, 0);
+    });
+
+    test('reply missing currency: ValidationFailure, nothing saved', () async {
+      final repo = _FakeRepo();
+      final svc = strictSvc(
+        repo,
+        '{"value": 100, "confidence": 0.8, "sources": []}',
+      );
+      final r = await svc.appraise(sampleItem(), AppraisalMode.resale);
+      expect(r.isFailure, isTrue);
+      expect(r.failure, isA<ValidationFailure>());
+      expect(repo.saveCalls, 0,
+          reason: 'a value mislabeled as USD must not persist');
+    });
+
+    test('honest explicit zero (the "cannot find" contract) still saves',
+        () async {
+      final repo = _FakeRepo();
+      final svc = strictSvc(
+        repo,
+        '{"value": 0, "currency": "USD", "confidence": 0.0, "sources": []}',
       );
       final r = await svc.appraise(sampleItem(), AppraisalMode.resale);
       expect(r.isSuccess, isTrue);
-      expect(r.value.value, 0.0);
-    });
-
-    test('missing currency defaults to USD, missing confidence to 0', () async {
-      final repo = _FakeRepo();
-      final transport = _FakeTransport(
-        (_) => const Success({
-          'content': [
-            {'type': 'text', 'text': '{"value": 100, "sources": []}'},
-          ],
-        }),
-      );
-      final svc = AppraiserService(
-        repo: repo,
-        transport: transport,
-        countryCode: () => 'US',
-      );
-      final r = await svc.appraise(sampleItem(), AppraisalMode.resale);
-      expect(r.isSuccess, isTrue);
-      expect(r.value.currency, 'USD');
-      expect(r.value.confidence, 0.0);
+      expect(r.value.valueCents, 0);
+      expect(repo.saveCalls, 1);
     });
 
     test('source with missing url is filtered out', () async {
@@ -297,7 +391,7 @@ void main() {
             {
               'type': 'text',
               'text':
-                  '{"value": 100, "currency": "USD", "sources": [{"title": "no url here"}, {"url": "https://x", "title": "ok"}]}',
+                  '{"value": 100, "currency": "USD", "confidence": 0.8, "sources": [{"title": "no url here"}, {"url": "https://x", "title": "ok"}]}',
             },
           ],
         }),

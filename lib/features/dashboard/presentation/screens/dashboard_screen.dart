@@ -64,7 +64,7 @@ class DashboardScreen extends ConsumerWidget {
                   Expanded(
                     child: StatCard(
                       title: 'Total Value',
-                      value: summary.totalCurrentValue.toCurrency(),
+                      value: summary.totalCurrentValueCents.centsToCurrency(),
                       icon: Icons.account_balance_wallet_outlined,
                       color: theme.colorScheme.tertiary,
                     ),
@@ -77,7 +77,7 @@ class DashboardScreen extends ConsumerWidget {
                   Expanded(
                     child: StatCard(
                       title: 'Replacement Cost',
-                      value: summary.totalReplacementCost.toCurrency(),
+                      value: summary.totalReplacementCostCents.centsToCurrency(),
                       icon: Icons.price_change_outlined,
                       color: theme.colorScheme.secondary,
                     ),
@@ -86,7 +86,7 @@ class DashboardScreen extends ConsumerWidget {
                   Expanded(
                     child: StatCard(
                       title: 'Acquisition Cost',
-                      value: summary.totalAcquisitionCost.toCurrency(),
+                      value: summary.totalAcquisitionCostCents.centsToCurrency(),
                       icon: Icons.shopping_cart_outlined,
                       color: theme.colorScheme.error,
                     ),
@@ -135,22 +135,22 @@ class DashboardScreen extends ConsumerWidget {
               const SizedBox(height: OhSpacing.lg),
 
               // Value by Category
-              if (summary.valueByCategory.isNotEmpty) ...[
+              if (summary.valueCentsByCategory.isNotEmpty) ...[
                 Text('Value by Category', style: theme.textTheme.titleMedium),
                 const SizedBox(height: 12),
                 SizedBox(
                   height: 200,
-                  child: ValueBreakdownChart(data: summary.valueByCategory),
+                  child: ValueBreakdownChart(dataCents: summary.valueCentsByCategory),
                 ),
                 const SizedBox(height: OhSpacing.lg),
               ],
 
               // Depreciation Summary
-              if (summary.totalAcquisitionCost > 0) ...[
+              if (summary.totalAcquisitionCostCents > 0) ...[
                 DepreciationSummaryCard(
-                  totalOriginalValue: summary.totalAcquisitionCost,
-                  totalCurrentValue: summary.totalCurrentValue,
-                  totalDepreciation: summary.totalDepreciation,
+                  totalOriginalValueCents: summary.totalAcquisitionCostCents,
+                  totalCurrentValueCents: summary.totalCurrentValueCents,
+                  totalDepreciationCents: summary.totalDepreciationCents,
                 ),
                 const SizedBox(height: OhSpacing.lg),
               ],
@@ -168,7 +168,7 @@ class DashboardScreen extends ConsumerWidget {
                           (e) => TopItem(
                             rank: e.key + 1,
                             name: e.value.name,
-                            value: e.value.value,
+                            valueCents: e.value.valueCents,
                           ),
                         )
                         .toList(),
@@ -178,26 +178,26 @@ class DashboardScreen extends ConsumerWidget {
               ],
 
               // Value by Room
-              if (summary.valueByRoom.isNotEmpty) ...[
+              if (summary.valueCentsByRoom.isNotEmpty) ...[
                 Text('Value by Room', style: theme.textTheme.titleMedium),
                 const SizedBox(height: 12),
                 SizedBox(
                   height: 200,
-                  child: RoomValueChart(data: summary.valueByRoom),
+                  child: RoomValueChart(dataCents: summary.valueCentsByRoom),
                 ),
                 const SizedBox(height: OhSpacing.lg),
               ],
 
               // Insurance Coverage
-              if (summary.totalCoverageAmount != null) ...[
+              if (summary.totalCoverageAmountCents != null) ...[
                 Text('Insurance Coverage', style: theme.textTheme.titleMedium),
                 const SizedBox(height: 12),
                 Card(
                   child: Padding(
                     padding: OhSpacing.insetMd,
                     child: CoverageGapWidget(
-                      totalValue: summary.totalCurrentValue,
-                      coverageAmount: summary.totalCoverageAmount,
+                      totalValueCents: summary.totalCurrentValueCents,
+                      coverageAmountCents: summary.totalCoverageAmountCents,
                     ),
                   ),
                 ),

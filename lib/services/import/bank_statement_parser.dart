@@ -1,3 +1,4 @@
+import 'package:intl/intl.dart';
 import 'package:csv/csv.dart';
 
 import '../../features/import/domain/parsed_import_item.dart';
@@ -112,11 +113,30 @@ class BankStatementParser {
     }
   }
 
-  DateTime? _parseDate(String raw) {
+  DateTime? _parseDate(String raw) => parseImportDate(raw);
+}
+
+/// Parses a date from a statement/CSV cell. `DateTime.parse` only accepts
+/// ISO-8601, so US `MM/DD/YYYY` (and other common statement formats) silently
+/// returned null and imported items lost their date. Try ISO first, then the
+/// common formats — US month-first before day-first, falling through on an
+/// out-of-range month (e.g. `13/04/2024` → day-first).
+DateTime? parseImportDate(String raw) {
+  final s = raw.trim();
+  if (s.isEmpty) return null;
+  final iso = DateTime.tryParse(s);
+  if (iso != null) return iso;
+  const formats = <String>[
+    'MM/dd/yyyy', 'M/d/yyyy', 'MM/dd/yy', 'M/d/yy',
+    'MMM d, yyyy', 'MMMM d, yyyy', 'd MMM yyyy',
+    'dd-MM-yyyy', 'yyyy/MM/dd', 'dd/MM/yyyy',
+  ];
+  for (final fmt in formats) {
     try {
-      return DateTime.parse(raw.trim());
+      return DateFormat(fmt).parseStrict(s);
     } catch (_) {
-      return null;
+      // try the next format
     }
   }
+  return null;
 }

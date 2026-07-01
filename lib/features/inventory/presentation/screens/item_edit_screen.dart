@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show Uint8List, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:openhearth_design/openhearth_design.dart';
 import 'package:flutter/services.dart';
@@ -7,9 +8,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
 import 'photo_viewer_screen.dart';
-import '../../../video_analysis/presentation/controllers/video_analysis_controller.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/utils/money_input.dart';
 import '../../../../core/providers/notification_providers.dart';
 import '../../../../core/providers/product_lookup_providers.dart';
 import '../../../../core/providers/profile_providers.dart';
@@ -30,6 +31,13 @@ import '../widgets/tag_selector_widget.dart';
 import 'package:collection/collection.dart';
 
 const _uuid = Uuid();
+
+/// Money fields accept digits plus both decimal separators, grouping
+/// spaces, and currency symbols (pasted values) — parseMoneyInput decides
+/// what they mean; the field validator rejects what it cannot parse.
+final _moneyInputFilter = FilteringTextInputFormatter.allow(
+  RegExp(r'[0-9.,\s$€£¥₹¢]'),
+);
 
 class ItemEditScreen extends ConsumerStatefulWidget {
   final String? itemId;
@@ -57,12 +65,22 @@ class ItemEditScreen extends ConsumerStatefulWidget {
 
 class _ItemEditScreenState extends ConsumerState<ItemEditScreen> {
   final _formKey = GlobalKey<FormState>();
+
+  // The form is a lazy ListView: rows scrolled past the cache extent are
+  // unmounted, so their validators deregister from the Form. The controller
+  // + key let _save scroll the Valuation section back into view when an
+  // off-screen money field fails the text-level check.
+  final _scrollController = ScrollController();
+  final _valuationKey = GlobalKey();
+
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _purchasePriceController = TextEditingController();
   final _currentValueController = TextEditingController();
   final _replacementCostController = TextEditingController();
   final _serialNumberController = TextEditingController();
+  final _brandController = TextEditingController();
+  final _modelController = TextEditingController();
   final _barcodeController = TextEditingController();
   final _storeUrlController = TextEditingController();
   final _notesController = TextEditingController();
@@ -89,6 +107,19 @@ class _ItemEditScreenState extends ConsumerState<ItemEditScreen> {
   String? _creatorProfileId;
   String? _ownerProfileId;
   DateTime? _createdAt;
+
+  // ASIN has no form field — it arrives programmatically (e.g. marketplace
+  // imports). Carried through an edit so saving never wipes it.
+  String? _asin;
+
+  // receiptId has no form field either — it arrives from receipt imports
+  // (schema v14). Carried through an edit so saving never severs the
+  // item's link to the receipt it came from.
+  String? _receiptId;
+
+  // Photo captured by the photo-add flow, waiting to be attached to the
+  // item once it exists. Only used in add mode (editing has _PhotosSection).
+  Uint8List? _pendingPhotoBytes;
 
   // Re-entrancy guard for _save() — a quick double-tap on the Save
   // button must not fire two parallel CRUD operations.
@@ -158,6 +189,10 @@ class _ItemEditScreenState extends ConsumerState<ItemEditScreen> {
     if (_descriptionController.text.isEmpty && info.description != null) {
       _descriptionController.text = info.description!;
     }
+    // ProductLookupCache has stored brand all along — apply it too.
+    if (_brandController.text.isEmpty && info.brand != null) {
+      _brandController.text = info.brand!;
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Found: ${info.name}'),
@@ -168,12 +203,15 @@ class _ItemEditScreenState extends ConsumerState<ItemEditScreen> {
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _nameController.dispose();
     _descriptionController.dispose();
     _purchasePriceController.dispose();
     _currentValueController.dispose();
     _replacementCostController.dispose();
     _serialNumberController.dispose();
+    _brandController.dispose();
+    _modelController.dispose();
     _barcodeController.dispose();
     _storeUrlController.dispose();
     _notesController.dispose();
@@ -183,15 +221,23 @@ class _ItemEditScreenState extends ConsumerState<ItemEditScreen> {
     super.dispose();
   }
 
+  /// Cents rendered as plain editable dollars text ("12.50"), no symbols.
+  String _editText(int? cents) =>
+      cents == null ? '' : (cents / 100).toStringAsFixed(2);
+
   void _initFromItem(Item item) {
     if (_initialized) return;
     _initialized = true;
     _nameController.text = item.name;
     _descriptionController.text = item.description;
-    _purchasePriceController.text = item.purchasePrice?.toString() ?? '';
-    _currentValueController.text = item.currentValue?.toString() ?? '';
-    _replacementCostController.text = item.replacementCost?.toString() ?? '';
+    _purchasePriceController.text = _editText(item.purchasePriceCents);
+    _currentValueController.text = _editText(item.currentValueCents);
+    _replacementCostController.text = _editText(item.replacementCostCents);
     _serialNumberController.text = item.serialNumber ?? '';
+    _brandController.text = item.brand ?? '';
+    _modelController.text = item.model ?? '';
+    _asin = item.asin;
+    _receiptId = item.receiptId;
     _barcodeController.text = item.barcode ?? '';
     _storeUrlController.text = item.storeUrl ?? '';
     _notesController.text = item.notes ?? '';
@@ -246,35 +292,14 @@ class _ItemEditScreenState extends ConsumerState<ItemEditScreen> {
       if (widget.initialSuggestion != null) {
         final s = widget.initialSuggestion!;
         if (s.name != null) _nameController.text = s.name!;
+        if (s.brand != null) _brandController.text = s.brand!;
+        if (s.model != null) _modelController.text = s.model!;
         if (s.notes != null) _notesController.text = s.notes!;
+        _pendingPhotoBytes = s.photoBytes;
         if (s.estimatedValue != null) {
           _currentValueController.text = s.estimatedValue!.toStringAsFixed(2);
         }
         _pendingCategoryName = s.categoryName;
-      }
-
-      // Pre-fill from video review if an object was selected for editing.
-      final editObjectId = ref.read(reviewEditObjectIdProvider);
-      if (editObjectId != null) {
-        final session = ref.read(videoAnalysisControllerProvider);
-        final obj = session?.detectedObjects
-            .where((o) => o.id == editObjectId)
-            .firstOrNull;
-        if (obj != null) {
-          _nameController.text = obj.displayName;
-          if (obj.description != null) {
-            _descriptionController.text = obj.description!;
-          }
-          if (obj.estimatedPrice != null) {
-            _currentValueController.text = obj.estimatedPrice!.toStringAsFixed(
-              2,
-            );
-            _replacementCostController.text = obj.estimatedPrice!
-                .toStringAsFixed(2);
-          }
-        }
-        // Clear the provider so subsequent opens start fresh.
-        ref.read(reviewEditObjectIdProvider.notifier).state = null;
       }
     }
 
@@ -323,11 +348,40 @@ class _ItemEditScreenState extends ConsumerState<ItemEditScreen> {
             child: Form(
               key: _formKey,
               child: ListView(
+                controller: _scrollController,
                 padding: OhSpacing.insetMd,
                 children: [
                   // Photos section (only when editing an existing item)
                   if (widget.isEditing) ...[
                     _PhotosSection(itemId: widget.itemId!),
+                    const SizedBox(height: OhSpacing.md),
+                  ],
+
+                  // Photo captured by the photo-add flow: show the user it
+                  // will attach to the item on save.
+                  if (!widget.isEditing && _pendingPhotoBytes != null) ...[
+                    Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.memory(
+                            _pendingPhotoBytes!,
+                            width: 72,
+                            height: 72,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => const SizedBox(
+                              width: 72,
+                              height: 72,
+                              child: Icon(Icons.broken_image_outlined),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text('Photo will be attached when you save.'),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: OhSpacing.md),
                   ],
 
@@ -468,12 +522,16 @@ class _ItemEditScreenState extends ConsumerState<ItemEditScreen> {
 
                   // Container (optional) — only shown when a room is selected
                   if (_selectedRoomId != null)
-                    StreamBuilder(
-                      stream: ref.watch(
-                        containersInRoomProvider(_selectedRoomId!).stream,
-                      ),
-                      builder: (context, snapshot) {
-                        final containers = snapshot.data ?? [];
+                    Builder(
+                      builder: (context) {
+                        // Watch the provider itself (.stream is deprecated);
+                        // AsyncValue keeps the last data across rebuilds.
+                        final containers = ref
+                                .watch(
+                                  containersInRoomProvider(_selectedRoomId!),
+                                )
+                                .value ??
+                            [];
                         return DropdownButtonFormField<String?>(
                           // ignore: deprecated_member_use
                           value:
@@ -510,7 +568,8 @@ class _ItemEditScreenState extends ConsumerState<ItemEditScreen> {
                   const SizedBox(height: OhSpacing.lg),
 
                   // Valuation section
-                  Text('Valuation', style: theme.textTheme.titleMedium),
+                  Text('Valuation',
+                      key: _valuationKey, style: theme.textTheme.titleMedium),
                   const SizedBox(height: 12),
 
                   Row(
@@ -524,11 +583,12 @@ class _ItemEditScreenState extends ConsumerState<ItemEditScreen> {
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(
-                              RegExp(r'^\d+\.?\d{0,2}'),
-                            ),
-                          ],
+                          // Comma must be typeable: comma-decimal locales
+                          // write 12,50. parseMoneyInput handles both
+                          // separator conventions; the validator rejects
+                          // what it cannot parse.
+                          inputFormatters: [_moneyInputFilter],
+                          validator: validateMoneyInput,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -541,11 +601,8 @@ class _ItemEditScreenState extends ConsumerState<ItemEditScreen> {
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(
-                              RegExp(r'^\d+\.?\d{0,2}'),
-                            ),
-                          ],
+                          inputFormatters: [_moneyInputFilter],
+                          validator: validateMoneyInput,
                         ),
                       ),
                     ],
@@ -560,11 +617,8 @@ class _ItemEditScreenState extends ConsumerState<ItemEditScreen> {
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                        RegExp(r'^\d+\.?\d{0,2}'),
-                      ),
-                    ],
+                    inputFormatters: [_moneyInputFilter],
+                    validator: validateMoneyInput,
                   ),
                   const SizedBox(height: 12),
 
@@ -603,6 +657,30 @@ class _ItemEditScreenState extends ConsumerState<ItemEditScreen> {
                   ),
                   const SizedBox(height: 12),
 
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _brandController,
+                          decoration: const InputDecoration(
+                            labelText: 'Brand',
+                          ),
+                          textCapitalization: TextCapitalization.words,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _modelController,
+                          decoration: const InputDecoration(
+                            labelText: 'Model',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
                   TextFormField(
                     controller: _serialNumberController,
                     decoration: const InputDecoration(
@@ -629,24 +707,28 @@ class _ItemEditScreenState extends ConsumerState<ItemEditScreen> {
                           : Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                IconButton(
-                                  icon: const Icon(Icons.qr_code_scanner),
-                                  tooltip: 'Scan barcode',
-                                  onPressed: () async {
-                                    final scanned = await context
-                                        .pushNamed<String?>(
-                                          'barcodeScanner',
-                                          queryParameters: {
-                                            'returnMode': 'true',
-                                          },
+                                // Camera scanning is native-only; on web the
+                                // field stays fully typeable/pasteable.
+                                if (!kIsWeb)
+                                  IconButton(
+                                    icon: const Icon(Icons.qr_code_scanner),
+                                    tooltip: 'Scan barcode',
+                                    onPressed: () async {
+                                      final scanned = await context
+                                          .pushNamed<String?>(
+                                            'barcodeScanner',
+                                            queryParameters: {
+                                              'returnMode': 'true',
+                                            },
+                                          );
+                                      if (scanned != null && mounted) {
+                                        setState(
+                                          () =>
+                                              _barcodeController.text = scanned,
                                         );
-                                    if (scanned != null && mounted) {
-                                      setState(
-                                        () => _barcodeController.text = scanned,
-                                      );
-                                    }
-                                  },
-                                ),
+                                      }
+                                    },
+                                  ),
                                 IconButton(
                                   icon: const Icon(Icons.search),
                                   tooltip: 'Look up product',
@@ -828,11 +910,68 @@ class _ItemEditScreenState extends ConsumerState<ItemEditScreen> {
     }
   }
 
+  /// Validates the three money controllers' TEXT directly — the inline
+  /// `validateMoneyInput` Form validators only run while their row is
+  /// mounted, and the lazy ListView unmounts unfocused rows scrolled past
+  /// the cache extent, silently deregistering them from the Form. Returns
+  /// `"field label: error"` for the first bad field, or null.
+  String? _moneyTextError() {
+    final fields = {
+      'Purchase Price': _purchasePriceController.text,
+      'Current Value': _currentValueController.text,
+      'Replacement Cost': _replacementCostController.text,
+    };
+    for (final field in fields.entries) {
+      final error = validateMoneyInput(field.value);
+      if (error != null) return '${field.key}: $error';
+    }
+    return null;
+  }
+
+  /// Brings the Valuation section back on screen so the user can see and
+  /// fix the rejected money field, then re-runs the Form validators so the
+  /// remounted field shows its inline error.
+  void _revealValuationSection() {
+    void ensureVisibleAndRevalidate() {
+      final valuationContext = _valuationKey.currentContext;
+      if (valuationContext != null) {
+        Scrollable.ensureVisible(
+          valuationContext,
+          duration: const Duration(milliseconds: 250),
+        );
+      }
+      _formKey.currentState?.validate();
+    }
+
+    if (_valuationKey.currentContext != null) {
+      ensureVisibleAndRevalidate();
+      return;
+    }
+    // Unmounted: jump toward the form top (the section sits within the
+    // first viewport-and-a-bit) and retry once it has been built.
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(0);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) ensureVisibleAndRevalidate();
+      });
+    }
+  }
+
   Future<void> _save() async {
     // Double-tap guard — a queued tap fired during an in-flight save must
     // be a no-op, otherwise the same CRUD op runs twice.
     if (_saving) return;
     if (!_formKey.currentState!.validate()) return;
+    // Mount-independent money check: validate() above cannot see money
+    // rows the lazy ListView has unmounted, and a garbage price must never
+    // become a silent null save (the inline validators stay for UX).
+    final moneyError = _moneyTextError();
+    if (moneyError != null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(moneyError)));
+      _revealValuationSection();
+      return;
+    }
     setState(() => _saving = true);
     try {
       final now = DateTime.now();
@@ -854,13 +993,28 @@ class _ItemEditScreenState extends ConsumerState<ItemEditScreen> {
         categoryId: _selectedCategoryId!,
         roomId: _selectedRoomId!,
         purchaseDate: _purchaseDate,
-        purchasePrice: double.tryParse(_purchasePriceController.text),
-        currentValue: double.tryParse(_currentValueController.text),
-        replacementCost: double.tryParse(_replacementCostController.text),
+        // Money fields go through the locale-tolerant parser (the form
+        // validator has already rejected anything it cannot parse, so a
+        // typed price can no longer be silently dropped) straight to the
+        // integer cents the database stores.
+        purchasePriceCents:
+            parseMoneyInputCents(_purchasePriceController.text),
+        currentValueCents:
+            parseMoneyInputCents(_currentValueController.text),
+        replacementCostCents:
+            parseMoneyInputCents(_replacementCostController.text),
         condition: _selectedCondition,
         serialNumber: _serialNumberController.text.isNotEmpty
             ? _serialNumberController.text.trim()
             : null,
+        brand: _brandController.text.trim().isNotEmpty
+            ? _brandController.text.trim()
+            : null,
+        model: _modelController.text.trim().isNotEmpty
+            ? _modelController.text.trim()
+            : null,
+        asin: _asin,
+        receiptId: _receiptId,
         warrantyExpiration: _warrantyExpiration,
         containerId: _selectedContainerId,
         barcode: _barcodeController.text.isNotEmpty
@@ -895,6 +1049,18 @@ class _ItemEditScreenState extends ConsumerState<ItemEditScreen> {
           creatorProfileId: () => activeProfile?.id,
         );
         success = await controller.createItem(itemToSave);
+
+        // Attach the photo captured by the photo-add flow. The item is
+        // saved either way — a failed photo write must not lose the item.
+        if (success && _pendingPhotoBytes != null) {
+          await ref
+              .read(photoControllerProvider.notifier)
+              .addPhoto(
+                itemId: newId,
+                bytes: _pendingPhotoBytes!,
+                source: PhotoSource.camera,
+              );
+        }
       }
 
       if (success) {
@@ -1000,11 +1166,14 @@ class _PhotosSection extends ConsumerWidget {
       imageQuality: 85,
     );
     if (picked != null) {
+      // Bytes, not a path: works on every platform (web XFiles have no
+      // usable filesystem path) and feeds the BLOB-backed photo store.
+      final bytes = await picked.readAsBytes();
       await ref
           .read(photoControllerProvider.notifier)
           .addPhoto(
             itemId: itemId,
-            sourcePath: picked.path,
+            bytes: bytes,
             source: source == ImageSource.camera
                 ? PhotoSource.camera
                 : PhotoSource.gallery,

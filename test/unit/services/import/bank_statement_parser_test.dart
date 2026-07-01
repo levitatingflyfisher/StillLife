@@ -93,4 +93,21 @@ void main() {
     expect(result.items[0].price, 12.50);
     expect(result.items[1].price, 8.00);
   });
+
+  group('parseImportDate', () {
+    test('parses US MM/DD/YYYY (was silently dropped by DateTime.parse)', () {
+      expect(parseImportDate('01/15/2024'), DateTime(2024, 1, 15));
+      expect(parseImportDate('1/5/2024'), DateTime(2024, 1, 5));
+    });
+    test('still parses ISO-8601', () {
+      expect(parseImportDate('2024-01-15'), DateTime(2024, 1, 15));
+    });
+    test('falls through to day-first for an out-of-range month', () {
+      expect(parseImportDate('13/04/2024'), DateTime(2024, 4, 13));
+    });
+    test('returns null for unparseable text', () {
+      expect(parseImportDate('not a date'), isNull);
+      expect(parseImportDate(''), isNull);
+    });
+  });
 }

@@ -1,11 +1,14 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image/image.dart' as img;
 import 'package:still_life/features/inventory/domain/entities/photo.dart';
 import 'package:still_life/features/inventory/presentation/screens/photo_viewer_screen.dart';
 
 void main() {
-  // Build a Photo stub whose file does NOT exist so the broken-image
-  // placeholder is rendered instead (avoids needing real image files).
+  // A Photo with no bytes (a legacy row whose file was lost) must render the
+  // broken-image placeholder instead of crashing.
   Photo makePhoto(String id) => Photo(
     id: id,
     itemId: 'item1',
@@ -17,8 +20,29 @@ void main() {
     modifiedAt: DateTime(2024),
   );
 
+  final pngBytes = Uint8List.fromList(
+    img.encodePng(img.Image(width: 4, height: 4)),
+  );
+
   group('PhotoViewerScreen', () {
-    testWidgets('shows broken-image icon when file does not exist', (
+    testWidgets('renders the photo from bytes via Image.memory', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: PhotoViewerScreen(
+            photos: [makePhoto('1').copyWith(bytes: pngBytes)],
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final image = tester.widget<Image>(find.byType(Image));
+      expect(image.image, isA<MemoryImage>());
+      expect(find.byIcon(Icons.broken_image_outlined), findsNothing);
+    });
+
+    testWidgets('shows broken-image icon when bytes are missing', (
       tester,
     ) async {
       await tester.pumpWidget(

@@ -4,20 +4,21 @@ import 'package:openhearth_design/openhearth_design.dart';
 import '../../../../core/extensions/currency_extensions.dart';
 
 class CoverageGapWidget extends StatelessWidget {
-  final double totalValue;
-  final double? coverageAmount;
+  /// Integer cents throughout (see core/utils/money.dart).
+  final int totalValueCents;
+  final int? coverageAmountCents;
 
   const CoverageGapWidget({
     super.key,
-    required this.totalValue,
-    this.coverageAmount,
+    required this.totalValueCents,
+    this.coverageAmountCents,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    if (coverageAmount == null) {
+    if (coverageAmountCents == null) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -39,8 +40,8 @@ class CoverageGapWidget extends StatelessWidget {
       );
     }
 
-    final percentage = totalValue > 0
-        ? (coverageAmount! / totalValue).clamp(0.0, 1.0)
+    final percentage = totalValueCents > 0
+        ? (coverageAmountCents! / totalValueCents).clamp(0.0, 1.0)
         : 0.0;
     final percentDisplay = (percentage * 100).toStringAsFixed(0);
 
@@ -95,11 +96,11 @@ class CoverageGapWidget extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         Text(
-          'Coverage: ${coverageAmount!.toCurrency()}',
+          'Coverage: ${coverageAmountCents!.centsToCurrency()}',
           style: theme.textTheme.bodySmall,
         ),
         Text(
-          'Total Value: ${totalValue.toCurrency()}',
+          'Total Value: ${totalValueCents.centsToCurrency()}',
           style: theme.textTheme.bodySmall,
         ),
       ],

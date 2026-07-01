@@ -1,31 +1,57 @@
 import 'package:csv/csv.dart';
 import 'package:html/parser.dart' as html_parser;
 
+import 'bank_statement_parser.dart';
 import '../../features/import/domain/parsed_import_item.dart';
 
 /// Parses Amazon order exports (CSV or plain text/HTML) into [ParsedImportItem] list.
+///
+/// Two CSV dialects are recognised, auto-detected from the header row
+/// (case-insensitive, order-independent — the filename plays no part):
+///
+/// * **Legacy Order History Reports** ("Title", "Item Total", "ASIN/ISBN",
+///   ...) — the website facility Amazon retired in 2023. Kept so old
+///   exports keep importing.
+/// * **Retail.OrderHistory** ("Product Name", "Unit Price", "Total Owed",
+///   ...) — the CSV inside the ZIP that Privacy Central's "Request My
+///   Data" delivers today. Amazon publishes no schema for it; the column
+///   set follows the community-documented format.
 class AmazonImportService {
-  /// Parses an Amazon order history CSV export.
-  ///
-  /// Expects a header row with columns including "Title", "Item Total",
-  /// "ASIN/ISBN", and optionally "Category" and "Order Date".
-  /// Rows with empty titles are skipped.
+  /// Parses any Amazon order export: CSV content is detected by its header
+  /// row; anything else falls through to the text/HTML email parser.
+  List<ParsedImportItem> parse(String content) {
+    final fromCsv = parseFromCsv(content);
+    if (fromCsv.isNotEmpty) return fromCsv;
+    return parseFromText(content);
+  }
+
+  /// Parses an Amazon order history CSV export (either dialect — see class
+  /// doc). Returns an empty list when the header row matches neither.
   List<ParsedImportItem> parseFromCsv(String csvContent) {
     final rows = const CsvToListConverter(eol: '\n').convert(csvContent);
     if (rows.isEmpty) return [];
 
     // Build column index map from header row.
-    final headers = rows.first.map((h) => h.toString().trim()).toList();
-    int col(String name) =>
-        headers.indexWhere((h) => h.toLowerCase() == name.toLowerCase());
+    final headers = rows.first
+        .map((h) => h.toString().trim().toLowerCase())
+        .toList();
+    int col(String name) => headers.indexOf(name.toLowerCase());
 
+    if (col('title') != -1) return _parseLegacyRows(rows, col);
+    if (col('product name') != -1) return _parseRetailRows(rows, col);
+    return [];
+  }
+
+  /// Legacy Order History Reports rows (pre-2023 website export).
+  List<ParsedImportItem> _parseLegacyRows(
+    List<List<dynamic>> rows,
+    int Function(String) col,
+  ) {
     final titleIdx = col('Title');
     final priceIdx = col('Item Total');
     final asinIdx = col('ASIN/ISBN');
     final categoryIdx = col('Category');
     final dateIdx = col('Order Date');
-
-    if (titleIdx == -1) return [];
 
     final items = <ParsedImportItem>[];
     for (final row in rows.skip(1)) {
@@ -53,6 +79,55 @@ class AmazonImportService {
           purchaseDate: purchaseDate,
           categoryHint: categoryHint,
           asin: asin != null && asin.isNotEmpty ? asin : null,
+          source: ImportSource.amazonCsv,
+        ),
+      );
+    }
+    return items;
+  }
+
+  /// Retail.OrderHistory rows (Privacy Central "Request My Data" ZIP).
+  ///
+  /// Malformed/summary rows (too short, empty product name) are skipped.
+  /// Zero-price/digital rows still import with a null price — the user
+  /// deselects unwanted lines in the review screen.
+  List<ParsedImportItem> _parseRetailRows(
+    List<List<dynamic>> rows,
+    int Function(String) col,
+  ) {
+    final nameIdx = col('Product Name');
+    final unitPriceIdx = col('Unit Price');
+    final totalOwedIdx = col('Total Owed');
+    final asinIdx = col('ASIN');
+    final dateIdx = col('Order Date');
+    final qtyIdx = col('Quantity');
+
+    String cell(List<dynamic> row, int idx) =>
+        idx >= 0 && idx < row.length ? row[idx].toString().trim() : '';
+
+    final items = <ParsedImportItem>[];
+    for (final row in rows.skip(1)) {
+      final name = cell(row, nameIdx);
+      if (name.isEmpty) continue;
+
+      // Unit Price is the per-item figure; Total Owed (includes tax and
+      // shipping) is only a fallback when Unit Price is absent/unparseable.
+      var price = _parsePrice(cell(row, unitPriceIdx));
+      price ??= _parsePrice(cell(row, totalOwedIdx));
+      // A zero total is an artifact (digital freebie, promotional credit),
+      // not a price worth recording.
+      if (price == 0) price = null;
+
+      final asin = cell(row, asinIdx);
+      final qty = int.tryParse(cell(row, qtyIdx));
+
+      items.add(
+        ParsedImportItem(
+          name: name,
+          price: price,
+          purchaseDate: _parseDate(cell(row, dateIdx)),
+          asin: asin.isEmpty ? null : asin,
+          notes: qty != null && qty > 1 ? 'Qty: $qty' : null,
           source: ImportSource.amazonCsv,
         ),
       );
@@ -115,11 +190,5 @@ class AmazonImportService {
     return double.tryParse(cleaned);
   }
 
-  DateTime? _parseDate(String raw) {
-    try {
-      return DateTime.parse(raw.trim());
-    } catch (_) {
-      return null;
-    }
-  }
+  DateTime? _parseDate(String raw) => parseImportDate(raw);
 }

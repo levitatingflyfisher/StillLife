@@ -1,4 +1,5 @@
-import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:openhearth_design/openhearth_design.dart';
 
 import 'package:flutter/material.dart';
@@ -43,7 +44,10 @@ class PhotoGalleryWidget extends StatelessWidget {
             borderRadius: OhRadii.lg,
             child: AspectRatio(
               aspectRatio: 16 / 9,
-              child: _PhotoImage(filePath: primary.filePath, fit: BoxFit.cover),
+              child: _PhotoImage(
+                bytes: primary.bytes ?? primary.thumbBytes,
+                fit: BoxFit.cover,
+              ),
             ),
           ),
         ),
@@ -67,7 +71,8 @@ class PhotoGalleryWidget extends StatelessWidget {
                           width: 72,
                           height: 72,
                           child: _PhotoImage(
-                            filePath: photo.filePath,
+                            // Thumbnail first — these are 72px tiles.
+                            bytes: photo.thumbBytes ?? photo.bytes,
                             fit: BoxFit.cover,
                           ),
                         ),
@@ -186,15 +191,17 @@ class _EmptyPhotoState extends StatelessWidget {
 }
 
 class _PhotoImage extends StatelessWidget {
-  final String filePath;
+  /// Null for legacy rows whose backing file was lost before the v12
+  /// BLOB migration — show a placeholder, never crash.
+  final Uint8List? bytes;
   final BoxFit fit;
 
-  const _PhotoImage({required this.filePath, required this.fit});
+  const _PhotoImage({required this.bytes, required this.fit});
 
   @override
   Widget build(BuildContext context) {
-    final file = File(filePath);
-    if (!file.existsSync()) {
+    final bytes = this.bytes;
+    if (bytes == null) {
       return Container(
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
         child: Icon(
@@ -203,6 +210,6 @@ class _PhotoImage extends StatelessWidget {
         ),
       );
     }
-    return Image.file(file, fit: fit);
+    return Image.memory(bytes, fit: fit);
   }
 }

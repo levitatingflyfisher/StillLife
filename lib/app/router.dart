@@ -20,7 +20,6 @@ import '../features/settings/presentation/screens/llm_settings_screen.dart';
 import '../features/video_analysis/presentation/screens/processing_screen.dart';
 import '../features/video_analysis/presentation/screens/review_screen.dart';
 import '../features/scanning/presentation/screens/barcode_scanner_screen.dart';
-import '../features/scanning/presentation/screens/receipt_capture_screen.dart';
 import '../features/video_analysis/presentation/screens/video_capture_screen.dart';
 import '../features/maintenance/presentation/screens/maintenance_screen.dart';
 import '../features/maintenance/presentation/screens/maintenance_add_screen.dart';
@@ -32,12 +31,14 @@ import '../features/labels/presentation/screens/item_label_screen.dart';
 import '../features/labels/presentation/screens/container_label_screen.dart';
 import '../features/locations/presentation/screens/container_detail_screen.dart';
 import '../features/inventory/presentation/screens/photo_viewer_screen.dart';
+import '../features/inventory/presentation/screens/shelf_review_screen.dart';
 import '../features/inventory/domain/entities/item_suggestion.dart';
 import '../features/inventory/domain/entities/photo.dart';
 import '../features/loans/presentation/screens/all_loans_screen.dart';
 import '../features/inventory/presentation/screens/low_stock_screen.dart';
 import '../features/import/presentation/screens/import_review_screen.dart';
 import '../features/import/presentation/screens/bank_column_map_screen.dart';
+import '../features/import/domain/import_review_args.dart';
 import '../features/import/domain/import_review_item.dart';
 import '../features/profiles/presentation/screens/profile_management_screen.dart';
 import '../features/chat/presentation/screens/item_chat_screen.dart';
@@ -212,8 +213,23 @@ GoRouter buildAppRouter({String initialLocation = '/dashboard'}) => GoRouter(
       name: 'importReview',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) {
-        final items = state.extra as List<ImportReviewItem>;
+        // Receipt-sourced imports carry receipt context in ImportReviewArgs;
+        // Amazon/bank imports still pass a bare item list.
+        final extra = state.extra;
+        if (extra is ImportReviewArgs) {
+          return ImportReviewScreen(items: extra.items, receipt: extra.receipt);
+        }
+        final items = extra as List<ImportReviewItem>;
         return ImportReviewScreen(items: items);
+      },
+    ),
+    GoRoute(
+      path: '/shelf/review',
+      name: 'shelfReview',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) {
+        final args = state.extra as ShelfReviewArgs;
+        return ShelfReviewScreen(args: args);
       },
     ),
     GoRoute(
@@ -324,12 +340,6 @@ GoRouter buildAppRouter({String initialLocation = '/dashboard'}) => GoRouter(
         final returnMode = state.uri.queryParameters['returnMode'] == 'true';
         return BarcodeScannerScreen(returnMode: returnMode);
       },
-    ),
-    GoRoute(
-      path: '/scan/receipt',
-      name: 'receiptCapture',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (_, _) => const ReceiptCaptureScreen(),
     ),
     GoRoute(
       path: '/video/capture',

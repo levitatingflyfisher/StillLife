@@ -3065,37 +3065,35 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _purchasePriceMeta = const VerificationMeta(
-    'purchasePrice',
-  );
+  static const VerificationMeta _purchasePriceCentsMeta =
+      const VerificationMeta('purchasePriceCents');
   @override
-  late final GeneratedColumn<double> purchasePrice = GeneratedColumn<double>(
-    'purchase_price',
+  late final GeneratedColumn<int> purchasePriceCents = GeneratedColumn<int>(
+    'purchase_price_cents',
     aliasedName,
     true,
-    type: DriftSqlType.double,
+    type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _currentValueMeta = const VerificationMeta(
-    'currentValue',
+  static const VerificationMeta _currentValueCentsMeta = const VerificationMeta(
+    'currentValueCents',
   );
   @override
-  late final GeneratedColumn<double> currentValue = GeneratedColumn<double>(
-    'current_value',
+  late final GeneratedColumn<int> currentValueCents = GeneratedColumn<int>(
+    'current_value_cents',
     aliasedName,
     true,
-    type: DriftSqlType.double,
+    type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _replacementCostMeta = const VerificationMeta(
-    'replacementCost',
-  );
+  static const VerificationMeta _replacementCostCentsMeta =
+      const VerificationMeta('replacementCostCents');
   @override
-  late final GeneratedColumn<double> replacementCost = GeneratedColumn<double>(
-    'replacement_cost',
+  late final GeneratedColumn<int> replacementCostCents = GeneratedColumn<int>(
+    'replacement_cost_cents',
     aliasedName,
     true,
-    type: DriftSqlType.double,
+    type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
   static const VerificationMeta _conditionMeta = const VerificationMeta(
@@ -3307,6 +3305,44 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
       'REFERENCES profiles (id)',
     ),
   );
+  static const VerificationMeta _brandMeta = const VerificationMeta('brand');
+  @override
+  late final GeneratedColumn<String> brand = GeneratedColumn<String>(
+    'brand',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _modelMeta = const VerificationMeta('model');
+  @override
+  late final GeneratedColumn<String> model = GeneratedColumn<String>(
+    'model',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _asinMeta = const VerificationMeta('asin');
+  @override
+  late final GeneratedColumn<String> asin = GeneratedColumn<String>(
+    'asin',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _receiptIdMeta = const VerificationMeta(
+    'receiptId',
+  );
+  @override
+  late final GeneratedColumn<String> receiptId = GeneratedColumn<String>(
+    'receipt_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -3315,9 +3351,9 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
     categoryId,
     roomId,
     purchaseDate,
-    purchasePrice,
-    currentValue,
-    replacementCost,
+    purchasePriceCents,
+    currentValueCents,
+    replacementCostCents,
     condition,
     serialNumber,
     warrantyExpiration,
@@ -3336,6 +3372,10 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
     lowStockThreshold,
     creatorProfileId,
     ownerProfileId,
+    brand,
+    model,
+    asin,
+    receiptId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -3396,30 +3436,30 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
         ),
       );
     }
-    if (data.containsKey('purchase_price')) {
+    if (data.containsKey('purchase_price_cents')) {
       context.handle(
-        _purchasePriceMeta,
-        purchasePrice.isAcceptableOrUnknown(
-          data['purchase_price']!,
-          _purchasePriceMeta,
+        _purchasePriceCentsMeta,
+        purchasePriceCents.isAcceptableOrUnknown(
+          data['purchase_price_cents']!,
+          _purchasePriceCentsMeta,
         ),
       );
     }
-    if (data.containsKey('current_value')) {
+    if (data.containsKey('current_value_cents')) {
       context.handle(
-        _currentValueMeta,
-        currentValue.isAcceptableOrUnknown(
-          data['current_value']!,
-          _currentValueMeta,
+        _currentValueCentsMeta,
+        currentValueCents.isAcceptableOrUnknown(
+          data['current_value_cents']!,
+          _currentValueCentsMeta,
         ),
       );
     }
-    if (data.containsKey('replacement_cost')) {
+    if (data.containsKey('replacement_cost_cents')) {
       context.handle(
-        _replacementCostMeta,
-        replacementCost.isAcceptableOrUnknown(
-          data['replacement_cost']!,
-          _replacementCostMeta,
+        _replacementCostCentsMeta,
+        replacementCostCents.isAcceptableOrUnknown(
+          data['replacement_cost_cents']!,
+          _replacementCostCentsMeta,
         ),
       );
     }
@@ -3556,6 +3596,30 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
         ),
       );
     }
+    if (data.containsKey('brand')) {
+      context.handle(
+        _brandMeta,
+        brand.isAcceptableOrUnknown(data['brand']!, _brandMeta),
+      );
+    }
+    if (data.containsKey('model')) {
+      context.handle(
+        _modelMeta,
+        model.isAcceptableOrUnknown(data['model']!, _modelMeta),
+      );
+    }
+    if (data.containsKey('asin')) {
+      context.handle(
+        _asinMeta,
+        asin.isAcceptableOrUnknown(data['asin']!, _asinMeta),
+      );
+    }
+    if (data.containsKey('receipt_id')) {
+      context.handle(
+        _receiptIdMeta,
+        receiptId.isAcceptableOrUnknown(data['receipt_id']!, _receiptIdMeta),
+      );
+    }
     return context;
   }
 
@@ -3589,17 +3653,17 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}purchase_date'],
       ),
-      purchasePrice: attachedDatabase.typeMapping.read(
-        DriftSqlType.double,
-        data['${effectivePrefix}purchase_price'],
+      purchasePriceCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}purchase_price_cents'],
       ),
-      currentValue: attachedDatabase.typeMapping.read(
-        DriftSqlType.double,
-        data['${effectivePrefix}current_value'],
+      currentValueCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}current_value_cents'],
       ),
-      replacementCost: attachedDatabase.typeMapping.read(
-        DriftSqlType.double,
-        data['${effectivePrefix}replacement_cost'],
+      replacementCostCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}replacement_cost_cents'],
       ),
       condition: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -3673,6 +3737,22 @@ class $ItemsTable extends Items with TableInfo<$ItemsTable, Item> {
         DriftSqlType.string,
         data['${effectivePrefix}owner_profile_id'],
       ),
+      brand: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}brand'],
+      ),
+      model: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}model'],
+      ),
+      asin: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}asin'],
+      ),
+      receiptId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}receipt_id'],
+      ),
     );
   }
 
@@ -3689,9 +3769,9 @@ class Item extends DataClass implements Insertable<Item> {
   final String categoryId;
   final String roomId;
   final DateTime? purchaseDate;
-  final double? purchasePrice;
-  final double? currentValue;
-  final double? replacementCost;
+  final int? purchasePriceCents;
+  final int? currentValueCents;
+  final int? replacementCostCents;
   final String? condition;
   final String? serialNumber;
   final DateTime? warrantyExpiration;
@@ -3710,6 +3790,10 @@ class Item extends DataClass implements Insertable<Item> {
   final double? lowStockThreshold;
   final String? creatorProfileId;
   final String? ownerProfileId;
+  final String? brand;
+  final String? model;
+  final String? asin;
+  final String? receiptId;
   const Item({
     required this.id,
     required this.name,
@@ -3717,9 +3801,9 @@ class Item extends DataClass implements Insertable<Item> {
     required this.categoryId,
     required this.roomId,
     this.purchaseDate,
-    this.purchasePrice,
-    this.currentValue,
-    this.replacementCost,
+    this.purchasePriceCents,
+    this.currentValueCents,
+    this.replacementCostCents,
     this.condition,
     this.serialNumber,
     this.warrantyExpiration,
@@ -3738,6 +3822,10 @@ class Item extends DataClass implements Insertable<Item> {
     this.lowStockThreshold,
     this.creatorProfileId,
     this.ownerProfileId,
+    this.brand,
+    this.model,
+    this.asin,
+    this.receiptId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3750,14 +3838,14 @@ class Item extends DataClass implements Insertable<Item> {
     if (!nullToAbsent || purchaseDate != null) {
       map['purchase_date'] = Variable<DateTime>(purchaseDate);
     }
-    if (!nullToAbsent || purchasePrice != null) {
-      map['purchase_price'] = Variable<double>(purchasePrice);
+    if (!nullToAbsent || purchasePriceCents != null) {
+      map['purchase_price_cents'] = Variable<int>(purchasePriceCents);
     }
-    if (!nullToAbsent || currentValue != null) {
-      map['current_value'] = Variable<double>(currentValue);
+    if (!nullToAbsent || currentValueCents != null) {
+      map['current_value_cents'] = Variable<int>(currentValueCents);
     }
-    if (!nullToAbsent || replacementCost != null) {
-      map['replacement_cost'] = Variable<double>(replacementCost);
+    if (!nullToAbsent || replacementCostCents != null) {
+      map['replacement_cost_cents'] = Variable<int>(replacementCostCents);
     }
     if (!nullToAbsent || condition != null) {
       map['condition'] = Variable<String>(condition);
@@ -3801,6 +3889,18 @@ class Item extends DataClass implements Insertable<Item> {
     if (!nullToAbsent || ownerProfileId != null) {
       map['owner_profile_id'] = Variable<String>(ownerProfileId);
     }
+    if (!nullToAbsent || brand != null) {
+      map['brand'] = Variable<String>(brand);
+    }
+    if (!nullToAbsent || model != null) {
+      map['model'] = Variable<String>(model);
+    }
+    if (!nullToAbsent || asin != null) {
+      map['asin'] = Variable<String>(asin);
+    }
+    if (!nullToAbsent || receiptId != null) {
+      map['receipt_id'] = Variable<String>(receiptId);
+    }
     return map;
   }
 
@@ -3814,15 +3914,15 @@ class Item extends DataClass implements Insertable<Item> {
       purchaseDate: purchaseDate == null && nullToAbsent
           ? const Value.absent()
           : Value(purchaseDate),
-      purchasePrice: purchasePrice == null && nullToAbsent
+      purchasePriceCents: purchasePriceCents == null && nullToAbsent
           ? const Value.absent()
-          : Value(purchasePrice),
-      currentValue: currentValue == null && nullToAbsent
+          : Value(purchasePriceCents),
+      currentValueCents: currentValueCents == null && nullToAbsent
           ? const Value.absent()
-          : Value(currentValue),
-      replacementCost: replacementCost == null && nullToAbsent
+          : Value(currentValueCents),
+      replacementCostCents: replacementCostCents == null && nullToAbsent
           ? const Value.absent()
-          : Value(replacementCost),
+          : Value(replacementCostCents),
       condition: condition == null && nullToAbsent
           ? const Value.absent()
           : Value(condition),
@@ -3865,6 +3965,16 @@ class Item extends DataClass implements Insertable<Item> {
       ownerProfileId: ownerProfileId == null && nullToAbsent
           ? const Value.absent()
           : Value(ownerProfileId),
+      brand: brand == null && nullToAbsent
+          ? const Value.absent()
+          : Value(brand),
+      model: model == null && nullToAbsent
+          ? const Value.absent()
+          : Value(model),
+      asin: asin == null && nullToAbsent ? const Value.absent() : Value(asin),
+      receiptId: receiptId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(receiptId),
     );
   }
 
@@ -3880,9 +3990,11 @@ class Item extends DataClass implements Insertable<Item> {
       categoryId: serializer.fromJson<String>(json['categoryId']),
       roomId: serializer.fromJson<String>(json['roomId']),
       purchaseDate: serializer.fromJson<DateTime?>(json['purchaseDate']),
-      purchasePrice: serializer.fromJson<double?>(json['purchasePrice']),
-      currentValue: serializer.fromJson<double?>(json['currentValue']),
-      replacementCost: serializer.fromJson<double?>(json['replacementCost']),
+      purchasePriceCents: serializer.fromJson<int?>(json['purchasePriceCents']),
+      currentValueCents: serializer.fromJson<int?>(json['currentValueCents']),
+      replacementCostCents: serializer.fromJson<int?>(
+        json['replacementCostCents'],
+      ),
       condition: serializer.fromJson<String?>(json['condition']),
       serialNumber: serializer.fromJson<String?>(json['serialNumber']),
       warrantyExpiration: serializer.fromJson<DateTime?>(
@@ -3905,6 +4017,10 @@ class Item extends DataClass implements Insertable<Item> {
       ),
       creatorProfileId: serializer.fromJson<String?>(json['creatorProfileId']),
       ownerProfileId: serializer.fromJson<String?>(json['ownerProfileId']),
+      brand: serializer.fromJson<String?>(json['brand']),
+      model: serializer.fromJson<String?>(json['model']),
+      asin: serializer.fromJson<String?>(json['asin']),
+      receiptId: serializer.fromJson<String?>(json['receiptId']),
     );
   }
   @override
@@ -3917,9 +4033,9 @@ class Item extends DataClass implements Insertable<Item> {
       'categoryId': serializer.toJson<String>(categoryId),
       'roomId': serializer.toJson<String>(roomId),
       'purchaseDate': serializer.toJson<DateTime?>(purchaseDate),
-      'purchasePrice': serializer.toJson<double?>(purchasePrice),
-      'currentValue': serializer.toJson<double?>(currentValue),
-      'replacementCost': serializer.toJson<double?>(replacementCost),
+      'purchasePriceCents': serializer.toJson<int?>(purchasePriceCents),
+      'currentValueCents': serializer.toJson<int?>(currentValueCents),
+      'replacementCostCents': serializer.toJson<int?>(replacementCostCents),
       'condition': serializer.toJson<String?>(condition),
       'serialNumber': serializer.toJson<String?>(serialNumber),
       'warrantyExpiration': serializer.toJson<DateTime?>(warrantyExpiration),
@@ -3938,6 +4054,10 @@ class Item extends DataClass implements Insertable<Item> {
       'lowStockThreshold': serializer.toJson<double?>(lowStockThreshold),
       'creatorProfileId': serializer.toJson<String?>(creatorProfileId),
       'ownerProfileId': serializer.toJson<String?>(ownerProfileId),
+      'brand': serializer.toJson<String?>(brand),
+      'model': serializer.toJson<String?>(model),
+      'asin': serializer.toJson<String?>(asin),
+      'receiptId': serializer.toJson<String?>(receiptId),
     };
   }
 
@@ -3948,9 +4068,9 @@ class Item extends DataClass implements Insertable<Item> {
     String? categoryId,
     String? roomId,
     Value<DateTime?> purchaseDate = const Value.absent(),
-    Value<double?> purchasePrice = const Value.absent(),
-    Value<double?> currentValue = const Value.absent(),
-    Value<double?> replacementCost = const Value.absent(),
+    Value<int?> purchasePriceCents = const Value.absent(),
+    Value<int?> currentValueCents = const Value.absent(),
+    Value<int?> replacementCostCents = const Value.absent(),
     Value<String?> condition = const Value.absent(),
     Value<String?> serialNumber = const Value.absent(),
     Value<DateTime?> warrantyExpiration = const Value.absent(),
@@ -3969,6 +4089,10 @@ class Item extends DataClass implements Insertable<Item> {
     Value<double?> lowStockThreshold = const Value.absent(),
     Value<String?> creatorProfileId = const Value.absent(),
     Value<String?> ownerProfileId = const Value.absent(),
+    Value<String?> brand = const Value.absent(),
+    Value<String?> model = const Value.absent(),
+    Value<String?> asin = const Value.absent(),
+    Value<String?> receiptId = const Value.absent(),
   }) => Item(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -3976,13 +4100,15 @@ class Item extends DataClass implements Insertable<Item> {
     categoryId: categoryId ?? this.categoryId,
     roomId: roomId ?? this.roomId,
     purchaseDate: purchaseDate.present ? purchaseDate.value : this.purchaseDate,
-    purchasePrice: purchasePrice.present
-        ? purchasePrice.value
-        : this.purchasePrice,
-    currentValue: currentValue.present ? currentValue.value : this.currentValue,
-    replacementCost: replacementCost.present
-        ? replacementCost.value
-        : this.replacementCost,
+    purchasePriceCents: purchasePriceCents.present
+        ? purchasePriceCents.value
+        : this.purchasePriceCents,
+    currentValueCents: currentValueCents.present
+        ? currentValueCents.value
+        : this.currentValueCents,
+    replacementCostCents: replacementCostCents.present
+        ? replacementCostCents.value
+        : this.replacementCostCents,
     condition: condition.present ? condition.value : this.condition,
     serialNumber: serialNumber.present ? serialNumber.value : this.serialNumber,
     warrantyExpiration: warrantyExpiration.present
@@ -4009,6 +4135,10 @@ class Item extends DataClass implements Insertable<Item> {
     ownerProfileId: ownerProfileId.present
         ? ownerProfileId.value
         : this.ownerProfileId,
+    brand: brand.present ? brand.value : this.brand,
+    model: model.present ? model.value : this.model,
+    asin: asin.present ? asin.value : this.asin,
+    receiptId: receiptId.present ? receiptId.value : this.receiptId,
   );
   Item copyWithCompanion(ItemsCompanion data) {
     return Item(
@@ -4024,15 +4154,15 @@ class Item extends DataClass implements Insertable<Item> {
       purchaseDate: data.purchaseDate.present
           ? data.purchaseDate.value
           : this.purchaseDate,
-      purchasePrice: data.purchasePrice.present
-          ? data.purchasePrice.value
-          : this.purchasePrice,
-      currentValue: data.currentValue.present
-          ? data.currentValue.value
-          : this.currentValue,
-      replacementCost: data.replacementCost.present
-          ? data.replacementCost.value
-          : this.replacementCost,
+      purchasePriceCents: data.purchasePriceCents.present
+          ? data.purchasePriceCents.value
+          : this.purchasePriceCents,
+      currentValueCents: data.currentValueCents.present
+          ? data.currentValueCents.value
+          : this.currentValueCents,
+      replacementCostCents: data.replacementCostCents.present
+          ? data.replacementCostCents.value
+          : this.replacementCostCents,
       condition: data.condition.present ? data.condition.value : this.condition,
       serialNumber: data.serialNumber.present
           ? data.serialNumber.value
@@ -4067,6 +4197,10 @@ class Item extends DataClass implements Insertable<Item> {
       ownerProfileId: data.ownerProfileId.present
           ? data.ownerProfileId.value
           : this.ownerProfileId,
+      brand: data.brand.present ? data.brand.value : this.brand,
+      model: data.model.present ? data.model.value : this.model,
+      asin: data.asin.present ? data.asin.value : this.asin,
+      receiptId: data.receiptId.present ? data.receiptId.value : this.receiptId,
     );
   }
 
@@ -4079,9 +4213,9 @@ class Item extends DataClass implements Insertable<Item> {
           ..write('categoryId: $categoryId, ')
           ..write('roomId: $roomId, ')
           ..write('purchaseDate: $purchaseDate, ')
-          ..write('purchasePrice: $purchasePrice, ')
-          ..write('currentValue: $currentValue, ')
-          ..write('replacementCost: $replacementCost, ')
+          ..write('purchasePriceCents: $purchasePriceCents, ')
+          ..write('currentValueCents: $currentValueCents, ')
+          ..write('replacementCostCents: $replacementCostCents, ')
           ..write('condition: $condition, ')
           ..write('serialNumber: $serialNumber, ')
           ..write('warrantyExpiration: $warrantyExpiration, ')
@@ -4099,7 +4233,11 @@ class Item extends DataClass implements Insertable<Item> {
           ..write('quantityUnit: $quantityUnit, ')
           ..write('lowStockThreshold: $lowStockThreshold, ')
           ..write('creatorProfileId: $creatorProfileId, ')
-          ..write('ownerProfileId: $ownerProfileId')
+          ..write('ownerProfileId: $ownerProfileId, ')
+          ..write('brand: $brand, ')
+          ..write('model: $model, ')
+          ..write('asin: $asin, ')
+          ..write('receiptId: $receiptId')
           ..write(')'))
         .toString();
   }
@@ -4112,9 +4250,9 @@ class Item extends DataClass implements Insertable<Item> {
     categoryId,
     roomId,
     purchaseDate,
-    purchasePrice,
-    currentValue,
-    replacementCost,
+    purchasePriceCents,
+    currentValueCents,
+    replacementCostCents,
     condition,
     serialNumber,
     warrantyExpiration,
@@ -4133,6 +4271,10 @@ class Item extends DataClass implements Insertable<Item> {
     lowStockThreshold,
     creatorProfileId,
     ownerProfileId,
+    brand,
+    model,
+    asin,
+    receiptId,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -4144,9 +4286,9 @@ class Item extends DataClass implements Insertable<Item> {
           other.categoryId == this.categoryId &&
           other.roomId == this.roomId &&
           other.purchaseDate == this.purchaseDate &&
-          other.purchasePrice == this.purchasePrice &&
-          other.currentValue == this.currentValue &&
-          other.replacementCost == this.replacementCost &&
+          other.purchasePriceCents == this.purchasePriceCents &&
+          other.currentValueCents == this.currentValueCents &&
+          other.replacementCostCents == this.replacementCostCents &&
           other.condition == this.condition &&
           other.serialNumber == this.serialNumber &&
           other.warrantyExpiration == this.warrantyExpiration &&
@@ -4164,7 +4306,11 @@ class Item extends DataClass implements Insertable<Item> {
           other.quantityUnit == this.quantityUnit &&
           other.lowStockThreshold == this.lowStockThreshold &&
           other.creatorProfileId == this.creatorProfileId &&
-          other.ownerProfileId == this.ownerProfileId);
+          other.ownerProfileId == this.ownerProfileId &&
+          other.brand == this.brand &&
+          other.model == this.model &&
+          other.asin == this.asin &&
+          other.receiptId == this.receiptId);
 }
 
 class ItemsCompanion extends UpdateCompanion<Item> {
@@ -4174,9 +4320,9 @@ class ItemsCompanion extends UpdateCompanion<Item> {
   final Value<String> categoryId;
   final Value<String> roomId;
   final Value<DateTime?> purchaseDate;
-  final Value<double?> purchasePrice;
-  final Value<double?> currentValue;
-  final Value<double?> replacementCost;
+  final Value<int?> purchasePriceCents;
+  final Value<int?> currentValueCents;
+  final Value<int?> replacementCostCents;
   final Value<String?> condition;
   final Value<String?> serialNumber;
   final Value<DateTime?> warrantyExpiration;
@@ -4195,6 +4341,10 @@ class ItemsCompanion extends UpdateCompanion<Item> {
   final Value<double?> lowStockThreshold;
   final Value<String?> creatorProfileId;
   final Value<String?> ownerProfileId;
+  final Value<String?> brand;
+  final Value<String?> model;
+  final Value<String?> asin;
+  final Value<String?> receiptId;
   final Value<int> rowid;
   const ItemsCompanion({
     this.id = const Value.absent(),
@@ -4203,9 +4353,9 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     this.categoryId = const Value.absent(),
     this.roomId = const Value.absent(),
     this.purchaseDate = const Value.absent(),
-    this.purchasePrice = const Value.absent(),
-    this.currentValue = const Value.absent(),
-    this.replacementCost = const Value.absent(),
+    this.purchasePriceCents = const Value.absent(),
+    this.currentValueCents = const Value.absent(),
+    this.replacementCostCents = const Value.absent(),
     this.condition = const Value.absent(),
     this.serialNumber = const Value.absent(),
     this.warrantyExpiration = const Value.absent(),
@@ -4224,6 +4374,10 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     this.lowStockThreshold = const Value.absent(),
     this.creatorProfileId = const Value.absent(),
     this.ownerProfileId = const Value.absent(),
+    this.brand = const Value.absent(),
+    this.model = const Value.absent(),
+    this.asin = const Value.absent(),
+    this.receiptId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ItemsCompanion.insert({
@@ -4233,9 +4387,9 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     required String categoryId,
     required String roomId,
     this.purchaseDate = const Value.absent(),
-    this.purchasePrice = const Value.absent(),
-    this.currentValue = const Value.absent(),
-    this.replacementCost = const Value.absent(),
+    this.purchasePriceCents = const Value.absent(),
+    this.currentValueCents = const Value.absent(),
+    this.replacementCostCents = const Value.absent(),
     this.condition = const Value.absent(),
     this.serialNumber = const Value.absent(),
     this.warrantyExpiration = const Value.absent(),
@@ -4254,6 +4408,10 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     this.lowStockThreshold = const Value.absent(),
     this.creatorProfileId = const Value.absent(),
     this.ownerProfileId = const Value.absent(),
+    this.brand = const Value.absent(),
+    this.model = const Value.absent(),
+    this.asin = const Value.absent(),
+    this.receiptId = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        name = Value(name),
@@ -4268,9 +4426,9 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     Expression<String>? categoryId,
     Expression<String>? roomId,
     Expression<DateTime>? purchaseDate,
-    Expression<double>? purchasePrice,
-    Expression<double>? currentValue,
-    Expression<double>? replacementCost,
+    Expression<int>? purchasePriceCents,
+    Expression<int>? currentValueCents,
+    Expression<int>? replacementCostCents,
     Expression<String>? condition,
     Expression<String>? serialNumber,
     Expression<DateTime>? warrantyExpiration,
@@ -4289,6 +4447,10 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     Expression<double>? lowStockThreshold,
     Expression<String>? creatorProfileId,
     Expression<String>? ownerProfileId,
+    Expression<String>? brand,
+    Expression<String>? model,
+    Expression<String>? asin,
+    Expression<String>? receiptId,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -4298,9 +4460,11 @@ class ItemsCompanion extends UpdateCompanion<Item> {
       if (categoryId != null) 'category_id': categoryId,
       if (roomId != null) 'room_id': roomId,
       if (purchaseDate != null) 'purchase_date': purchaseDate,
-      if (purchasePrice != null) 'purchase_price': purchasePrice,
-      if (currentValue != null) 'current_value': currentValue,
-      if (replacementCost != null) 'replacement_cost': replacementCost,
+      if (purchasePriceCents != null)
+        'purchase_price_cents': purchasePriceCents,
+      if (currentValueCents != null) 'current_value_cents': currentValueCents,
+      if (replacementCostCents != null)
+        'replacement_cost_cents': replacementCostCents,
       if (condition != null) 'condition': condition,
       if (serialNumber != null) 'serial_number': serialNumber,
       if (warrantyExpiration != null) 'warranty_expiration': warrantyExpiration,
@@ -4319,6 +4483,10 @@ class ItemsCompanion extends UpdateCompanion<Item> {
       if (lowStockThreshold != null) 'low_stock_threshold': lowStockThreshold,
       if (creatorProfileId != null) 'creator_profile_id': creatorProfileId,
       if (ownerProfileId != null) 'owner_profile_id': ownerProfileId,
+      if (brand != null) 'brand': brand,
+      if (model != null) 'model': model,
+      if (asin != null) 'asin': asin,
+      if (receiptId != null) 'receipt_id': receiptId,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -4330,9 +4498,9 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     Value<String>? categoryId,
     Value<String>? roomId,
     Value<DateTime?>? purchaseDate,
-    Value<double?>? purchasePrice,
-    Value<double?>? currentValue,
-    Value<double?>? replacementCost,
+    Value<int?>? purchasePriceCents,
+    Value<int?>? currentValueCents,
+    Value<int?>? replacementCostCents,
     Value<String?>? condition,
     Value<String?>? serialNumber,
     Value<DateTime?>? warrantyExpiration,
@@ -4351,6 +4519,10 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     Value<double?>? lowStockThreshold,
     Value<String?>? creatorProfileId,
     Value<String?>? ownerProfileId,
+    Value<String?>? brand,
+    Value<String?>? model,
+    Value<String?>? asin,
+    Value<String?>? receiptId,
     Value<int>? rowid,
   }) {
     return ItemsCompanion(
@@ -4360,9 +4532,9 @@ class ItemsCompanion extends UpdateCompanion<Item> {
       categoryId: categoryId ?? this.categoryId,
       roomId: roomId ?? this.roomId,
       purchaseDate: purchaseDate ?? this.purchaseDate,
-      purchasePrice: purchasePrice ?? this.purchasePrice,
-      currentValue: currentValue ?? this.currentValue,
-      replacementCost: replacementCost ?? this.replacementCost,
+      purchasePriceCents: purchasePriceCents ?? this.purchasePriceCents,
+      currentValueCents: currentValueCents ?? this.currentValueCents,
+      replacementCostCents: replacementCostCents ?? this.replacementCostCents,
       condition: condition ?? this.condition,
       serialNumber: serialNumber ?? this.serialNumber,
       warrantyExpiration: warrantyExpiration ?? this.warrantyExpiration,
@@ -4381,6 +4553,10 @@ class ItemsCompanion extends UpdateCompanion<Item> {
       lowStockThreshold: lowStockThreshold ?? this.lowStockThreshold,
       creatorProfileId: creatorProfileId ?? this.creatorProfileId,
       ownerProfileId: ownerProfileId ?? this.ownerProfileId,
+      brand: brand ?? this.brand,
+      model: model ?? this.model,
+      asin: asin ?? this.asin,
+      receiptId: receiptId ?? this.receiptId,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -4406,14 +4582,14 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     if (purchaseDate.present) {
       map['purchase_date'] = Variable<DateTime>(purchaseDate.value);
     }
-    if (purchasePrice.present) {
-      map['purchase_price'] = Variable<double>(purchasePrice.value);
+    if (purchasePriceCents.present) {
+      map['purchase_price_cents'] = Variable<int>(purchasePriceCents.value);
     }
-    if (currentValue.present) {
-      map['current_value'] = Variable<double>(currentValue.value);
+    if (currentValueCents.present) {
+      map['current_value_cents'] = Variable<int>(currentValueCents.value);
     }
-    if (replacementCost.present) {
-      map['replacement_cost'] = Variable<double>(replacementCost.value);
+    if (replacementCostCents.present) {
+      map['replacement_cost_cents'] = Variable<int>(replacementCostCents.value);
     }
     if (condition.present) {
       map['condition'] = Variable<String>(condition.value);
@@ -4469,6 +4645,18 @@ class ItemsCompanion extends UpdateCompanion<Item> {
     if (ownerProfileId.present) {
       map['owner_profile_id'] = Variable<String>(ownerProfileId.value);
     }
+    if (brand.present) {
+      map['brand'] = Variable<String>(brand.value);
+    }
+    if (model.present) {
+      map['model'] = Variable<String>(model.value);
+    }
+    if (asin.present) {
+      map['asin'] = Variable<String>(asin.value);
+    }
+    if (receiptId.present) {
+      map['receipt_id'] = Variable<String>(receiptId.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -4484,9 +4672,9 @@ class ItemsCompanion extends UpdateCompanion<Item> {
           ..write('categoryId: $categoryId, ')
           ..write('roomId: $roomId, ')
           ..write('purchaseDate: $purchaseDate, ')
-          ..write('purchasePrice: $purchasePrice, ')
-          ..write('currentValue: $currentValue, ')
-          ..write('replacementCost: $replacementCost, ')
+          ..write('purchasePriceCents: $purchasePriceCents, ')
+          ..write('currentValueCents: $currentValueCents, ')
+          ..write('replacementCostCents: $replacementCostCents, ')
           ..write('condition: $condition, ')
           ..write('serialNumber: $serialNumber, ')
           ..write('warrantyExpiration: $warrantyExpiration, ')
@@ -4505,6 +4693,10 @@ class ItemsCompanion extends UpdateCompanion<Item> {
           ..write('lowStockThreshold: $lowStockThreshold, ')
           ..write('creatorProfileId: $creatorProfileId, ')
           ..write('ownerProfileId: $ownerProfileId, ')
+          ..write('brand: $brand, ')
+          ..write('model: $model, ')
+          ..write('asin: $asin, ')
+          ..write('receiptId: $receiptId, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -5464,6 +5656,26 @@ class $PhotosTable extends Photos with TableInfo<$PhotosTable, Photo> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _bytesMeta = const VerificationMeta('bytes');
+  @override
+  late final GeneratedColumn<Uint8List> bytes = GeneratedColumn<Uint8List>(
+    'bytes',
+    aliasedName,
+    true,
+    type: DriftSqlType.blob,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _thumbBytesMeta = const VerificationMeta(
+    'thumbBytes',
+  );
+  @override
+  late final GeneratedColumn<Uint8List> thumbBytes = GeneratedColumn<Uint8List>(
+    'thumb_bytes',
+    aliasedName,
+    true,
+    type: DriftSqlType.blob,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _isPrimaryMeta = const VerificationMeta(
     'isPrimary',
   );
@@ -5562,6 +5774,8 @@ class $PhotosTable extends Photos with TableInfo<$PhotosTable, Photo> {
     id,
     itemId,
     filePath,
+    bytes,
+    thumbBytes,
     isPrimary,
     source,
     capturedAt,
@@ -5603,6 +5817,18 @@ class $PhotosTable extends Photos with TableInfo<$PhotosTable, Photo> {
       );
     } else if (isInserting) {
       context.missing(_filePathMeta);
+    }
+    if (data.containsKey('bytes')) {
+      context.handle(
+        _bytesMeta,
+        bytes.isAcceptableOrUnknown(data['bytes']!, _bytesMeta),
+      );
+    }
+    if (data.containsKey('thumb_bytes')) {
+      context.handle(
+        _thumbBytesMeta,
+        thumbBytes.isAcceptableOrUnknown(data['thumb_bytes']!, _thumbBytesMeta),
+      );
     }
     if (data.containsKey('is_primary')) {
       context.handle(
@@ -5679,6 +5905,14 @@ class $PhotosTable extends Photos with TableInfo<$PhotosTable, Photo> {
         DriftSqlType.string,
         data['${effectivePrefix}file_path'],
       )!,
+      bytes: attachedDatabase.typeMapping.read(
+        DriftSqlType.blob,
+        data['${effectivePrefix}bytes'],
+      ),
+      thumbBytes: attachedDatabase.typeMapping.read(
+        DriftSqlType.blob,
+        data['${effectivePrefix}thumb_bytes'],
+      ),
       isPrimary: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_primary'],
@@ -5723,7 +5957,17 @@ class $PhotosTable extends Photos with TableInfo<$PhotosTable, Photo> {
 class Photo extends DataClass implements Insertable<Photo> {
   final String id;
   final String itemId;
+
+  /// Legacy pre-v12 location of the photo on disk. New photos store '' here;
+  /// the bytes live in [bytes]. Kept so old JSON exports keep importing.
   final String filePath;
+
+  /// Full-size photo bytes (v12+). Null only for legacy rows whose backing
+  /// file had already vanished before the v12 backfill.
+  final Uint8List? bytes;
+
+  /// JPEG thumbnail (~200px wide) derived from [bytes]; best-effort.
+  final Uint8List? thumbBytes;
   final bool isPrimary;
   final String source;
   final DateTime capturedAt;
@@ -5736,6 +5980,8 @@ class Photo extends DataClass implements Insertable<Photo> {
     required this.id,
     required this.itemId,
     required this.filePath,
+    this.bytes,
+    this.thumbBytes,
     required this.isPrimary,
     required this.source,
     required this.capturedAt,
@@ -5751,6 +5997,12 @@ class Photo extends DataClass implements Insertable<Photo> {
     map['id'] = Variable<String>(id);
     map['item_id'] = Variable<String>(itemId);
     map['file_path'] = Variable<String>(filePath);
+    if (!nullToAbsent || bytes != null) {
+      map['bytes'] = Variable<Uint8List>(bytes);
+    }
+    if (!nullToAbsent || thumbBytes != null) {
+      map['thumb_bytes'] = Variable<Uint8List>(thumbBytes);
+    }
     map['is_primary'] = Variable<bool>(isPrimary);
     map['source'] = Variable<String>(source);
     map['captured_at'] = Variable<DateTime>(capturedAt);
@@ -5767,6 +6019,12 @@ class Photo extends DataClass implements Insertable<Photo> {
       id: Value(id),
       itemId: Value(itemId),
       filePath: Value(filePath),
+      bytes: bytes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(bytes),
+      thumbBytes: thumbBytes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(thumbBytes),
       isPrimary: Value(isPrimary),
       source: Value(source),
       capturedAt: Value(capturedAt),
@@ -5787,6 +6045,8 @@ class Photo extends DataClass implements Insertable<Photo> {
       id: serializer.fromJson<String>(json['id']),
       itemId: serializer.fromJson<String>(json['itemId']),
       filePath: serializer.fromJson<String>(json['filePath']),
+      bytes: serializer.fromJson<Uint8List?>(json['bytes']),
+      thumbBytes: serializer.fromJson<Uint8List?>(json['thumbBytes']),
       isPrimary: serializer.fromJson<bool>(json['isPrimary']),
       source: serializer.fromJson<String>(json['source']),
       capturedAt: serializer.fromJson<DateTime>(json['capturedAt']),
@@ -5804,6 +6064,8 @@ class Photo extends DataClass implements Insertable<Photo> {
       'id': serializer.toJson<String>(id),
       'itemId': serializer.toJson<String>(itemId),
       'filePath': serializer.toJson<String>(filePath),
+      'bytes': serializer.toJson<Uint8List?>(bytes),
+      'thumbBytes': serializer.toJson<Uint8List?>(thumbBytes),
       'isPrimary': serializer.toJson<bool>(isPrimary),
       'source': serializer.toJson<String>(source),
       'capturedAt': serializer.toJson<DateTime>(capturedAt),
@@ -5819,6 +6081,8 @@ class Photo extends DataClass implements Insertable<Photo> {
     String? id,
     String? itemId,
     String? filePath,
+    Value<Uint8List?> bytes = const Value.absent(),
+    Value<Uint8List?> thumbBytes = const Value.absent(),
     bool? isPrimary,
     String? source,
     DateTime? capturedAt,
@@ -5831,6 +6095,8 @@ class Photo extends DataClass implements Insertable<Photo> {
     id: id ?? this.id,
     itemId: itemId ?? this.itemId,
     filePath: filePath ?? this.filePath,
+    bytes: bytes.present ? bytes.value : this.bytes,
+    thumbBytes: thumbBytes.present ? thumbBytes.value : this.thumbBytes,
     isPrimary: isPrimary ?? this.isPrimary,
     source: source ?? this.source,
     capturedAt: capturedAt ?? this.capturedAt,
@@ -5845,6 +6111,10 @@ class Photo extends DataClass implements Insertable<Photo> {
       id: data.id.present ? data.id.value : this.id,
       itemId: data.itemId.present ? data.itemId.value : this.itemId,
       filePath: data.filePath.present ? data.filePath.value : this.filePath,
+      bytes: data.bytes.present ? data.bytes.value : this.bytes,
+      thumbBytes: data.thumbBytes.present
+          ? data.thumbBytes.value
+          : this.thumbBytes,
       isPrimary: data.isPrimary.present ? data.isPrimary.value : this.isPrimary,
       source: data.source.present ? data.source.value : this.source,
       capturedAt: data.capturedAt.present
@@ -5866,6 +6136,8 @@ class Photo extends DataClass implements Insertable<Photo> {
           ..write('id: $id, ')
           ..write('itemId: $itemId, ')
           ..write('filePath: $filePath, ')
+          ..write('bytes: $bytes, ')
+          ..write('thumbBytes: $thumbBytes, ')
           ..write('isPrimary: $isPrimary, ')
           ..write('source: $source, ')
           ..write('capturedAt: $capturedAt, ')
@@ -5883,6 +6155,8 @@ class Photo extends DataClass implements Insertable<Photo> {
     id,
     itemId,
     filePath,
+    $driftBlobEquality.hash(bytes),
+    $driftBlobEquality.hash(thumbBytes),
     isPrimary,
     source,
     capturedAt,
@@ -5899,6 +6173,8 @@ class Photo extends DataClass implements Insertable<Photo> {
           other.id == this.id &&
           other.itemId == this.itemId &&
           other.filePath == this.filePath &&
+          $driftBlobEquality.equals(other.bytes, this.bytes) &&
+          $driftBlobEquality.equals(other.thumbBytes, this.thumbBytes) &&
           other.isPrimary == this.isPrimary &&
           other.source == this.source &&
           other.capturedAt == this.capturedAt &&
@@ -5913,6 +6189,8 @@ class PhotosCompanion extends UpdateCompanion<Photo> {
   final Value<String> id;
   final Value<String> itemId;
   final Value<String> filePath;
+  final Value<Uint8List?> bytes;
+  final Value<Uint8List?> thumbBytes;
   final Value<bool> isPrimary;
   final Value<String> source;
   final Value<DateTime> capturedAt;
@@ -5926,6 +6204,8 @@ class PhotosCompanion extends UpdateCompanion<Photo> {
     this.id = const Value.absent(),
     this.itemId = const Value.absent(),
     this.filePath = const Value.absent(),
+    this.bytes = const Value.absent(),
+    this.thumbBytes = const Value.absent(),
     this.isPrimary = const Value.absent(),
     this.source = const Value.absent(),
     this.capturedAt = const Value.absent(),
@@ -5940,6 +6220,8 @@ class PhotosCompanion extends UpdateCompanion<Photo> {
     required String id,
     required String itemId,
     required String filePath,
+    this.bytes = const Value.absent(),
+    this.thumbBytes = const Value.absent(),
     this.isPrimary = const Value.absent(),
     this.source = const Value.absent(),
     required DateTime capturedAt,
@@ -5959,6 +6241,8 @@ class PhotosCompanion extends UpdateCompanion<Photo> {
     Expression<String>? id,
     Expression<String>? itemId,
     Expression<String>? filePath,
+    Expression<Uint8List>? bytes,
+    Expression<Uint8List>? thumbBytes,
     Expression<bool>? isPrimary,
     Expression<String>? source,
     Expression<DateTime>? capturedAt,
@@ -5973,6 +6257,8 @@ class PhotosCompanion extends UpdateCompanion<Photo> {
       if (id != null) 'id': id,
       if (itemId != null) 'item_id': itemId,
       if (filePath != null) 'file_path': filePath,
+      if (bytes != null) 'bytes': bytes,
+      if (thumbBytes != null) 'thumb_bytes': thumbBytes,
       if (isPrimary != null) 'is_primary': isPrimary,
       if (source != null) 'source': source,
       if (capturedAt != null) 'captured_at': capturedAt,
@@ -5989,6 +6275,8 @@ class PhotosCompanion extends UpdateCompanion<Photo> {
     Value<String>? id,
     Value<String>? itemId,
     Value<String>? filePath,
+    Value<Uint8List?>? bytes,
+    Value<Uint8List?>? thumbBytes,
     Value<bool>? isPrimary,
     Value<String>? source,
     Value<DateTime>? capturedAt,
@@ -6003,6 +6291,8 @@ class PhotosCompanion extends UpdateCompanion<Photo> {
       id: id ?? this.id,
       itemId: itemId ?? this.itemId,
       filePath: filePath ?? this.filePath,
+      bytes: bytes ?? this.bytes,
+      thumbBytes: thumbBytes ?? this.thumbBytes,
       isPrimary: isPrimary ?? this.isPrimary,
       source: source ?? this.source,
       capturedAt: capturedAt ?? this.capturedAt,
@@ -6026,6 +6316,12 @@ class PhotosCompanion extends UpdateCompanion<Photo> {
     }
     if (filePath.present) {
       map['file_path'] = Variable<String>(filePath.value);
+    }
+    if (bytes.present) {
+      map['bytes'] = Variable<Uint8List>(bytes.value);
+    }
+    if (thumbBytes.present) {
+      map['thumb_bytes'] = Variable<Uint8List>(thumbBytes.value);
     }
     if (isPrimary.present) {
       map['is_primary'] = Variable<bool>(isPrimary.value);
@@ -6063,6 +6359,8 @@ class PhotosCompanion extends UpdateCompanion<Photo> {
           ..write('id: $id, ')
           ..write('itemId: $itemId, ')
           ..write('filePath: $filePath, ')
+          ..write('bytes: $bytes, ')
+          ..write('thumbBytes: $thumbBytes, ')
           ..write('isPrimary: $isPrimary, ')
           ..write('source: $source, ')
           ..write('capturedAt: $capturedAt, ')
@@ -6114,6 +6412,17 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _photoBytesMeta = const VerificationMeta(
+    'photoBytes',
+  );
+  @override
+  late final GeneratedColumn<Uint8List> photoBytes = GeneratedColumn<Uint8List>(
+    'photo_bytes',
+    aliasedName,
+    true,
+    type: DriftSqlType.blob,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _storeNameMeta = const VerificationMeta(
     'storeName',
   );
@@ -6136,15 +6445,15 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _totalAmountMeta = const VerificationMeta(
-    'totalAmount',
+  static const VerificationMeta _totalAmountCentsMeta = const VerificationMeta(
+    'totalAmountCents',
   );
   @override
-  late final GeneratedColumn<double> totalAmount = GeneratedColumn<double>(
-    'total_amount',
+  late final GeneratedColumn<int> totalAmountCents = GeneratedColumn<int>(
+    'total_amount_cents',
     aliasedName,
     true,
-    type: DriftSqlType.double,
+    type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
   static const VerificationMeta _ocrTextMeta = const VerificationMeta(
@@ -6209,9 +6518,10 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
     id,
     itemId,
     photoPath,
+    photoBytes,
     storeName,
     purchaseDate,
-    totalAmount,
+    totalAmountCents,
     ocrText,
     nodeId,
     hlc,
@@ -6249,6 +6559,12 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
     } else if (isInserting) {
       context.missing(_photoPathMeta);
     }
+    if (data.containsKey('photo_bytes')) {
+      context.handle(
+        _photoBytesMeta,
+        photoBytes.isAcceptableOrUnknown(data['photo_bytes']!, _photoBytesMeta),
+      );
+    }
     if (data.containsKey('store_name')) {
       context.handle(
         _storeNameMeta,
@@ -6264,12 +6580,12 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
         ),
       );
     }
-    if (data.containsKey('total_amount')) {
+    if (data.containsKey('total_amount_cents')) {
       context.handle(
-        _totalAmountMeta,
-        totalAmount.isAcceptableOrUnknown(
-          data['total_amount']!,
-          _totalAmountMeta,
+        _totalAmountCentsMeta,
+        totalAmountCents.isAcceptableOrUnknown(
+          data['total_amount_cents']!,
+          _totalAmountCentsMeta,
         ),
       );
     }
@@ -6326,6 +6642,10 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
         DriftSqlType.string,
         data['${effectivePrefix}photo_path'],
       )!,
+      photoBytes: attachedDatabase.typeMapping.read(
+        DriftSqlType.blob,
+        data['${effectivePrefix}photo_bytes'],
+      ),
       storeName: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}store_name'],
@@ -6334,9 +6654,9 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}purchase_date'],
       ),
-      totalAmount: attachedDatabase.typeMapping.read(
-        DriftSqlType.double,
-        data['${effectivePrefix}total_amount'],
+      totalAmountCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}total_amount_cents'],
       ),
       ocrText: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -6370,10 +6690,17 @@ class $ReceiptsTable extends Receipts with TableInfo<$ReceiptsTable, Receipt> {
 class Receipt extends DataClass implements Insertable<Receipt> {
   final String id;
   final String? itemId;
+
+  /// Legacy pre-v12 location of the receipt photo on disk. New receipts
+  /// store '' here; the bytes live in [photoBytes].
   final String photoPath;
+
+  /// Receipt photo bytes (v12+). Null only for legacy rows whose backing
+  /// file had already vanished before the v12 backfill.
+  final Uint8List? photoBytes;
   final String? storeName;
   final DateTime? purchaseDate;
-  final double? totalAmount;
+  final int? totalAmountCents;
   final String? ocrText;
   final String nodeId;
   final String hlc;
@@ -6383,9 +6710,10 @@ class Receipt extends DataClass implements Insertable<Receipt> {
     required this.id,
     this.itemId,
     required this.photoPath,
+    this.photoBytes,
     this.storeName,
     this.purchaseDate,
-    this.totalAmount,
+    this.totalAmountCents,
     this.ocrText,
     required this.nodeId,
     required this.hlc,
@@ -6400,14 +6728,17 @@ class Receipt extends DataClass implements Insertable<Receipt> {
       map['item_id'] = Variable<String>(itemId);
     }
     map['photo_path'] = Variable<String>(photoPath);
+    if (!nullToAbsent || photoBytes != null) {
+      map['photo_bytes'] = Variable<Uint8List>(photoBytes);
+    }
     if (!nullToAbsent || storeName != null) {
       map['store_name'] = Variable<String>(storeName);
     }
     if (!nullToAbsent || purchaseDate != null) {
       map['purchase_date'] = Variable<DateTime>(purchaseDate);
     }
-    if (!nullToAbsent || totalAmount != null) {
-      map['total_amount'] = Variable<double>(totalAmount);
+    if (!nullToAbsent || totalAmountCents != null) {
+      map['total_amount_cents'] = Variable<int>(totalAmountCents);
     }
     if (!nullToAbsent || ocrText != null) {
       map['ocr_text'] = Variable<String>(ocrText);
@@ -6426,15 +6757,18 @@ class Receipt extends DataClass implements Insertable<Receipt> {
           ? const Value.absent()
           : Value(itemId),
       photoPath: Value(photoPath),
+      photoBytes: photoBytes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(photoBytes),
       storeName: storeName == null && nullToAbsent
           ? const Value.absent()
           : Value(storeName),
       purchaseDate: purchaseDate == null && nullToAbsent
           ? const Value.absent()
           : Value(purchaseDate),
-      totalAmount: totalAmount == null && nullToAbsent
+      totalAmountCents: totalAmountCents == null && nullToAbsent
           ? const Value.absent()
-          : Value(totalAmount),
+          : Value(totalAmountCents),
       ocrText: ocrText == null && nullToAbsent
           ? const Value.absent()
           : Value(ocrText),
@@ -6454,9 +6788,10 @@ class Receipt extends DataClass implements Insertable<Receipt> {
       id: serializer.fromJson<String>(json['id']),
       itemId: serializer.fromJson<String?>(json['itemId']),
       photoPath: serializer.fromJson<String>(json['photoPath']),
+      photoBytes: serializer.fromJson<Uint8List?>(json['photoBytes']),
       storeName: serializer.fromJson<String?>(json['storeName']),
       purchaseDate: serializer.fromJson<DateTime?>(json['purchaseDate']),
-      totalAmount: serializer.fromJson<double?>(json['totalAmount']),
+      totalAmountCents: serializer.fromJson<int?>(json['totalAmountCents']),
       ocrText: serializer.fromJson<String?>(json['ocrText']),
       nodeId: serializer.fromJson<String>(json['nodeId']),
       hlc: serializer.fromJson<String>(json['hlc']),
@@ -6471,9 +6806,10 @@ class Receipt extends DataClass implements Insertable<Receipt> {
       'id': serializer.toJson<String>(id),
       'itemId': serializer.toJson<String?>(itemId),
       'photoPath': serializer.toJson<String>(photoPath),
+      'photoBytes': serializer.toJson<Uint8List?>(photoBytes),
       'storeName': serializer.toJson<String?>(storeName),
       'purchaseDate': serializer.toJson<DateTime?>(purchaseDate),
-      'totalAmount': serializer.toJson<double?>(totalAmount),
+      'totalAmountCents': serializer.toJson<int?>(totalAmountCents),
       'ocrText': serializer.toJson<String?>(ocrText),
       'nodeId': serializer.toJson<String>(nodeId),
       'hlc': serializer.toJson<String>(hlc),
@@ -6486,9 +6822,10 @@ class Receipt extends DataClass implements Insertable<Receipt> {
     String? id,
     Value<String?> itemId = const Value.absent(),
     String? photoPath,
+    Value<Uint8List?> photoBytes = const Value.absent(),
     Value<String?> storeName = const Value.absent(),
     Value<DateTime?> purchaseDate = const Value.absent(),
-    Value<double?> totalAmount = const Value.absent(),
+    Value<int?> totalAmountCents = const Value.absent(),
     Value<String?> ocrText = const Value.absent(),
     String? nodeId,
     String? hlc,
@@ -6498,9 +6835,12 @@ class Receipt extends DataClass implements Insertable<Receipt> {
     id: id ?? this.id,
     itemId: itemId.present ? itemId.value : this.itemId,
     photoPath: photoPath ?? this.photoPath,
+    photoBytes: photoBytes.present ? photoBytes.value : this.photoBytes,
     storeName: storeName.present ? storeName.value : this.storeName,
     purchaseDate: purchaseDate.present ? purchaseDate.value : this.purchaseDate,
-    totalAmount: totalAmount.present ? totalAmount.value : this.totalAmount,
+    totalAmountCents: totalAmountCents.present
+        ? totalAmountCents.value
+        : this.totalAmountCents,
     ocrText: ocrText.present ? ocrText.value : this.ocrText,
     nodeId: nodeId ?? this.nodeId,
     hlc: hlc ?? this.hlc,
@@ -6512,13 +6852,16 @@ class Receipt extends DataClass implements Insertable<Receipt> {
       id: data.id.present ? data.id.value : this.id,
       itemId: data.itemId.present ? data.itemId.value : this.itemId,
       photoPath: data.photoPath.present ? data.photoPath.value : this.photoPath,
+      photoBytes: data.photoBytes.present
+          ? data.photoBytes.value
+          : this.photoBytes,
       storeName: data.storeName.present ? data.storeName.value : this.storeName,
       purchaseDate: data.purchaseDate.present
           ? data.purchaseDate.value
           : this.purchaseDate,
-      totalAmount: data.totalAmount.present
-          ? data.totalAmount.value
-          : this.totalAmount,
+      totalAmountCents: data.totalAmountCents.present
+          ? data.totalAmountCents.value
+          : this.totalAmountCents,
       ocrText: data.ocrText.present ? data.ocrText.value : this.ocrText,
       nodeId: data.nodeId.present ? data.nodeId.value : this.nodeId,
       hlc: data.hlc.present ? data.hlc.value : this.hlc,
@@ -6533,9 +6876,10 @@ class Receipt extends DataClass implements Insertable<Receipt> {
           ..write('id: $id, ')
           ..write('itemId: $itemId, ')
           ..write('photoPath: $photoPath, ')
+          ..write('photoBytes: $photoBytes, ')
           ..write('storeName: $storeName, ')
           ..write('purchaseDate: $purchaseDate, ')
-          ..write('totalAmount: $totalAmount, ')
+          ..write('totalAmountCents: $totalAmountCents, ')
           ..write('ocrText: $ocrText, ')
           ..write('nodeId: $nodeId, ')
           ..write('hlc: $hlc, ')
@@ -6550,9 +6894,10 @@ class Receipt extends DataClass implements Insertable<Receipt> {
     id,
     itemId,
     photoPath,
+    $driftBlobEquality.hash(photoBytes),
     storeName,
     purchaseDate,
-    totalAmount,
+    totalAmountCents,
     ocrText,
     nodeId,
     hlc,
@@ -6566,9 +6911,10 @@ class Receipt extends DataClass implements Insertable<Receipt> {
           other.id == this.id &&
           other.itemId == this.itemId &&
           other.photoPath == this.photoPath &&
+          $driftBlobEquality.equals(other.photoBytes, this.photoBytes) &&
           other.storeName == this.storeName &&
           other.purchaseDate == this.purchaseDate &&
-          other.totalAmount == this.totalAmount &&
+          other.totalAmountCents == this.totalAmountCents &&
           other.ocrText == this.ocrText &&
           other.nodeId == this.nodeId &&
           other.hlc == this.hlc &&
@@ -6580,9 +6926,10 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
   final Value<String> id;
   final Value<String?> itemId;
   final Value<String> photoPath;
+  final Value<Uint8List?> photoBytes;
   final Value<String?> storeName;
   final Value<DateTime?> purchaseDate;
-  final Value<double?> totalAmount;
+  final Value<int?> totalAmountCents;
   final Value<String?> ocrText;
   final Value<String> nodeId;
   final Value<String> hlc;
@@ -6593,9 +6940,10 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
     this.id = const Value.absent(),
     this.itemId = const Value.absent(),
     this.photoPath = const Value.absent(),
+    this.photoBytes = const Value.absent(),
     this.storeName = const Value.absent(),
     this.purchaseDate = const Value.absent(),
-    this.totalAmount = const Value.absent(),
+    this.totalAmountCents = const Value.absent(),
     this.ocrText = const Value.absent(),
     this.nodeId = const Value.absent(),
     this.hlc = const Value.absent(),
@@ -6607,9 +6955,10 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
     required String id,
     this.itemId = const Value.absent(),
     required String photoPath,
+    this.photoBytes = const Value.absent(),
     this.storeName = const Value.absent(),
     this.purchaseDate = const Value.absent(),
-    this.totalAmount = const Value.absent(),
+    this.totalAmountCents = const Value.absent(),
     this.ocrText = const Value.absent(),
     this.nodeId = const Value.absent(),
     this.hlc = const Value.absent(),
@@ -6623,9 +6972,10 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
     Expression<String>? id,
     Expression<String>? itemId,
     Expression<String>? photoPath,
+    Expression<Uint8List>? photoBytes,
     Expression<String>? storeName,
     Expression<DateTime>? purchaseDate,
-    Expression<double>? totalAmount,
+    Expression<int>? totalAmountCents,
     Expression<String>? ocrText,
     Expression<String>? nodeId,
     Expression<String>? hlc,
@@ -6637,9 +6987,10 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
       if (id != null) 'id': id,
       if (itemId != null) 'item_id': itemId,
       if (photoPath != null) 'photo_path': photoPath,
+      if (photoBytes != null) 'photo_bytes': photoBytes,
       if (storeName != null) 'store_name': storeName,
       if (purchaseDate != null) 'purchase_date': purchaseDate,
-      if (totalAmount != null) 'total_amount': totalAmount,
+      if (totalAmountCents != null) 'total_amount_cents': totalAmountCents,
       if (ocrText != null) 'ocr_text': ocrText,
       if (nodeId != null) 'node_id': nodeId,
       if (hlc != null) 'hlc': hlc,
@@ -6653,9 +7004,10 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
     Value<String>? id,
     Value<String?>? itemId,
     Value<String>? photoPath,
+    Value<Uint8List?>? photoBytes,
     Value<String?>? storeName,
     Value<DateTime?>? purchaseDate,
-    Value<double?>? totalAmount,
+    Value<int?>? totalAmountCents,
     Value<String?>? ocrText,
     Value<String>? nodeId,
     Value<String>? hlc,
@@ -6667,9 +7019,10 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
       id: id ?? this.id,
       itemId: itemId ?? this.itemId,
       photoPath: photoPath ?? this.photoPath,
+      photoBytes: photoBytes ?? this.photoBytes,
       storeName: storeName ?? this.storeName,
       purchaseDate: purchaseDate ?? this.purchaseDate,
-      totalAmount: totalAmount ?? this.totalAmount,
+      totalAmountCents: totalAmountCents ?? this.totalAmountCents,
       ocrText: ocrText ?? this.ocrText,
       nodeId: nodeId ?? this.nodeId,
       hlc: hlc ?? this.hlc,
@@ -6691,14 +7044,17 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
     if (photoPath.present) {
       map['photo_path'] = Variable<String>(photoPath.value);
     }
+    if (photoBytes.present) {
+      map['photo_bytes'] = Variable<Uint8List>(photoBytes.value);
+    }
     if (storeName.present) {
       map['store_name'] = Variable<String>(storeName.value);
     }
     if (purchaseDate.present) {
       map['purchase_date'] = Variable<DateTime>(purchaseDate.value);
     }
-    if (totalAmount.present) {
-      map['total_amount'] = Variable<double>(totalAmount.value);
+    if (totalAmountCents.present) {
+      map['total_amount_cents'] = Variable<int>(totalAmountCents.value);
     }
     if (ocrText.present) {
       map['ocr_text'] = Variable<String>(ocrText.value);
@@ -6727,9 +7083,10 @@ class ReceiptsCompanion extends UpdateCompanion<Receipt> {
           ..write('id: $id, ')
           ..write('itemId: $itemId, ')
           ..write('photoPath: $photoPath, ')
+          ..write('photoBytes: $photoBytes, ')
           ..write('storeName: $storeName, ')
           ..write('purchaseDate: $purchaseDate, ')
-          ..write('totalAmount: $totalAmount, ')
+          ..write('totalAmountCents: $totalAmountCents, ')
           ..write('ocrText: $ocrText, ')
           ..write('nodeId: $nodeId, ')
           ..write('hlc: $hlc, ')
@@ -6768,13 +7125,15 @@ class $PriceHistoryEntriesTable extends PriceHistoryEntries
       'REFERENCES items (id)',
     ),
   );
-  static const VerificationMeta _priceMeta = const VerificationMeta('price');
+  static const VerificationMeta _priceCentsMeta = const VerificationMeta(
+    'priceCents',
+  );
   @override
-  late final GeneratedColumn<double> price = GeneratedColumn<double>(
-    'price',
+  late final GeneratedColumn<int> priceCents = GeneratedColumn<int>(
+    'price_cents',
     aliasedName,
     false,
-    type: DriftSqlType.double,
+    type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
   static const VerificationMeta _sourceMeta = const VerificationMeta('source');
@@ -6836,7 +7195,7 @@ class $PriceHistoryEntriesTable extends PriceHistoryEntries
   List<GeneratedColumn> get $columns => [
     id,
     itemId,
-    price,
+    priceCents,
     source,
     recordedAt,
     nodeId,
@@ -6868,13 +7227,13 @@ class $PriceHistoryEntriesTable extends PriceHistoryEntries
     } else if (isInserting) {
       context.missing(_itemIdMeta);
     }
-    if (data.containsKey('price')) {
+    if (data.containsKey('price_cents')) {
       context.handle(
-        _priceMeta,
-        price.isAcceptableOrUnknown(data['price']!, _priceMeta),
+        _priceCentsMeta,
+        priceCents.isAcceptableOrUnknown(data['price_cents']!, _priceCentsMeta),
       );
     } else if (isInserting) {
-      context.missing(_priceMeta);
+      context.missing(_priceCentsMeta);
     }
     if (data.containsKey('source')) {
       context.handle(
@@ -6927,9 +7286,9 @@ class $PriceHistoryEntriesTable extends PriceHistoryEntries
         DriftSqlType.string,
         data['${effectivePrefix}item_id'],
       )!,
-      price: attachedDatabase.typeMapping.read(
-        DriftSqlType.double,
-        data['${effectivePrefix}price'],
+      priceCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}price_cents'],
       )!,
       source: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -6964,7 +7323,7 @@ class PriceHistoryEntry extends DataClass
     implements Insertable<PriceHistoryEntry> {
   final String id;
   final String itemId;
-  final double price;
+  final int priceCents;
   final String source;
   final DateTime recordedAt;
   final String nodeId;
@@ -6973,7 +7332,7 @@ class PriceHistoryEntry extends DataClass
   const PriceHistoryEntry({
     required this.id,
     required this.itemId,
-    required this.price,
+    required this.priceCents,
     required this.source,
     required this.recordedAt,
     required this.nodeId,
@@ -6985,7 +7344,7 @@ class PriceHistoryEntry extends DataClass
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['item_id'] = Variable<String>(itemId);
-    map['price'] = Variable<double>(price);
+    map['price_cents'] = Variable<int>(priceCents);
     map['source'] = Variable<String>(source);
     map['recorded_at'] = Variable<DateTime>(recordedAt);
     map['node_id'] = Variable<String>(nodeId);
@@ -6998,7 +7357,7 @@ class PriceHistoryEntry extends DataClass
     return PriceHistoryEntriesCompanion(
       id: Value(id),
       itemId: Value(itemId),
-      price: Value(price),
+      priceCents: Value(priceCents),
       source: Value(source),
       recordedAt: Value(recordedAt),
       nodeId: Value(nodeId),
@@ -7015,7 +7374,7 @@ class PriceHistoryEntry extends DataClass
     return PriceHistoryEntry(
       id: serializer.fromJson<String>(json['id']),
       itemId: serializer.fromJson<String>(json['itemId']),
-      price: serializer.fromJson<double>(json['price']),
+      priceCents: serializer.fromJson<int>(json['priceCents']),
       source: serializer.fromJson<String>(json['source']),
       recordedAt: serializer.fromJson<DateTime>(json['recordedAt']),
       nodeId: serializer.fromJson<String>(json['nodeId']),
@@ -7029,7 +7388,7 @@ class PriceHistoryEntry extends DataClass
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'itemId': serializer.toJson<String>(itemId),
-      'price': serializer.toJson<double>(price),
+      'priceCents': serializer.toJson<int>(priceCents),
       'source': serializer.toJson<String>(source),
       'recordedAt': serializer.toJson<DateTime>(recordedAt),
       'nodeId': serializer.toJson<String>(nodeId),
@@ -7041,7 +7400,7 @@ class PriceHistoryEntry extends DataClass
   PriceHistoryEntry copyWith({
     String? id,
     String? itemId,
-    double? price,
+    int? priceCents,
     String? source,
     DateTime? recordedAt,
     String? nodeId,
@@ -7050,7 +7409,7 @@ class PriceHistoryEntry extends DataClass
   }) => PriceHistoryEntry(
     id: id ?? this.id,
     itemId: itemId ?? this.itemId,
-    price: price ?? this.price,
+    priceCents: priceCents ?? this.priceCents,
     source: source ?? this.source,
     recordedAt: recordedAt ?? this.recordedAt,
     nodeId: nodeId ?? this.nodeId,
@@ -7061,7 +7420,9 @@ class PriceHistoryEntry extends DataClass
     return PriceHistoryEntry(
       id: data.id.present ? data.id.value : this.id,
       itemId: data.itemId.present ? data.itemId.value : this.itemId,
-      price: data.price.present ? data.price.value : this.price,
+      priceCents: data.priceCents.present
+          ? data.priceCents.value
+          : this.priceCents,
       source: data.source.present ? data.source.value : this.source,
       recordedAt: data.recordedAt.present
           ? data.recordedAt.value
@@ -7077,7 +7438,7 @@ class PriceHistoryEntry extends DataClass
     return (StringBuffer('PriceHistoryEntry(')
           ..write('id: $id, ')
           ..write('itemId: $itemId, ')
-          ..write('price: $price, ')
+          ..write('priceCents: $priceCents, ')
           ..write('source: $source, ')
           ..write('recordedAt: $recordedAt, ')
           ..write('nodeId: $nodeId, ')
@@ -7091,7 +7452,7 @@ class PriceHistoryEntry extends DataClass
   int get hashCode => Object.hash(
     id,
     itemId,
-    price,
+    priceCents,
     source,
     recordedAt,
     nodeId,
@@ -7104,7 +7465,7 @@ class PriceHistoryEntry extends DataClass
       (other is PriceHistoryEntry &&
           other.id == this.id &&
           other.itemId == this.itemId &&
-          other.price == this.price &&
+          other.priceCents == this.priceCents &&
           other.source == this.source &&
           other.recordedAt == this.recordedAt &&
           other.nodeId == this.nodeId &&
@@ -7115,7 +7476,7 @@ class PriceHistoryEntry extends DataClass
 class PriceHistoryEntriesCompanion extends UpdateCompanion<PriceHistoryEntry> {
   final Value<String> id;
   final Value<String> itemId;
-  final Value<double> price;
+  final Value<int> priceCents;
   final Value<String> source;
   final Value<DateTime> recordedAt;
   final Value<String> nodeId;
@@ -7125,7 +7486,7 @@ class PriceHistoryEntriesCompanion extends UpdateCompanion<PriceHistoryEntry> {
   const PriceHistoryEntriesCompanion({
     this.id = const Value.absent(),
     this.itemId = const Value.absent(),
-    this.price = const Value.absent(),
+    this.priceCents = const Value.absent(),
     this.source = const Value.absent(),
     this.recordedAt = const Value.absent(),
     this.nodeId = const Value.absent(),
@@ -7136,7 +7497,7 @@ class PriceHistoryEntriesCompanion extends UpdateCompanion<PriceHistoryEntry> {
   PriceHistoryEntriesCompanion.insert({
     required String id,
     required String itemId,
-    required double price,
+    required int priceCents,
     required String source,
     required DateTime recordedAt,
     this.nodeId = const Value.absent(),
@@ -7145,13 +7506,13 @@ class PriceHistoryEntriesCompanion extends UpdateCompanion<PriceHistoryEntry> {
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        itemId = Value(itemId),
-       price = Value(price),
+       priceCents = Value(priceCents),
        source = Value(source),
        recordedAt = Value(recordedAt);
   static Insertable<PriceHistoryEntry> custom({
     Expression<String>? id,
     Expression<String>? itemId,
-    Expression<double>? price,
+    Expression<int>? priceCents,
     Expression<String>? source,
     Expression<DateTime>? recordedAt,
     Expression<String>? nodeId,
@@ -7162,7 +7523,7 @@ class PriceHistoryEntriesCompanion extends UpdateCompanion<PriceHistoryEntry> {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (itemId != null) 'item_id': itemId,
-      if (price != null) 'price': price,
+      if (priceCents != null) 'price_cents': priceCents,
       if (source != null) 'source': source,
       if (recordedAt != null) 'recorded_at': recordedAt,
       if (nodeId != null) 'node_id': nodeId,
@@ -7175,7 +7536,7 @@ class PriceHistoryEntriesCompanion extends UpdateCompanion<PriceHistoryEntry> {
   PriceHistoryEntriesCompanion copyWith({
     Value<String>? id,
     Value<String>? itemId,
-    Value<double>? price,
+    Value<int>? priceCents,
     Value<String>? source,
     Value<DateTime>? recordedAt,
     Value<String>? nodeId,
@@ -7186,7 +7547,7 @@ class PriceHistoryEntriesCompanion extends UpdateCompanion<PriceHistoryEntry> {
     return PriceHistoryEntriesCompanion(
       id: id ?? this.id,
       itemId: itemId ?? this.itemId,
-      price: price ?? this.price,
+      priceCents: priceCents ?? this.priceCents,
       source: source ?? this.source,
       recordedAt: recordedAt ?? this.recordedAt,
       nodeId: nodeId ?? this.nodeId,
@@ -7205,8 +7566,8 @@ class PriceHistoryEntriesCompanion extends UpdateCompanion<PriceHistoryEntry> {
     if (itemId.present) {
       map['item_id'] = Variable<String>(itemId.value);
     }
-    if (price.present) {
-      map['price'] = Variable<double>(price.value);
+    if (priceCents.present) {
+      map['price_cents'] = Variable<int>(priceCents.value);
     }
     if (source.present) {
       map['source'] = Variable<String>(source.value);
@@ -7234,7 +7595,7 @@ class PriceHistoryEntriesCompanion extends UpdateCompanion<PriceHistoryEntry> {
     return (StringBuffer('PriceHistoryEntriesCompanion(')
           ..write('id: $id, ')
           ..write('itemId: $itemId, ')
-          ..write('price: $price, ')
+          ..write('priceCents: $priceCents, ')
           ..write('source: $source, ')
           ..write('recordedAt: $recordedAt, ')
           ..write('nodeId: $nodeId, ')
@@ -7296,37 +7657,36 @@ class $PoliciesTable extends Policies with TableInfo<$PoliciesTable, Policy> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _coverageAmountMeta = const VerificationMeta(
-    'coverageAmount',
-  );
+  static const VerificationMeta _coverageAmountCentsMeta =
+      const VerificationMeta('coverageAmountCents');
   @override
-  late final GeneratedColumn<double> coverageAmount = GeneratedColumn<double>(
-    'coverage_amount',
+  late final GeneratedColumn<int> coverageAmountCents = GeneratedColumn<int>(
+    'coverage_amount_cents',
     aliasedName,
     true,
-    type: DriftSqlType.double,
+    type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _deductibleMeta = const VerificationMeta(
-    'deductible',
+  static const VerificationMeta _deductibleCentsMeta = const VerificationMeta(
+    'deductibleCents',
   );
   @override
-  late final GeneratedColumn<double> deductible = GeneratedColumn<double>(
-    'deductible',
+  late final GeneratedColumn<int> deductibleCents = GeneratedColumn<int>(
+    'deductible_cents',
     aliasedName,
     true,
-    type: DriftSqlType.double,
+    type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _premiumMeta = const VerificationMeta(
-    'premium',
+  static const VerificationMeta _premiumCentsMeta = const VerificationMeta(
+    'premiumCents',
   );
   @override
-  late final GeneratedColumn<double> premium = GeneratedColumn<double>(
-    'premium',
+  late final GeneratedColumn<int> premiumCents = GeneratedColumn<int>(
+    'premium_cents',
     aliasedName,
     true,
-    type: DriftSqlType.double,
+    type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
   static const VerificationMeta _expiryDateMeta = const VerificationMeta(
@@ -7403,9 +7763,9 @@ class $PoliciesTable extends Policies with TableInfo<$PoliciesTable, Policy> {
     propertyId,
     provider,
     policyNumber,
-    coverageAmount,
-    deductible,
-    premium,
+    coverageAmountCents,
+    deductibleCents,
+    premiumCents,
     expiryDate,
     createdAt,
     modifiedAt,
@@ -7455,25 +7815,31 @@ class $PoliciesTable extends Policies with TableInfo<$PoliciesTable, Policy> {
         ),
       );
     }
-    if (data.containsKey('coverage_amount')) {
+    if (data.containsKey('coverage_amount_cents')) {
       context.handle(
-        _coverageAmountMeta,
-        coverageAmount.isAcceptableOrUnknown(
-          data['coverage_amount']!,
-          _coverageAmountMeta,
+        _coverageAmountCentsMeta,
+        coverageAmountCents.isAcceptableOrUnknown(
+          data['coverage_amount_cents']!,
+          _coverageAmountCentsMeta,
         ),
       );
     }
-    if (data.containsKey('deductible')) {
+    if (data.containsKey('deductible_cents')) {
       context.handle(
-        _deductibleMeta,
-        deductible.isAcceptableOrUnknown(data['deductible']!, _deductibleMeta),
+        _deductibleCentsMeta,
+        deductibleCents.isAcceptableOrUnknown(
+          data['deductible_cents']!,
+          _deductibleCentsMeta,
+        ),
       );
     }
-    if (data.containsKey('premium')) {
+    if (data.containsKey('premium_cents')) {
       context.handle(
-        _premiumMeta,
-        premium.isAcceptableOrUnknown(data['premium']!, _premiumMeta),
+        _premiumCentsMeta,
+        premiumCents.isAcceptableOrUnknown(
+          data['premium_cents']!,
+          _premiumCentsMeta,
+        ),
       );
     }
     if (data.containsKey('expiry_date')) {
@@ -7541,17 +7907,17 @@ class $PoliciesTable extends Policies with TableInfo<$PoliciesTable, Policy> {
         DriftSqlType.string,
         data['${effectivePrefix}policy_number'],
       ),
-      coverageAmount: attachedDatabase.typeMapping.read(
-        DriftSqlType.double,
-        data['${effectivePrefix}coverage_amount'],
+      coverageAmountCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}coverage_amount_cents'],
       ),
-      deductible: attachedDatabase.typeMapping.read(
-        DriftSqlType.double,
-        data['${effectivePrefix}deductible'],
+      deductibleCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}deductible_cents'],
       ),
-      premium: attachedDatabase.typeMapping.read(
-        DriftSqlType.double,
-        data['${effectivePrefix}premium'],
+      premiumCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}premium_cents'],
       ),
       expiryDate: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
@@ -7591,9 +7957,9 @@ class Policy extends DataClass implements Insertable<Policy> {
   final String propertyId;
   final String provider;
   final String? policyNumber;
-  final double? coverageAmount;
-  final double? deductible;
-  final double? premium;
+  final int? coverageAmountCents;
+  final int? deductibleCents;
+  final int? premiumCents;
   final DateTime? expiryDate;
   final DateTime createdAt;
   final DateTime modifiedAt;
@@ -7605,9 +7971,9 @@ class Policy extends DataClass implements Insertable<Policy> {
     required this.propertyId,
     required this.provider,
     this.policyNumber,
-    this.coverageAmount,
-    this.deductible,
-    this.premium,
+    this.coverageAmountCents,
+    this.deductibleCents,
+    this.premiumCents,
     this.expiryDate,
     required this.createdAt,
     required this.modifiedAt,
@@ -7624,14 +7990,14 @@ class Policy extends DataClass implements Insertable<Policy> {
     if (!nullToAbsent || policyNumber != null) {
       map['policy_number'] = Variable<String>(policyNumber);
     }
-    if (!nullToAbsent || coverageAmount != null) {
-      map['coverage_amount'] = Variable<double>(coverageAmount);
+    if (!nullToAbsent || coverageAmountCents != null) {
+      map['coverage_amount_cents'] = Variable<int>(coverageAmountCents);
     }
-    if (!nullToAbsent || deductible != null) {
-      map['deductible'] = Variable<double>(deductible);
+    if (!nullToAbsent || deductibleCents != null) {
+      map['deductible_cents'] = Variable<int>(deductibleCents);
     }
-    if (!nullToAbsent || premium != null) {
-      map['premium'] = Variable<double>(premium);
+    if (!nullToAbsent || premiumCents != null) {
+      map['premium_cents'] = Variable<int>(premiumCents);
     }
     if (!nullToAbsent || expiryDate != null) {
       map['expiry_date'] = Variable<DateTime>(expiryDate);
@@ -7652,15 +8018,15 @@ class Policy extends DataClass implements Insertable<Policy> {
       policyNumber: policyNumber == null && nullToAbsent
           ? const Value.absent()
           : Value(policyNumber),
-      coverageAmount: coverageAmount == null && nullToAbsent
+      coverageAmountCents: coverageAmountCents == null && nullToAbsent
           ? const Value.absent()
-          : Value(coverageAmount),
-      deductible: deductible == null && nullToAbsent
+          : Value(coverageAmountCents),
+      deductibleCents: deductibleCents == null && nullToAbsent
           ? const Value.absent()
-          : Value(deductible),
-      premium: premium == null && nullToAbsent
+          : Value(deductibleCents),
+      premiumCents: premiumCents == null && nullToAbsent
           ? const Value.absent()
-          : Value(premium),
+          : Value(premiumCents),
       expiryDate: expiryDate == null && nullToAbsent
           ? const Value.absent()
           : Value(expiryDate),
@@ -7682,9 +8048,11 @@ class Policy extends DataClass implements Insertable<Policy> {
       propertyId: serializer.fromJson<String>(json['propertyId']),
       provider: serializer.fromJson<String>(json['provider']),
       policyNumber: serializer.fromJson<String?>(json['policyNumber']),
-      coverageAmount: serializer.fromJson<double?>(json['coverageAmount']),
-      deductible: serializer.fromJson<double?>(json['deductible']),
-      premium: serializer.fromJson<double?>(json['premium']),
+      coverageAmountCents: serializer.fromJson<int?>(
+        json['coverageAmountCents'],
+      ),
+      deductibleCents: serializer.fromJson<int?>(json['deductibleCents']),
+      premiumCents: serializer.fromJson<int?>(json['premiumCents']),
       expiryDate: serializer.fromJson<DateTime?>(json['expiryDate']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       modifiedAt: serializer.fromJson<DateTime>(json['modifiedAt']),
@@ -7701,9 +8069,9 @@ class Policy extends DataClass implements Insertable<Policy> {
       'propertyId': serializer.toJson<String>(propertyId),
       'provider': serializer.toJson<String>(provider),
       'policyNumber': serializer.toJson<String?>(policyNumber),
-      'coverageAmount': serializer.toJson<double?>(coverageAmount),
-      'deductible': serializer.toJson<double?>(deductible),
-      'premium': serializer.toJson<double?>(premium),
+      'coverageAmountCents': serializer.toJson<int?>(coverageAmountCents),
+      'deductibleCents': serializer.toJson<int?>(deductibleCents),
+      'premiumCents': serializer.toJson<int?>(premiumCents),
       'expiryDate': serializer.toJson<DateTime?>(expiryDate),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'modifiedAt': serializer.toJson<DateTime>(modifiedAt),
@@ -7718,9 +8086,9 @@ class Policy extends DataClass implements Insertable<Policy> {
     String? propertyId,
     String? provider,
     Value<String?> policyNumber = const Value.absent(),
-    Value<double?> coverageAmount = const Value.absent(),
-    Value<double?> deductible = const Value.absent(),
-    Value<double?> premium = const Value.absent(),
+    Value<int?> coverageAmountCents = const Value.absent(),
+    Value<int?> deductibleCents = const Value.absent(),
+    Value<int?> premiumCents = const Value.absent(),
     Value<DateTime?> expiryDate = const Value.absent(),
     DateTime? createdAt,
     DateTime? modifiedAt,
@@ -7732,11 +8100,13 @@ class Policy extends DataClass implements Insertable<Policy> {
     propertyId: propertyId ?? this.propertyId,
     provider: provider ?? this.provider,
     policyNumber: policyNumber.present ? policyNumber.value : this.policyNumber,
-    coverageAmount: coverageAmount.present
-        ? coverageAmount.value
-        : this.coverageAmount,
-    deductible: deductible.present ? deductible.value : this.deductible,
-    premium: premium.present ? premium.value : this.premium,
+    coverageAmountCents: coverageAmountCents.present
+        ? coverageAmountCents.value
+        : this.coverageAmountCents,
+    deductibleCents: deductibleCents.present
+        ? deductibleCents.value
+        : this.deductibleCents,
+    premiumCents: premiumCents.present ? premiumCents.value : this.premiumCents,
     expiryDate: expiryDate.present ? expiryDate.value : this.expiryDate,
     createdAt: createdAt ?? this.createdAt,
     modifiedAt: modifiedAt ?? this.modifiedAt,
@@ -7754,13 +8124,15 @@ class Policy extends DataClass implements Insertable<Policy> {
       policyNumber: data.policyNumber.present
           ? data.policyNumber.value
           : this.policyNumber,
-      coverageAmount: data.coverageAmount.present
-          ? data.coverageAmount.value
-          : this.coverageAmount,
-      deductible: data.deductible.present
-          ? data.deductible.value
-          : this.deductible,
-      premium: data.premium.present ? data.premium.value : this.premium,
+      coverageAmountCents: data.coverageAmountCents.present
+          ? data.coverageAmountCents.value
+          : this.coverageAmountCents,
+      deductibleCents: data.deductibleCents.present
+          ? data.deductibleCents.value
+          : this.deductibleCents,
+      premiumCents: data.premiumCents.present
+          ? data.premiumCents.value
+          : this.premiumCents,
       expiryDate: data.expiryDate.present
           ? data.expiryDate.value
           : this.expiryDate,
@@ -7781,9 +8153,9 @@ class Policy extends DataClass implements Insertable<Policy> {
           ..write('propertyId: $propertyId, ')
           ..write('provider: $provider, ')
           ..write('policyNumber: $policyNumber, ')
-          ..write('coverageAmount: $coverageAmount, ')
-          ..write('deductible: $deductible, ')
-          ..write('premium: $premium, ')
+          ..write('coverageAmountCents: $coverageAmountCents, ')
+          ..write('deductibleCents: $deductibleCents, ')
+          ..write('premiumCents: $premiumCents, ')
           ..write('expiryDate: $expiryDate, ')
           ..write('createdAt: $createdAt, ')
           ..write('modifiedAt: $modifiedAt, ')
@@ -7800,9 +8172,9 @@ class Policy extends DataClass implements Insertable<Policy> {
     propertyId,
     provider,
     policyNumber,
-    coverageAmount,
-    deductible,
-    premium,
+    coverageAmountCents,
+    deductibleCents,
+    premiumCents,
     expiryDate,
     createdAt,
     modifiedAt,
@@ -7818,9 +8190,9 @@ class Policy extends DataClass implements Insertable<Policy> {
           other.propertyId == this.propertyId &&
           other.provider == this.provider &&
           other.policyNumber == this.policyNumber &&
-          other.coverageAmount == this.coverageAmount &&
-          other.deductible == this.deductible &&
-          other.premium == this.premium &&
+          other.coverageAmountCents == this.coverageAmountCents &&
+          other.deductibleCents == this.deductibleCents &&
+          other.premiumCents == this.premiumCents &&
           other.expiryDate == this.expiryDate &&
           other.createdAt == this.createdAt &&
           other.modifiedAt == this.modifiedAt &&
@@ -7834,9 +8206,9 @@ class PoliciesCompanion extends UpdateCompanion<Policy> {
   final Value<String> propertyId;
   final Value<String> provider;
   final Value<String?> policyNumber;
-  final Value<double?> coverageAmount;
-  final Value<double?> deductible;
-  final Value<double?> premium;
+  final Value<int?> coverageAmountCents;
+  final Value<int?> deductibleCents;
+  final Value<int?> premiumCents;
   final Value<DateTime?> expiryDate;
   final Value<DateTime> createdAt;
   final Value<DateTime> modifiedAt;
@@ -7849,9 +8221,9 @@ class PoliciesCompanion extends UpdateCompanion<Policy> {
     this.propertyId = const Value.absent(),
     this.provider = const Value.absent(),
     this.policyNumber = const Value.absent(),
-    this.coverageAmount = const Value.absent(),
-    this.deductible = const Value.absent(),
-    this.premium = const Value.absent(),
+    this.coverageAmountCents = const Value.absent(),
+    this.deductibleCents = const Value.absent(),
+    this.premiumCents = const Value.absent(),
     this.expiryDate = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.modifiedAt = const Value.absent(),
@@ -7865,9 +8237,9 @@ class PoliciesCompanion extends UpdateCompanion<Policy> {
     required String propertyId,
     required String provider,
     this.policyNumber = const Value.absent(),
-    this.coverageAmount = const Value.absent(),
-    this.deductible = const Value.absent(),
-    this.premium = const Value.absent(),
+    this.coverageAmountCents = const Value.absent(),
+    this.deductibleCents = const Value.absent(),
+    this.premiumCents = const Value.absent(),
     this.expiryDate = const Value.absent(),
     required DateTime createdAt,
     required DateTime modifiedAt,
@@ -7885,9 +8257,9 @@ class PoliciesCompanion extends UpdateCompanion<Policy> {
     Expression<String>? propertyId,
     Expression<String>? provider,
     Expression<String>? policyNumber,
-    Expression<double>? coverageAmount,
-    Expression<double>? deductible,
-    Expression<double>? premium,
+    Expression<int>? coverageAmountCents,
+    Expression<int>? deductibleCents,
+    Expression<int>? premiumCents,
     Expression<DateTime>? expiryDate,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? modifiedAt,
@@ -7901,9 +8273,10 @@ class PoliciesCompanion extends UpdateCompanion<Policy> {
       if (propertyId != null) 'property_id': propertyId,
       if (provider != null) 'provider': provider,
       if (policyNumber != null) 'policy_number': policyNumber,
-      if (coverageAmount != null) 'coverage_amount': coverageAmount,
-      if (deductible != null) 'deductible': deductible,
-      if (premium != null) 'premium': premium,
+      if (coverageAmountCents != null)
+        'coverage_amount_cents': coverageAmountCents,
+      if (deductibleCents != null) 'deductible_cents': deductibleCents,
+      if (premiumCents != null) 'premium_cents': premiumCents,
       if (expiryDate != null) 'expiry_date': expiryDate,
       if (createdAt != null) 'created_at': createdAt,
       if (modifiedAt != null) 'modified_at': modifiedAt,
@@ -7919,9 +8292,9 @@ class PoliciesCompanion extends UpdateCompanion<Policy> {
     Value<String>? propertyId,
     Value<String>? provider,
     Value<String?>? policyNumber,
-    Value<double?>? coverageAmount,
-    Value<double?>? deductible,
-    Value<double?>? premium,
+    Value<int?>? coverageAmountCents,
+    Value<int?>? deductibleCents,
+    Value<int?>? premiumCents,
     Value<DateTime?>? expiryDate,
     Value<DateTime>? createdAt,
     Value<DateTime>? modifiedAt,
@@ -7935,9 +8308,9 @@ class PoliciesCompanion extends UpdateCompanion<Policy> {
       propertyId: propertyId ?? this.propertyId,
       provider: provider ?? this.provider,
       policyNumber: policyNumber ?? this.policyNumber,
-      coverageAmount: coverageAmount ?? this.coverageAmount,
-      deductible: deductible ?? this.deductible,
-      premium: premium ?? this.premium,
+      coverageAmountCents: coverageAmountCents ?? this.coverageAmountCents,
+      deductibleCents: deductibleCents ?? this.deductibleCents,
+      premiumCents: premiumCents ?? this.premiumCents,
       expiryDate: expiryDate ?? this.expiryDate,
       createdAt: createdAt ?? this.createdAt,
       modifiedAt: modifiedAt ?? this.modifiedAt,
@@ -7963,14 +8336,14 @@ class PoliciesCompanion extends UpdateCompanion<Policy> {
     if (policyNumber.present) {
       map['policy_number'] = Variable<String>(policyNumber.value);
     }
-    if (coverageAmount.present) {
-      map['coverage_amount'] = Variable<double>(coverageAmount.value);
+    if (coverageAmountCents.present) {
+      map['coverage_amount_cents'] = Variable<int>(coverageAmountCents.value);
     }
-    if (deductible.present) {
-      map['deductible'] = Variable<double>(deductible.value);
+    if (deductibleCents.present) {
+      map['deductible_cents'] = Variable<int>(deductibleCents.value);
     }
-    if (premium.present) {
-      map['premium'] = Variable<double>(premium.value);
+    if (premiumCents.present) {
+      map['premium_cents'] = Variable<int>(premiumCents.value);
     }
     if (expiryDate.present) {
       map['expiry_date'] = Variable<DateTime>(expiryDate.value);
@@ -8003,9 +8376,9 @@ class PoliciesCompanion extends UpdateCompanion<Policy> {
           ..write('propertyId: $propertyId, ')
           ..write('provider: $provider, ')
           ..write('policyNumber: $policyNumber, ')
-          ..write('coverageAmount: $coverageAmount, ')
-          ..write('deductible: $deductible, ')
-          ..write('premium: $premium, ')
+          ..write('coverageAmountCents: $coverageAmountCents, ')
+          ..write('deductibleCents: $deductibleCents, ')
+          ..write('premiumCents: $premiumCents, ')
           ..write('expiryDate: $expiryDate, ')
           ..write('createdAt: $createdAt, ')
           ..write('modifiedAt: $modifiedAt, ')
@@ -8083,13 +8456,15 @@ class $MaintenanceLogsTable extends MaintenanceLogs
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _costMeta = const VerificationMeta('cost');
+  static const VerificationMeta _costCentsMeta = const VerificationMeta(
+    'costCents',
+  );
   @override
-  late final GeneratedColumn<double> cost = GeneratedColumn<double>(
-    'cost',
+  late final GeneratedColumn<int> costCents = GeneratedColumn<int>(
+    'cost_cents',
     aliasedName,
     true,
-    type: DriftSqlType.double,
+    type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
   static const VerificationMeta _performedAtMeta = const VerificationMeta(
@@ -8189,7 +8564,7 @@ class $MaintenanceLogsTable extends MaintenanceLogs
     propertyId,
     title,
     description,
-    cost,
+    costCents,
     performedAt,
     nextDueAt,
     servicedBy,
@@ -8245,10 +8620,10 @@ class $MaintenanceLogsTable extends MaintenanceLogs
         ),
       );
     }
-    if (data.containsKey('cost')) {
+    if (data.containsKey('cost_cents')) {
       context.handle(
-        _costMeta,
-        cost.isAcceptableOrUnknown(data['cost']!, _costMeta),
+        _costCentsMeta,
+        costCents.isAcceptableOrUnknown(data['cost_cents']!, _costCentsMeta),
       );
     }
     if (data.containsKey('performed_at')) {
@@ -8337,9 +8712,9 @@ class $MaintenanceLogsTable extends MaintenanceLogs
         DriftSqlType.string,
         data['${effectivePrefix}description'],
       ),
-      cost: attachedDatabase.typeMapping.read(
-        DriftSqlType.double,
-        data['${effectivePrefix}cost'],
+      costCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}cost_cents'],
       ),
       performedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
@@ -8388,7 +8763,7 @@ class MaintenanceLog extends DataClass implements Insertable<MaintenanceLog> {
   final String? propertyId;
   final String title;
   final String? description;
-  final double? cost;
+  final int? costCents;
   final DateTime performedAt;
   final DateTime? nextDueAt;
   final String? servicedBy;
@@ -8403,7 +8778,7 @@ class MaintenanceLog extends DataClass implements Insertable<MaintenanceLog> {
     this.propertyId,
     required this.title,
     this.description,
-    this.cost,
+    this.costCents,
     required this.performedAt,
     this.nextDueAt,
     this.servicedBy,
@@ -8427,8 +8802,8 @@ class MaintenanceLog extends DataClass implements Insertable<MaintenanceLog> {
     if (!nullToAbsent || description != null) {
       map['description'] = Variable<String>(description);
     }
-    if (!nullToAbsent || cost != null) {
-      map['cost'] = Variable<double>(cost);
+    if (!nullToAbsent || costCents != null) {
+      map['cost_cents'] = Variable<int>(costCents);
     }
     map['performed_at'] = Variable<DateTime>(performedAt);
     if (!nullToAbsent || nextDueAt != null) {
@@ -8458,7 +8833,9 @@ class MaintenanceLog extends DataClass implements Insertable<MaintenanceLog> {
       description: description == null && nullToAbsent
           ? const Value.absent()
           : Value(description),
-      cost: cost == null && nullToAbsent ? const Value.absent() : Value(cost),
+      costCents: costCents == null && nullToAbsent
+          ? const Value.absent()
+          : Value(costCents),
       performedAt: Value(performedAt),
       nextDueAt: nextDueAt == null && nullToAbsent
           ? const Value.absent()
@@ -8485,7 +8862,7 @@ class MaintenanceLog extends DataClass implements Insertable<MaintenanceLog> {
       propertyId: serializer.fromJson<String?>(json['propertyId']),
       title: serializer.fromJson<String>(json['title']),
       description: serializer.fromJson<String?>(json['description']),
-      cost: serializer.fromJson<double?>(json['cost']),
+      costCents: serializer.fromJson<int?>(json['costCents']),
       performedAt: serializer.fromJson<DateTime>(json['performedAt']),
       nextDueAt: serializer.fromJson<DateTime?>(json['nextDueAt']),
       servicedBy: serializer.fromJson<String?>(json['servicedBy']),
@@ -8505,7 +8882,7 @@ class MaintenanceLog extends DataClass implements Insertable<MaintenanceLog> {
       'propertyId': serializer.toJson<String?>(propertyId),
       'title': serializer.toJson<String>(title),
       'description': serializer.toJson<String?>(description),
-      'cost': serializer.toJson<double?>(cost),
+      'costCents': serializer.toJson<int?>(costCents),
       'performedAt': serializer.toJson<DateTime>(performedAt),
       'nextDueAt': serializer.toJson<DateTime?>(nextDueAt),
       'servicedBy': serializer.toJson<String?>(servicedBy),
@@ -8523,7 +8900,7 @@ class MaintenanceLog extends DataClass implements Insertable<MaintenanceLog> {
     Value<String?> propertyId = const Value.absent(),
     String? title,
     Value<String?> description = const Value.absent(),
-    Value<double?> cost = const Value.absent(),
+    Value<int?> costCents = const Value.absent(),
     DateTime? performedAt,
     Value<DateTime?> nextDueAt = const Value.absent(),
     Value<String?> servicedBy = const Value.absent(),
@@ -8538,7 +8915,7 @@ class MaintenanceLog extends DataClass implements Insertable<MaintenanceLog> {
     propertyId: propertyId.present ? propertyId.value : this.propertyId,
     title: title ?? this.title,
     description: description.present ? description.value : this.description,
-    cost: cost.present ? cost.value : this.cost,
+    costCents: costCents.present ? costCents.value : this.costCents,
     performedAt: performedAt ?? this.performedAt,
     nextDueAt: nextDueAt.present ? nextDueAt.value : this.nextDueAt,
     servicedBy: servicedBy.present ? servicedBy.value : this.servicedBy,
@@ -8559,7 +8936,7 @@ class MaintenanceLog extends DataClass implements Insertable<MaintenanceLog> {
       description: data.description.present
           ? data.description.value
           : this.description,
-      cost: data.cost.present ? data.cost.value : this.cost,
+      costCents: data.costCents.present ? data.costCents.value : this.costCents,
       performedAt: data.performedAt.present
           ? data.performedAt.value
           : this.performedAt,
@@ -8585,7 +8962,7 @@ class MaintenanceLog extends DataClass implements Insertable<MaintenanceLog> {
           ..write('propertyId: $propertyId, ')
           ..write('title: $title, ')
           ..write('description: $description, ')
-          ..write('cost: $cost, ')
+          ..write('costCents: $costCents, ')
           ..write('performedAt: $performedAt, ')
           ..write('nextDueAt: $nextDueAt, ')
           ..write('servicedBy: $servicedBy, ')
@@ -8605,7 +8982,7 @@ class MaintenanceLog extends DataClass implements Insertable<MaintenanceLog> {
     propertyId,
     title,
     description,
-    cost,
+    costCents,
     performedAt,
     nextDueAt,
     servicedBy,
@@ -8624,7 +9001,7 @@ class MaintenanceLog extends DataClass implements Insertable<MaintenanceLog> {
           other.propertyId == this.propertyId &&
           other.title == this.title &&
           other.description == this.description &&
-          other.cost == this.cost &&
+          other.costCents == this.costCents &&
           other.performedAt == this.performedAt &&
           other.nextDueAt == this.nextDueAt &&
           other.servicedBy == this.servicedBy &&
@@ -8641,7 +9018,7 @@ class MaintenanceLogsCompanion extends UpdateCompanion<MaintenanceLog> {
   final Value<String?> propertyId;
   final Value<String> title;
   final Value<String?> description;
-  final Value<double?> cost;
+  final Value<int?> costCents;
   final Value<DateTime> performedAt;
   final Value<DateTime?> nextDueAt;
   final Value<String?> servicedBy;
@@ -8657,7 +9034,7 @@ class MaintenanceLogsCompanion extends UpdateCompanion<MaintenanceLog> {
     this.propertyId = const Value.absent(),
     this.title = const Value.absent(),
     this.description = const Value.absent(),
-    this.cost = const Value.absent(),
+    this.costCents = const Value.absent(),
     this.performedAt = const Value.absent(),
     this.nextDueAt = const Value.absent(),
     this.servicedBy = const Value.absent(),
@@ -8674,7 +9051,7 @@ class MaintenanceLogsCompanion extends UpdateCompanion<MaintenanceLog> {
     this.propertyId = const Value.absent(),
     required String title,
     this.description = const Value.absent(),
-    this.cost = const Value.absent(),
+    this.costCents = const Value.absent(),
     required DateTime performedAt,
     this.nextDueAt = const Value.absent(),
     this.servicedBy = const Value.absent(),
@@ -8695,7 +9072,7 @@ class MaintenanceLogsCompanion extends UpdateCompanion<MaintenanceLog> {
     Expression<String>? propertyId,
     Expression<String>? title,
     Expression<String>? description,
-    Expression<double>? cost,
+    Expression<int>? costCents,
     Expression<DateTime>? performedAt,
     Expression<DateTime>? nextDueAt,
     Expression<String>? servicedBy,
@@ -8712,7 +9089,7 @@ class MaintenanceLogsCompanion extends UpdateCompanion<MaintenanceLog> {
       if (propertyId != null) 'property_id': propertyId,
       if (title != null) 'title': title,
       if (description != null) 'description': description,
-      if (cost != null) 'cost': cost,
+      if (costCents != null) 'cost_cents': costCents,
       if (performedAt != null) 'performed_at': performedAt,
       if (nextDueAt != null) 'next_due_at': nextDueAt,
       if (servicedBy != null) 'serviced_by': servicedBy,
@@ -8731,7 +9108,7 @@ class MaintenanceLogsCompanion extends UpdateCompanion<MaintenanceLog> {
     Value<String?>? propertyId,
     Value<String>? title,
     Value<String?>? description,
-    Value<double?>? cost,
+    Value<int?>? costCents,
     Value<DateTime>? performedAt,
     Value<DateTime?>? nextDueAt,
     Value<String?>? servicedBy,
@@ -8748,7 +9125,7 @@ class MaintenanceLogsCompanion extends UpdateCompanion<MaintenanceLog> {
       propertyId: propertyId ?? this.propertyId,
       title: title ?? this.title,
       description: description ?? this.description,
-      cost: cost ?? this.cost,
+      costCents: costCents ?? this.costCents,
       performedAt: performedAt ?? this.performedAt,
       nextDueAt: nextDueAt ?? this.nextDueAt,
       servicedBy: servicedBy ?? this.servicedBy,
@@ -8779,8 +9156,8 @@ class MaintenanceLogsCompanion extends UpdateCompanion<MaintenanceLog> {
     if (description.present) {
       map['description'] = Variable<String>(description.value);
     }
-    if (cost.present) {
-      map['cost'] = Variable<double>(cost.value);
+    if (costCents.present) {
+      map['cost_cents'] = Variable<int>(costCents.value);
     }
     if (performedAt.present) {
       map['performed_at'] = Variable<DateTime>(performedAt.value);
@@ -8820,7 +9197,7 @@ class MaintenanceLogsCompanion extends UpdateCompanion<MaintenanceLog> {
           ..write('propertyId: $propertyId, ')
           ..write('title: $title, ')
           ..write('description: $description, ')
-          ..write('cost: $cost, ')
+          ..write('costCents: $costCents, ')
           ..write('performedAt: $performedAt, ')
           ..write('nextDueAt: $nextDueAt, ')
           ..write('servicedBy: $servicedBy, ')
@@ -10722,13 +11099,15 @@ class $AppraisalsTable extends Appraisals
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _valueMeta = const VerificationMeta('value');
+  static const VerificationMeta _valueCentsMeta = const VerificationMeta(
+    'valueCents',
+  );
   @override
-  late final GeneratedColumn<double> value = GeneratedColumn<double>(
-    'value',
+  late final GeneratedColumn<int> valueCents = GeneratedColumn<int>(
+    'value_cents',
     aliasedName,
     false,
-    type: DriftSqlType.double,
+    type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
   static const VerificationMeta _currencyMeta = const VerificationMeta(
@@ -10852,7 +11231,7 @@ class $AppraisalsTable extends Appraisals
     id,
     itemId,
     mode,
-    value,
+    valueCents,
     currency,
     confidence,
     sourceUrls,
@@ -10897,13 +11276,13 @@ class $AppraisalsTable extends Appraisals
     } else if (isInserting) {
       context.missing(_modeMeta);
     }
-    if (data.containsKey('value')) {
+    if (data.containsKey('value_cents')) {
       context.handle(
-        _valueMeta,
-        value.isAcceptableOrUnknown(data['value']!, _valueMeta),
+        _valueCentsMeta,
+        valueCents.isAcceptableOrUnknown(data['value_cents']!, _valueCentsMeta),
       );
     } else if (isInserting) {
-      context.missing(_valueMeta);
+      context.missing(_valueCentsMeta);
     }
     if (data.containsKey('currency')) {
       context.handle(
@@ -10998,9 +11377,9 @@ class $AppraisalsTable extends Appraisals
         DriftSqlType.string,
         data['${effectivePrefix}mode'],
       )!,
-      value: attachedDatabase.typeMapping.read(
-        DriftSqlType.double,
-        data['${effectivePrefix}value'],
+      valueCents: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}value_cents'],
       )!,
       currency: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -11055,7 +11434,7 @@ class Appraisal extends DataClass implements Insertable<Appraisal> {
   final String id;
   final String itemId;
   final String mode;
-  final double value;
+  final int valueCents;
   final String currency;
   final double confidence;
   final String sourceUrls;
@@ -11070,7 +11449,7 @@ class Appraisal extends DataClass implements Insertable<Appraisal> {
     required this.id,
     required this.itemId,
     required this.mode,
-    required this.value,
+    required this.valueCents,
     required this.currency,
     required this.confidence,
     required this.sourceUrls,
@@ -11088,7 +11467,7 @@ class Appraisal extends DataClass implements Insertable<Appraisal> {
     map['id'] = Variable<String>(id);
     map['item_id'] = Variable<String>(itemId);
     map['mode'] = Variable<String>(mode);
-    map['value'] = Variable<double>(value);
+    map['value_cents'] = Variable<int>(valueCents);
     map['currency'] = Variable<String>(currency);
     map['confidence'] = Variable<double>(confidence);
     map['source_urls'] = Variable<String>(sourceUrls);
@@ -11107,7 +11486,7 @@ class Appraisal extends DataClass implements Insertable<Appraisal> {
       id: Value(id),
       itemId: Value(itemId),
       mode: Value(mode),
-      value: Value(value),
+      valueCents: Value(valueCents),
       currency: Value(currency),
       confidence: Value(confidence),
       sourceUrls: Value(sourceUrls),
@@ -11130,7 +11509,7 @@ class Appraisal extends DataClass implements Insertable<Appraisal> {
       id: serializer.fromJson<String>(json['id']),
       itemId: serializer.fromJson<String>(json['itemId']),
       mode: serializer.fromJson<String>(json['mode']),
-      value: serializer.fromJson<double>(json['value']),
+      valueCents: serializer.fromJson<int>(json['valueCents']),
       currency: serializer.fromJson<String>(json['currency']),
       confidence: serializer.fromJson<double>(json['confidence']),
       sourceUrls: serializer.fromJson<String>(json['sourceUrls']),
@@ -11150,7 +11529,7 @@ class Appraisal extends DataClass implements Insertable<Appraisal> {
       'id': serializer.toJson<String>(id),
       'itemId': serializer.toJson<String>(itemId),
       'mode': serializer.toJson<String>(mode),
-      'value': serializer.toJson<double>(value),
+      'valueCents': serializer.toJson<int>(valueCents),
       'currency': serializer.toJson<String>(currency),
       'confidence': serializer.toJson<double>(confidence),
       'sourceUrls': serializer.toJson<String>(sourceUrls),
@@ -11168,7 +11547,7 @@ class Appraisal extends DataClass implements Insertable<Appraisal> {
     String? id,
     String? itemId,
     String? mode,
-    double? value,
+    int? valueCents,
     String? currency,
     double? confidence,
     String? sourceUrls,
@@ -11183,7 +11562,7 @@ class Appraisal extends DataClass implements Insertable<Appraisal> {
     id: id ?? this.id,
     itemId: itemId ?? this.itemId,
     mode: mode ?? this.mode,
-    value: value ?? this.value,
+    valueCents: valueCents ?? this.valueCents,
     currency: currency ?? this.currency,
     confidence: confidence ?? this.confidence,
     sourceUrls: sourceUrls ?? this.sourceUrls,
@@ -11200,7 +11579,9 @@ class Appraisal extends DataClass implements Insertable<Appraisal> {
       id: data.id.present ? data.id.value : this.id,
       itemId: data.itemId.present ? data.itemId.value : this.itemId,
       mode: data.mode.present ? data.mode.value : this.mode,
-      value: data.value.present ? data.value.value : this.value,
+      valueCents: data.valueCents.present
+          ? data.valueCents.value
+          : this.valueCents,
       currency: data.currency.present ? data.currency.value : this.currency,
       confidence: data.confidence.present
           ? data.confidence.value
@@ -11228,7 +11609,7 @@ class Appraisal extends DataClass implements Insertable<Appraisal> {
           ..write('id: $id, ')
           ..write('itemId: $itemId, ')
           ..write('mode: $mode, ')
-          ..write('value: $value, ')
+          ..write('valueCents: $valueCents, ')
           ..write('currency: $currency, ')
           ..write('confidence: $confidence, ')
           ..write('sourceUrls: $sourceUrls, ')
@@ -11248,7 +11629,7 @@ class Appraisal extends DataClass implements Insertable<Appraisal> {
     id,
     itemId,
     mode,
-    value,
+    valueCents,
     currency,
     confidence,
     sourceUrls,
@@ -11267,7 +11648,7 @@ class Appraisal extends DataClass implements Insertable<Appraisal> {
           other.id == this.id &&
           other.itemId == this.itemId &&
           other.mode == this.mode &&
-          other.value == this.value &&
+          other.valueCents == this.valueCents &&
           other.currency == this.currency &&
           other.confidence == this.confidence &&
           other.sourceUrls == this.sourceUrls &&
@@ -11284,7 +11665,7 @@ class AppraisalsCompanion extends UpdateCompanion<Appraisal> {
   final Value<String> id;
   final Value<String> itemId;
   final Value<String> mode;
-  final Value<double> value;
+  final Value<int> valueCents;
   final Value<String> currency;
   final Value<double> confidence;
   final Value<String> sourceUrls;
@@ -11300,7 +11681,7 @@ class AppraisalsCompanion extends UpdateCompanion<Appraisal> {
     this.id = const Value.absent(),
     this.itemId = const Value.absent(),
     this.mode = const Value.absent(),
-    this.value = const Value.absent(),
+    this.valueCents = const Value.absent(),
     this.currency = const Value.absent(),
     this.confidence = const Value.absent(),
     this.sourceUrls = const Value.absent(),
@@ -11317,7 +11698,7 @@ class AppraisalsCompanion extends UpdateCompanion<Appraisal> {
     required String id,
     required String itemId,
     required String mode,
-    required double value,
+    required int valueCents,
     this.currency = const Value.absent(),
     this.confidence = const Value.absent(),
     this.sourceUrls = const Value.absent(),
@@ -11332,7 +11713,7 @@ class AppraisalsCompanion extends UpdateCompanion<Appraisal> {
   }) : id = Value(id),
        itemId = Value(itemId),
        mode = Value(mode),
-       value = Value(value),
+       valueCents = Value(valueCents),
        itemModelKey = Value(itemModelKey),
        queriedAt = Value(queriedAt),
        expiresAt = Value(expiresAt);
@@ -11340,7 +11721,7 @@ class AppraisalsCompanion extends UpdateCompanion<Appraisal> {
     Expression<String>? id,
     Expression<String>? itemId,
     Expression<String>? mode,
-    Expression<double>? value,
+    Expression<int>? valueCents,
     Expression<String>? currency,
     Expression<double>? confidence,
     Expression<String>? sourceUrls,
@@ -11357,7 +11738,7 @@ class AppraisalsCompanion extends UpdateCompanion<Appraisal> {
       if (id != null) 'id': id,
       if (itemId != null) 'item_id': itemId,
       if (mode != null) 'mode': mode,
-      if (value != null) 'value': value,
+      if (valueCents != null) 'value_cents': valueCents,
       if (currency != null) 'currency': currency,
       if (confidence != null) 'confidence': confidence,
       if (sourceUrls != null) 'source_urls': sourceUrls,
@@ -11376,7 +11757,7 @@ class AppraisalsCompanion extends UpdateCompanion<Appraisal> {
     Value<String>? id,
     Value<String>? itemId,
     Value<String>? mode,
-    Value<double>? value,
+    Value<int>? valueCents,
     Value<String>? currency,
     Value<double>? confidence,
     Value<String>? sourceUrls,
@@ -11393,7 +11774,7 @@ class AppraisalsCompanion extends UpdateCompanion<Appraisal> {
       id: id ?? this.id,
       itemId: itemId ?? this.itemId,
       mode: mode ?? this.mode,
-      value: value ?? this.value,
+      valueCents: valueCents ?? this.valueCents,
       currency: currency ?? this.currency,
       confidence: confidence ?? this.confidence,
       sourceUrls: sourceUrls ?? this.sourceUrls,
@@ -11420,8 +11801,8 @@ class AppraisalsCompanion extends UpdateCompanion<Appraisal> {
     if (mode.present) {
       map['mode'] = Variable<String>(mode.value);
     }
-    if (value.present) {
-      map['value'] = Variable<double>(value.value);
+    if (valueCents.present) {
+      map['value_cents'] = Variable<int>(valueCents.value);
     }
     if (currency.present) {
       map['currency'] = Variable<String>(currency.value);
@@ -11465,7 +11846,7 @@ class AppraisalsCompanion extends UpdateCompanion<Appraisal> {
           ..write('id: $id, ')
           ..write('itemId: $itemId, ')
           ..write('mode: $mode, ')
-          ..write('value: $value, ')
+          ..write('valueCents: $valueCents, ')
           ..write('currency: $currency, ')
           ..write('confidence: $confidence, ')
           ..write('sourceUrls: $sourceUrls, ')
@@ -13863,9 +14244,9 @@ typedef $$ItemsTableCreateCompanionBuilder =
       required String categoryId,
       required String roomId,
       Value<DateTime?> purchaseDate,
-      Value<double?> purchasePrice,
-      Value<double?> currentValue,
-      Value<double?> replacementCost,
+      Value<int?> purchasePriceCents,
+      Value<int?> currentValueCents,
+      Value<int?> replacementCostCents,
       Value<String?> condition,
       Value<String?> serialNumber,
       Value<DateTime?> warrantyExpiration,
@@ -13884,6 +14265,10 @@ typedef $$ItemsTableCreateCompanionBuilder =
       Value<double?> lowStockThreshold,
       Value<String?> creatorProfileId,
       Value<String?> ownerProfileId,
+      Value<String?> brand,
+      Value<String?> model,
+      Value<String?> asin,
+      Value<String?> receiptId,
       Value<int> rowid,
     });
 typedef $$ItemsTableUpdateCompanionBuilder =
@@ -13894,9 +14279,9 @@ typedef $$ItemsTableUpdateCompanionBuilder =
       Value<String> categoryId,
       Value<String> roomId,
       Value<DateTime?> purchaseDate,
-      Value<double?> purchasePrice,
-      Value<double?> currentValue,
-      Value<double?> replacementCost,
+      Value<int?> purchasePriceCents,
+      Value<int?> currentValueCents,
+      Value<int?> replacementCostCents,
       Value<String?> condition,
       Value<String?> serialNumber,
       Value<DateTime?> warrantyExpiration,
@@ -13915,6 +14300,10 @@ typedef $$ItemsTableUpdateCompanionBuilder =
       Value<double?> lowStockThreshold,
       Value<String?> creatorProfileId,
       Value<String?> ownerProfileId,
+      Value<String?> brand,
+      Value<String?> model,
+      Value<String?> asin,
+      Value<String?> receiptId,
       Value<int> rowid,
     });
 
@@ -14161,18 +14550,18 @@ class $$ItemsTableFilterComposer extends Composer<_$AppDatabase, $ItemsTable> {
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<double> get purchasePrice => $composableBuilder(
-    column: $table.purchasePrice,
+  ColumnFilters<int> get purchasePriceCents => $composableBuilder(
+    column: $table.purchasePriceCents,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<double> get currentValue => $composableBuilder(
-    column: $table.currentValue,
+  ColumnFilters<int> get currentValueCents => $composableBuilder(
+    column: $table.currentValueCents,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<double> get replacementCost => $composableBuilder(
-    column: $table.replacementCost,
+  ColumnFilters<int> get replacementCostCents => $composableBuilder(
+    column: $table.replacementCostCents,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -14253,6 +14642,26 @@ class $$ItemsTableFilterComposer extends Composer<_$AppDatabase, $ItemsTable> {
 
   ColumnFilters<double> get lowStockThreshold => $composableBuilder(
     column: $table.lowStockThreshold,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get brand => $composableBuilder(
+    column: $table.brand,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get model => $composableBuilder(
+    column: $table.model,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get asin => $composableBuilder(
+    column: $table.asin,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get receiptId => $composableBuilder(
+    column: $table.receiptId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -14553,18 +14962,18 @@ class $$ItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<double> get purchasePrice => $composableBuilder(
-    column: $table.purchasePrice,
+  ColumnOrderings<int> get purchasePriceCents => $composableBuilder(
+    column: $table.purchasePriceCents,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<double> get currentValue => $composableBuilder(
-    column: $table.currentValue,
+  ColumnOrderings<int> get currentValueCents => $composableBuilder(
+    column: $table.currentValueCents,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<double> get replacementCost => $composableBuilder(
-    column: $table.replacementCost,
+  ColumnOrderings<int> get replacementCostCents => $composableBuilder(
+    column: $table.replacementCostCents,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -14645,6 +15054,26 @@ class $$ItemsTableOrderingComposer
 
   ColumnOrderings<double> get lowStockThreshold => $composableBuilder(
     column: $table.lowStockThreshold,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get brand => $composableBuilder(
+    column: $table.brand,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get model => $composableBuilder(
+    column: $table.model,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get asin => $composableBuilder(
+    column: $table.asin,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get receiptId => $composableBuilder(
+    column: $table.receiptId,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -14766,18 +15195,18 @@ class $$ItemsTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<double> get purchasePrice => $composableBuilder(
-    column: $table.purchasePrice,
+  GeneratedColumn<int> get purchasePriceCents => $composableBuilder(
+    column: $table.purchasePriceCents,
     builder: (column) => column,
   );
 
-  GeneratedColumn<double> get currentValue => $composableBuilder(
-    column: $table.currentValue,
+  GeneratedColumn<int> get currentValueCents => $composableBuilder(
+    column: $table.currentValueCents,
     builder: (column) => column,
   );
 
-  GeneratedColumn<double> get replacementCost => $composableBuilder(
-    column: $table.replacementCost,
+  GeneratedColumn<int> get replacementCostCents => $composableBuilder(
+    column: $table.replacementCostCents,
     builder: (column) => column,
   );
 
@@ -14840,6 +15269,18 @@ class $$ItemsTableAnnotationComposer
     column: $table.lowStockThreshold,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get brand =>
+      $composableBuilder(column: $table.brand, builder: (column) => column);
+
+  GeneratedColumn<String> get model =>
+      $composableBuilder(column: $table.model, builder: (column) => column);
+
+  GeneratedColumn<String> get asin =>
+      $composableBuilder(column: $table.asin, builder: (column) => column);
+
+  GeneratedColumn<String> get receiptId =>
+      $composableBuilder(column: $table.receiptId, builder: (column) => column);
 
   $$CategoriesTableAnnotationComposer get categoryId {
     final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
@@ -15156,9 +15597,9 @@ class $$ItemsTableTableManager
                 Value<String> categoryId = const Value.absent(),
                 Value<String> roomId = const Value.absent(),
                 Value<DateTime?> purchaseDate = const Value.absent(),
-                Value<double?> purchasePrice = const Value.absent(),
-                Value<double?> currentValue = const Value.absent(),
-                Value<double?> replacementCost = const Value.absent(),
+                Value<int?> purchasePriceCents = const Value.absent(),
+                Value<int?> currentValueCents = const Value.absent(),
+                Value<int?> replacementCostCents = const Value.absent(),
                 Value<String?> condition = const Value.absent(),
                 Value<String?> serialNumber = const Value.absent(),
                 Value<DateTime?> warrantyExpiration = const Value.absent(),
@@ -15177,6 +15618,10 @@ class $$ItemsTableTableManager
                 Value<double?> lowStockThreshold = const Value.absent(),
                 Value<String?> creatorProfileId = const Value.absent(),
                 Value<String?> ownerProfileId = const Value.absent(),
+                Value<String?> brand = const Value.absent(),
+                Value<String?> model = const Value.absent(),
+                Value<String?> asin = const Value.absent(),
+                Value<String?> receiptId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ItemsCompanion(
                 id: id,
@@ -15185,9 +15630,9 @@ class $$ItemsTableTableManager
                 categoryId: categoryId,
                 roomId: roomId,
                 purchaseDate: purchaseDate,
-                purchasePrice: purchasePrice,
-                currentValue: currentValue,
-                replacementCost: replacementCost,
+                purchasePriceCents: purchasePriceCents,
+                currentValueCents: currentValueCents,
+                replacementCostCents: replacementCostCents,
                 condition: condition,
                 serialNumber: serialNumber,
                 warrantyExpiration: warrantyExpiration,
@@ -15206,6 +15651,10 @@ class $$ItemsTableTableManager
                 lowStockThreshold: lowStockThreshold,
                 creatorProfileId: creatorProfileId,
                 ownerProfileId: ownerProfileId,
+                brand: brand,
+                model: model,
+                asin: asin,
+                receiptId: receiptId,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -15216,9 +15665,9 @@ class $$ItemsTableTableManager
                 required String categoryId,
                 required String roomId,
                 Value<DateTime?> purchaseDate = const Value.absent(),
-                Value<double?> purchasePrice = const Value.absent(),
-                Value<double?> currentValue = const Value.absent(),
-                Value<double?> replacementCost = const Value.absent(),
+                Value<int?> purchasePriceCents = const Value.absent(),
+                Value<int?> currentValueCents = const Value.absent(),
+                Value<int?> replacementCostCents = const Value.absent(),
                 Value<String?> condition = const Value.absent(),
                 Value<String?> serialNumber = const Value.absent(),
                 Value<DateTime?> warrantyExpiration = const Value.absent(),
@@ -15237,6 +15686,10 @@ class $$ItemsTableTableManager
                 Value<double?> lowStockThreshold = const Value.absent(),
                 Value<String?> creatorProfileId = const Value.absent(),
                 Value<String?> ownerProfileId = const Value.absent(),
+                Value<String?> brand = const Value.absent(),
+                Value<String?> model = const Value.absent(),
+                Value<String?> asin = const Value.absent(),
+                Value<String?> receiptId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ItemsCompanion.insert(
                 id: id,
@@ -15245,9 +15698,9 @@ class $$ItemsTableTableManager
                 categoryId: categoryId,
                 roomId: roomId,
                 purchaseDate: purchaseDate,
-                purchasePrice: purchasePrice,
-                currentValue: currentValue,
-                replacementCost: replacementCost,
+                purchasePriceCents: purchasePriceCents,
+                currentValueCents: currentValueCents,
+                replacementCostCents: replacementCostCents,
                 condition: condition,
                 serialNumber: serialNumber,
                 warrantyExpiration: warrantyExpiration,
@@ -15266,6 +15719,10 @@ class $$ItemsTableTableManager
                 lowStockThreshold: lowStockThreshold,
                 creatorProfileId: creatorProfileId,
                 ownerProfileId: ownerProfileId,
+                brand: brand,
+                model: model,
+                asin: asin,
+                receiptId: receiptId,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -16303,6 +16760,8 @@ typedef $$PhotosTableCreateCompanionBuilder =
       required String id,
       required String itemId,
       required String filePath,
+      Value<Uint8List?> bytes,
+      Value<Uint8List?> thumbBytes,
       Value<bool> isPrimary,
       Value<String> source,
       required DateTime capturedAt,
@@ -16318,6 +16777,8 @@ typedef $$PhotosTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> itemId,
       Value<String> filePath,
+      Value<Uint8List?> bytes,
+      Value<Uint8List?> thumbBytes,
       Value<bool> isPrimary,
       Value<String> source,
       Value<DateTime> capturedAt,
@@ -16367,6 +16828,16 @@ class $$PhotosTableFilterComposer
 
   ColumnFilters<String> get filePath => $composableBuilder(
     column: $table.filePath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<Uint8List> get bytes => $composableBuilder(
+    column: $table.bytes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<Uint8List> get thumbBytes => $composableBuilder(
+    column: $table.thumbBytes,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -16453,6 +16924,16 @@ class $$PhotosTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<Uint8List> get bytes => $composableBuilder(
+    column: $table.bytes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<Uint8List> get thumbBytes => $composableBuilder(
+    column: $table.thumbBytes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get isPrimary => $composableBuilder(
     column: $table.isPrimary,
     builder: (column) => ColumnOrderings(column),
@@ -16531,6 +17012,14 @@ class $$PhotosTableAnnotationComposer
 
   GeneratedColumn<String> get filePath =>
       $composableBuilder(column: $table.filePath, builder: (column) => column);
+
+  GeneratedColumn<Uint8List> get bytes =>
+      $composableBuilder(column: $table.bytes, builder: (column) => column);
+
+  GeneratedColumn<Uint8List> get thumbBytes => $composableBuilder(
+    column: $table.thumbBytes,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<bool> get isPrimary =>
       $composableBuilder(column: $table.isPrimary, builder: (column) => column);
@@ -16615,6 +17104,8 @@ class $$PhotosTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> itemId = const Value.absent(),
                 Value<String> filePath = const Value.absent(),
+                Value<Uint8List?> bytes = const Value.absent(),
+                Value<Uint8List?> thumbBytes = const Value.absent(),
                 Value<bool> isPrimary = const Value.absent(),
                 Value<String> source = const Value.absent(),
                 Value<DateTime> capturedAt = const Value.absent(),
@@ -16628,6 +17119,8 @@ class $$PhotosTableTableManager
                 id: id,
                 itemId: itemId,
                 filePath: filePath,
+                bytes: bytes,
+                thumbBytes: thumbBytes,
                 isPrimary: isPrimary,
                 source: source,
                 capturedAt: capturedAt,
@@ -16643,6 +17136,8 @@ class $$PhotosTableTableManager
                 required String id,
                 required String itemId,
                 required String filePath,
+                Value<Uint8List?> bytes = const Value.absent(),
+                Value<Uint8List?> thumbBytes = const Value.absent(),
                 Value<bool> isPrimary = const Value.absent(),
                 Value<String> source = const Value.absent(),
                 required DateTime capturedAt,
@@ -16656,6 +17151,8 @@ class $$PhotosTableTableManager
                 id: id,
                 itemId: itemId,
                 filePath: filePath,
+                bytes: bytes,
+                thumbBytes: thumbBytes,
                 isPrimary: isPrimary,
                 source: source,
                 capturedAt: capturedAt,
@@ -16736,9 +17233,10 @@ typedef $$ReceiptsTableCreateCompanionBuilder =
       required String id,
       Value<String?> itemId,
       required String photoPath,
+      Value<Uint8List?> photoBytes,
       Value<String?> storeName,
       Value<DateTime?> purchaseDate,
-      Value<double?> totalAmount,
+      Value<int?> totalAmountCents,
       Value<String?> ocrText,
       Value<String> nodeId,
       Value<String> hlc,
@@ -16751,9 +17249,10 @@ typedef $$ReceiptsTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String?> itemId,
       Value<String> photoPath,
+      Value<Uint8List?> photoBytes,
       Value<String?> storeName,
       Value<DateTime?> purchaseDate,
-      Value<double?> totalAmount,
+      Value<int?> totalAmountCents,
       Value<String?> ocrText,
       Value<String> nodeId,
       Value<String> hlc,
@@ -16804,6 +17303,11 @@ class $$ReceiptsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<Uint8List> get photoBytes => $composableBuilder(
+    column: $table.photoBytes,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<String> get storeName => $composableBuilder(
     column: $table.storeName,
     builder: (column) => ColumnFilters(column),
@@ -16814,8 +17318,8 @@ class $$ReceiptsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<double> get totalAmount => $composableBuilder(
-    column: $table.totalAmount,
+  ColumnFilters<int> get totalAmountCents => $composableBuilder(
+    column: $table.totalAmountCents,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -16887,6 +17391,11 @@ class $$ReceiptsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<Uint8List> get photoBytes => $composableBuilder(
+    column: $table.photoBytes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get storeName => $composableBuilder(
     column: $table.storeName,
     builder: (column) => ColumnOrderings(column),
@@ -16897,8 +17406,8 @@ class $$ReceiptsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<double> get totalAmount => $composableBuilder(
-    column: $table.totalAmount,
+  ColumnOrderings<int> get totalAmountCents => $composableBuilder(
+    column: $table.totalAmountCents,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -16966,6 +17475,11 @@ class $$ReceiptsTableAnnotationComposer
   GeneratedColumn<String> get photoPath =>
       $composableBuilder(column: $table.photoPath, builder: (column) => column);
 
+  GeneratedColumn<Uint8List> get photoBytes => $composableBuilder(
+    column: $table.photoBytes,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get storeName =>
       $composableBuilder(column: $table.storeName, builder: (column) => column);
 
@@ -16974,8 +17488,8 @@ class $$ReceiptsTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<double> get totalAmount => $composableBuilder(
-    column: $table.totalAmount,
+  GeneratedColumn<int> get totalAmountCents => $composableBuilder(
+    column: $table.totalAmountCents,
     builder: (column) => column,
   );
 
@@ -17049,9 +17563,10 @@ class $$ReceiptsTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String?> itemId = const Value.absent(),
                 Value<String> photoPath = const Value.absent(),
+                Value<Uint8List?> photoBytes = const Value.absent(),
                 Value<String?> storeName = const Value.absent(),
                 Value<DateTime?> purchaseDate = const Value.absent(),
-                Value<double?> totalAmount = const Value.absent(),
+                Value<int?> totalAmountCents = const Value.absent(),
                 Value<String?> ocrText = const Value.absent(),
                 Value<String> nodeId = const Value.absent(),
                 Value<String> hlc = const Value.absent(),
@@ -17062,9 +17577,10 @@ class $$ReceiptsTableTableManager
                 id: id,
                 itemId: itemId,
                 photoPath: photoPath,
+                photoBytes: photoBytes,
                 storeName: storeName,
                 purchaseDate: purchaseDate,
-                totalAmount: totalAmount,
+                totalAmountCents: totalAmountCents,
                 ocrText: ocrText,
                 nodeId: nodeId,
                 hlc: hlc,
@@ -17077,9 +17593,10 @@ class $$ReceiptsTableTableManager
                 required String id,
                 Value<String?> itemId = const Value.absent(),
                 required String photoPath,
+                Value<Uint8List?> photoBytes = const Value.absent(),
                 Value<String?> storeName = const Value.absent(),
                 Value<DateTime?> purchaseDate = const Value.absent(),
-                Value<double?> totalAmount = const Value.absent(),
+                Value<int?> totalAmountCents = const Value.absent(),
                 Value<String?> ocrText = const Value.absent(),
                 Value<String> nodeId = const Value.absent(),
                 Value<String> hlc = const Value.absent(),
@@ -17090,9 +17607,10 @@ class $$ReceiptsTableTableManager
                 id: id,
                 itemId: itemId,
                 photoPath: photoPath,
+                photoBytes: photoBytes,
                 storeName: storeName,
                 purchaseDate: purchaseDate,
-                totalAmount: totalAmount,
+                totalAmountCents: totalAmountCents,
                 ocrText: ocrText,
                 nodeId: nodeId,
                 hlc: hlc,
@@ -17171,7 +17689,7 @@ typedef $$PriceHistoryEntriesTableCreateCompanionBuilder =
     PriceHistoryEntriesCompanion Function({
       required String id,
       required String itemId,
-      required double price,
+      required int priceCents,
       required String source,
       required DateTime recordedAt,
       Value<String> nodeId,
@@ -17183,7 +17701,7 @@ typedef $$PriceHistoryEntriesTableUpdateCompanionBuilder =
     PriceHistoryEntriesCompanion Function({
       Value<String> id,
       Value<String> itemId,
-      Value<double> price,
+      Value<int> priceCents,
       Value<String> source,
       Value<DateTime> recordedAt,
       Value<String> nodeId,
@@ -17238,8 +17756,8 @@ class $$PriceHistoryEntriesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<double> get price => $composableBuilder(
-    column: $table.price,
+  ColumnFilters<int> get priceCents => $composableBuilder(
+    column: $table.priceCents,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -17306,8 +17824,8 @@ class $$PriceHistoryEntriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<double> get price => $composableBuilder(
-    column: $table.price,
+  ColumnOrderings<int> get priceCents => $composableBuilder(
+    column: $table.priceCents,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -17372,8 +17890,10 @@ class $$PriceHistoryEntriesTableAnnotationComposer
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumn<double> get price =>
-      $composableBuilder(column: $table.price, builder: (column) => column);
+  GeneratedColumn<int> get priceCents => $composableBuilder(
+    column: $table.priceCents,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get source =>
       $composableBuilder(column: $table.source, builder: (column) => column);
@@ -17454,7 +17974,7 @@ class $$PriceHistoryEntriesTableTableManager
               ({
                 Value<String> id = const Value.absent(),
                 Value<String> itemId = const Value.absent(),
-                Value<double> price = const Value.absent(),
+                Value<int> priceCents = const Value.absent(),
                 Value<String> source = const Value.absent(),
                 Value<DateTime> recordedAt = const Value.absent(),
                 Value<String> nodeId = const Value.absent(),
@@ -17464,7 +17984,7 @@ class $$PriceHistoryEntriesTableTableManager
               }) => PriceHistoryEntriesCompanion(
                 id: id,
                 itemId: itemId,
-                price: price,
+                priceCents: priceCents,
                 source: source,
                 recordedAt: recordedAt,
                 nodeId: nodeId,
@@ -17476,7 +17996,7 @@ class $$PriceHistoryEntriesTableTableManager
               ({
                 required String id,
                 required String itemId,
-                required double price,
+                required int priceCents,
                 required String source,
                 required DateTime recordedAt,
                 Value<String> nodeId = const Value.absent(),
@@ -17486,7 +18006,7 @@ class $$PriceHistoryEntriesTableTableManager
               }) => PriceHistoryEntriesCompanion.insert(
                 id: id,
                 itemId: itemId,
-                price: price,
+                priceCents: priceCents,
                 source: source,
                 recordedAt: recordedAt,
                 nodeId: nodeId,
@@ -17569,9 +18089,9 @@ typedef $$PoliciesTableCreateCompanionBuilder =
       required String propertyId,
       required String provider,
       Value<String?> policyNumber,
-      Value<double?> coverageAmount,
-      Value<double?> deductible,
-      Value<double?> premium,
+      Value<int?> coverageAmountCents,
+      Value<int?> deductibleCents,
+      Value<int?> premiumCents,
       Value<DateTime?> expiryDate,
       required DateTime createdAt,
       required DateTime modifiedAt,
@@ -17586,9 +18106,9 @@ typedef $$PoliciesTableUpdateCompanionBuilder =
       Value<String> propertyId,
       Value<String> provider,
       Value<String?> policyNumber,
-      Value<double?> coverageAmount,
-      Value<double?> deductible,
-      Value<double?> premium,
+      Value<int?> coverageAmountCents,
+      Value<int?> deductibleCents,
+      Value<int?> premiumCents,
       Value<DateTime?> expiryDate,
       Value<DateTime> createdAt,
       Value<DateTime> modifiedAt,
@@ -17646,18 +18166,18 @@ class $$PoliciesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<double> get coverageAmount => $composableBuilder(
-    column: $table.coverageAmount,
+  ColumnFilters<int> get coverageAmountCents => $composableBuilder(
+    column: $table.coverageAmountCents,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<double> get deductible => $composableBuilder(
-    column: $table.deductible,
+  ColumnFilters<int> get deductibleCents => $composableBuilder(
+    column: $table.deductibleCents,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<double> get premium => $composableBuilder(
-    column: $table.premium,
+  ColumnFilters<int> get premiumCents => $composableBuilder(
+    column: $table.premiumCents,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -17739,18 +18259,18 @@ class $$PoliciesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<double> get coverageAmount => $composableBuilder(
-    column: $table.coverageAmount,
+  ColumnOrderings<int> get coverageAmountCents => $composableBuilder(
+    column: $table.coverageAmountCents,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<double> get deductible => $composableBuilder(
-    column: $table.deductible,
+  ColumnOrderings<int> get deductibleCents => $composableBuilder(
+    column: $table.deductibleCents,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<double> get premium => $composableBuilder(
-    column: $table.premium,
+  ColumnOrderings<int> get premiumCents => $composableBuilder(
+    column: $table.premiumCents,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -17828,18 +18348,20 @@ class $$PoliciesTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<double> get coverageAmount => $composableBuilder(
-    column: $table.coverageAmount,
+  GeneratedColumn<int> get coverageAmountCents => $composableBuilder(
+    column: $table.coverageAmountCents,
     builder: (column) => column,
   );
 
-  GeneratedColumn<double> get deductible => $composableBuilder(
-    column: $table.deductible,
+  GeneratedColumn<int> get deductibleCents => $composableBuilder(
+    column: $table.deductibleCents,
     builder: (column) => column,
   );
 
-  GeneratedColumn<double> get premium =>
-      $composableBuilder(column: $table.premium, builder: (column) => column);
+  GeneratedColumn<int> get premiumCents => $composableBuilder(
+    column: $table.premiumCents,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get expiryDate => $composableBuilder(
     column: $table.expiryDate,
@@ -17919,9 +18441,9 @@ class $$PoliciesTableTableManager
                 Value<String> propertyId = const Value.absent(),
                 Value<String> provider = const Value.absent(),
                 Value<String?> policyNumber = const Value.absent(),
-                Value<double?> coverageAmount = const Value.absent(),
-                Value<double?> deductible = const Value.absent(),
-                Value<double?> premium = const Value.absent(),
+                Value<int?> coverageAmountCents = const Value.absent(),
+                Value<int?> deductibleCents = const Value.absent(),
+                Value<int?> premiumCents = const Value.absent(),
                 Value<DateTime?> expiryDate = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> modifiedAt = const Value.absent(),
@@ -17934,9 +18456,9 @@ class $$PoliciesTableTableManager
                 propertyId: propertyId,
                 provider: provider,
                 policyNumber: policyNumber,
-                coverageAmount: coverageAmount,
-                deductible: deductible,
-                premium: premium,
+                coverageAmountCents: coverageAmountCents,
+                deductibleCents: deductibleCents,
+                premiumCents: premiumCents,
                 expiryDate: expiryDate,
                 createdAt: createdAt,
                 modifiedAt: modifiedAt,
@@ -17951,9 +18473,9 @@ class $$PoliciesTableTableManager
                 required String propertyId,
                 required String provider,
                 Value<String?> policyNumber = const Value.absent(),
-                Value<double?> coverageAmount = const Value.absent(),
-                Value<double?> deductible = const Value.absent(),
-                Value<double?> premium = const Value.absent(),
+                Value<int?> coverageAmountCents = const Value.absent(),
+                Value<int?> deductibleCents = const Value.absent(),
+                Value<int?> premiumCents = const Value.absent(),
                 Value<DateTime?> expiryDate = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime modifiedAt,
@@ -17966,9 +18488,9 @@ class $$PoliciesTableTableManager
                 propertyId: propertyId,
                 provider: provider,
                 policyNumber: policyNumber,
-                coverageAmount: coverageAmount,
-                deductible: deductible,
-                premium: premium,
+                coverageAmountCents: coverageAmountCents,
+                deductibleCents: deductibleCents,
+                premiumCents: premiumCents,
                 expiryDate: expiryDate,
                 createdAt: createdAt,
                 modifiedAt: modifiedAt,
@@ -18051,7 +18573,7 @@ typedef $$MaintenanceLogsTableCreateCompanionBuilder =
       Value<String?> propertyId,
       required String title,
       Value<String?> description,
-      Value<double?> cost,
+      Value<int?> costCents,
       required DateTime performedAt,
       Value<DateTime?> nextDueAt,
       Value<String?> servicedBy,
@@ -18069,7 +18591,7 @@ typedef $$MaintenanceLogsTableUpdateCompanionBuilder =
       Value<String?> propertyId,
       Value<String> title,
       Value<String?> description,
-      Value<double?> cost,
+      Value<int?> costCents,
       Value<DateTime> performedAt,
       Value<DateTime?> nextDueAt,
       Value<String?> servicedBy,
@@ -18152,8 +18674,8 @@ class $$MaintenanceLogsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<double> get cost => $composableBuilder(
-    column: $table.cost,
+  ColumnFilters<int> get costCents => $composableBuilder(
+    column: $table.costCents,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -18268,8 +18790,8 @@ class $$MaintenanceLogsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<double> get cost => $composableBuilder(
-    column: $table.cost,
+  ColumnOrderings<int> get costCents => $composableBuilder(
+    column: $table.costCents,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -18380,8 +18902,8 @@ class $$MaintenanceLogsTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<double> get cost =>
-      $composableBuilder(column: $table.cost, builder: (column) => column);
+  GeneratedColumn<int> get costCents =>
+      $composableBuilder(column: $table.costCents, builder: (column) => column);
 
   GeneratedColumn<DateTime> get performedAt => $composableBuilder(
     column: $table.performedAt,
@@ -18495,7 +19017,7 @@ class $$MaintenanceLogsTableTableManager
                 Value<String?> propertyId = const Value.absent(),
                 Value<String> title = const Value.absent(),
                 Value<String?> description = const Value.absent(),
-                Value<double?> cost = const Value.absent(),
+                Value<int?> costCents = const Value.absent(),
                 Value<DateTime> performedAt = const Value.absent(),
                 Value<DateTime?> nextDueAt = const Value.absent(),
                 Value<String?> servicedBy = const Value.absent(),
@@ -18511,7 +19033,7 @@ class $$MaintenanceLogsTableTableManager
                 propertyId: propertyId,
                 title: title,
                 description: description,
-                cost: cost,
+                costCents: costCents,
                 performedAt: performedAt,
                 nextDueAt: nextDueAt,
                 servicedBy: servicedBy,
@@ -18529,7 +19051,7 @@ class $$MaintenanceLogsTableTableManager
                 Value<String?> propertyId = const Value.absent(),
                 required String title,
                 Value<String?> description = const Value.absent(),
-                Value<double?> cost = const Value.absent(),
+                Value<int?> costCents = const Value.absent(),
                 required DateTime performedAt,
                 Value<DateTime?> nextDueAt = const Value.absent(),
                 Value<String?> servicedBy = const Value.absent(),
@@ -18545,7 +19067,7 @@ class $$MaintenanceLogsTableTableManager
                 propertyId: propertyId,
                 title: title,
                 description: description,
-                cost: cost,
+                costCents: costCents,
                 performedAt: performedAt,
                 nextDueAt: nextDueAt,
                 servicedBy: servicedBy,
@@ -19677,7 +20199,7 @@ typedef $$AppraisalsTableCreateCompanionBuilder =
       required String id,
       required String itemId,
       required String mode,
-      required double value,
+      required int valueCents,
       Value<String> currency,
       Value<double> confidence,
       Value<String> sourceUrls,
@@ -19695,7 +20217,7 @@ typedef $$AppraisalsTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> itemId,
       Value<String> mode,
-      Value<double> value,
+      Value<int> valueCents,
       Value<String> currency,
       Value<double> confidence,
       Value<String> sourceUrls,
@@ -19751,8 +20273,8 @@ class $$AppraisalsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<double> get value => $composableBuilder(
-    column: $table.value,
+  ColumnFilters<int> get valueCents => $composableBuilder(
+    column: $table.valueCents,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -19849,8 +20371,8 @@ class $$AppraisalsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<double> get value => $composableBuilder(
-    column: $table.value,
+  ColumnOrderings<int> get valueCents => $composableBuilder(
+    column: $table.valueCents,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -19943,8 +20465,10 @@ class $$AppraisalsTableAnnotationComposer
   GeneratedColumn<String> get mode =>
       $composableBuilder(column: $table.mode, builder: (column) => column);
 
-  GeneratedColumn<double> get value =>
-      $composableBuilder(column: $table.value, builder: (column) => column);
+  GeneratedColumn<int> get valueCents => $composableBuilder(
+    column: $table.valueCents,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get currency =>
       $composableBuilder(column: $table.currency, builder: (column) => column);
@@ -20039,7 +20563,7 @@ class $$AppraisalsTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> itemId = const Value.absent(),
                 Value<String> mode = const Value.absent(),
-                Value<double> value = const Value.absent(),
+                Value<int> valueCents = const Value.absent(),
                 Value<String> currency = const Value.absent(),
                 Value<double> confidence = const Value.absent(),
                 Value<String> sourceUrls = const Value.absent(),
@@ -20055,7 +20579,7 @@ class $$AppraisalsTableTableManager
                 id: id,
                 itemId: itemId,
                 mode: mode,
-                value: value,
+                valueCents: valueCents,
                 currency: currency,
                 confidence: confidence,
                 sourceUrls: sourceUrls,
@@ -20073,7 +20597,7 @@ class $$AppraisalsTableTableManager
                 required String id,
                 required String itemId,
                 required String mode,
-                required double value,
+                required int valueCents,
                 Value<String> currency = const Value.absent(),
                 Value<double> confidence = const Value.absent(),
                 Value<String> sourceUrls = const Value.absent(),
@@ -20089,7 +20613,7 @@ class $$AppraisalsTableTableManager
                 id: id,
                 itemId: itemId,
                 mode: mode,
-                value: value,
+                valueCents: valueCents,
                 currency: currency,
                 confidence: confidence,
                 sourceUrls: sourceUrls,

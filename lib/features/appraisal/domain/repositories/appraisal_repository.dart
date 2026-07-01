@@ -21,6 +21,12 @@ abstract class AppraisalRepository {
   /// Inserts or replaces an appraisal row.
   Future<Result<Appraisal>> save(Appraisal a);
 
+  /// Writes the appraised value onto the item — explicit, user-initiated,
+  /// never automatic. Resale sets `currentValue` and records an
+  /// 'llm_estimate' price-history entry; the replace modes set
+  /// `replacementCost`. Values are rounded to cents.
+  Future<Result<void>> applyToItem(Appraisal a);
+
   /// Soft-deletes an appraisal by id.
   Future<Result<void>> delete(String id);
 }

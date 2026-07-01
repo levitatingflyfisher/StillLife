@@ -1,8 +1,10 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 class PhotoCaptureButton extends StatelessWidget {
-  final void Function(String path, ImageSource source) onPhotoCaptured;
+  final void Function(Uint8List bytes, ImageSource source) onPhotoCaptured;
 
   const PhotoCaptureButton({super.key, required this.onPhotoCaptured});
 
@@ -53,7 +55,7 @@ class PhotoCaptureButton extends StatelessWidget {
       imageQuality: 85,
     );
     if (picked != null) {
-      onPhotoCaptured(picked.path, source);
+      onPhotoCaptured(await picked.readAsBytes(), source);
     }
   }
 }

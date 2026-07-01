@@ -70,9 +70,9 @@ void main() {
         description: '55 inch OLED',
         categoryId: 'cat1',
         roomId: 'room1',
-        purchasePrice: 1200.0,
-        currentValue: 800.0,
-        replacementCost: 1300.0,
+        purchasePriceCents: 120000,
+        currentValueCents: 80000,
+        replacementCostCents: 130000,
         condition: domain.ItemCondition.good,
         createdAt: now,
         modifiedAt: now,
@@ -84,8 +84,8 @@ void main() {
       final created = result.value;
       expect(created.name, 'Samsung TV');
       expect(created.description, '55 inch OLED');
-      expect(created.purchasePrice, 1200.0);
-      expect(created.currentValue, 800.0);
+      expect(created.purchasePriceCents, 120000);
+      expect(created.currentValueCents, 80000);
       expect(created.condition, domain.ItemCondition.good);
       expect(created.id, isNotEmpty);
     });
@@ -125,7 +125,7 @@ void main() {
           description: 'Office chair',
           categoryId: 'cat1',
           roomId: 'room1',
-          currentValue: 200.0,
+          currentValueCents: 20000,
           createdAt: now,
           modifiedAt: now,
         ),
@@ -134,13 +134,71 @@ void main() {
       final created = createResult.value;
       final updated = created.copyWith(
         name: 'Ergonomic Chair',
-        currentValue: () => 250.0,
+        currentValueCents: () => 25000,
       );
 
       final updateResult = await repo.updateItem(updated);
       expect(updateResult.isSuccess, true);
       expect(updateResult.value.name, 'Ergonomic Chair');
-      expect(updateResult.value.currentValue, 250.0);
+      expect(updateResult.value.currentValueCents, 25000);
+    });
+
+    test('brand/model/asin round-trip through create and update', () async {
+      final now = DateTime.now();
+      final createResult = await repo.createItem(
+        domain.Item(
+          id: '',
+          name: 'Headphones',
+          description: '',
+          categoryId: 'cat1',
+          roomId: 'room1',
+          brand: 'Sony',
+          model: 'WH-1000XM4',
+          asin: 'B0863TXGM3',
+          createdAt: now,
+          modifiedAt: now,
+        ),
+      );
+      expect(createResult.isSuccess, true);
+      final created = createResult.value;
+      expect(created.brand, 'Sony');
+      expect(created.model, 'WH-1000XM4');
+      expect(created.asin, 'B0863TXGM3');
+
+      final updateResult = await repo.updateItem(
+        created.copyWith(model: () => 'WH-1000XM5'),
+      );
+      expect(updateResult.isSuccess, true);
+      expect(updateResult.value.brand, 'Sony',
+          reason: 'update must not drop untouched identity fields');
+      expect(updateResult.value.model, 'WH-1000XM5');
+      expect(updateResult.value.asin, 'B0863TXGM3');
+    });
+
+    test('receiptId round-trips through create and update', () async {
+      final now = DateTime.now();
+      final createResult = await repo.createItem(
+        domain.Item(
+          id: '',
+          name: 'Coffee Beans',
+          description: '',
+          categoryId: 'cat1',
+          roomId: 'room1',
+          receiptId: 'rcpt-1',
+          createdAt: now,
+          modifiedAt: now,
+        ),
+      );
+      expect(createResult.isSuccess, true);
+      final created = createResult.value;
+      expect(created.receiptId, 'rcpt-1');
+
+      final updateResult = await repo.updateItem(
+        created.copyWith(name: 'Coffee Beans 1kg'),
+      );
+      expect(updateResult.isSuccess, true);
+      expect(updateResult.value.receiptId, 'rcpt-1',
+          reason: 'update must not drop the receipt link');
     });
 
     test('deleteItem removes item', () async {

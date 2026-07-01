@@ -3,13 +3,21 @@ import 'package:openhearth_design/openhearth_design.dart';
 
 class SpeedDialFab extends StatefulWidget {
   final VoidCallback onPhoto;
-  final VoidCallback onVoice;
+
+  /// Null hides the voice option (e.g. on web, where the on-device
+  /// voice-to-item flow isn't offered).
+  final VoidCallback? onVoice;
+
+  /// Null hides the video-walkthrough option (e.g. on web, where ffmpeg
+  /// frame extraction isn't available).
+  final VoidCallback? onVideo;
   final VoidCallback onManual;
 
   const SpeedDialFab({
     super.key,
     required this.onPhoto,
-    required this.onVoice,
+    this.onVoice,
+    this.onVideo,
     required this.onManual,
   });
 
@@ -82,15 +90,28 @@ class _SpeedDialFabState extends State<SpeedDialFab>
                   widget.onPhoto();
                 },
               ),
-              const SizedBox(height: OhSpacing.sm),
-              _DialOption(
-                icon: Icons.mic,
-                label: 'Describe it',
-                onTap: () {
-                  _close();
-                  widget.onVoice();
-                },
-              ),
+              if (widget.onVideo != null) ...[
+                const SizedBox(height: OhSpacing.sm),
+                _DialOption(
+                  icon: Icons.videocam_outlined,
+                  label: 'Video walkthrough',
+                  onTap: () {
+                    _close();
+                    widget.onVideo!();
+                  },
+                ),
+              ],
+              if (widget.onVoice != null) ...[
+                const SizedBox(height: OhSpacing.sm),
+                _DialOption(
+                  icon: Icons.mic,
+                  label: 'Describe it',
+                  onTap: () {
+                    _close();
+                    widget.onVoice!();
+                  },
+                ),
+              ],
               const SizedBox(height: OhSpacing.sm),
               _DialOption(
                 icon: Icons.edit,

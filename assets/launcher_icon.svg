@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="StillLife">
+  <rect width="512" height="512" rx="104" fill="#965B2E"/>
+  <!-- isometric crate: top face, then left and right faces -->
+  <path d="M256 150 L388 214 L256 278 L124 214 Z" fill="#f4ecdf"/>
+  <path d="M124 214 L256 278 L256 416 L124 352 Z" fill="#e3d0b6"/>
+  <path d="M388 214 L256 278 L256 416 L388 352 Z" fill="#cdb595"/>
+  <path d="M256 278 L256 416" stroke="#965B2E" stroke-width="7" opacity=".35"/>
+</svg>

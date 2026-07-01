@@ -29,11 +29,11 @@ void main() {
     test('has zero defaults', () {
       const summary = DashboardSummary();
       expect(summary.totalItems, 0);
-      expect(summary.totalCurrentValue, 0.0);
-      expect(summary.totalReplacementCost, 0.0);
-      expect(summary.totalAcquisitionCost, 0.0);
-      expect(summary.valueByRoom, isEmpty);
-      expect(summary.valueByCategory, isEmpty);
+      expect(summary.totalCurrentValueCents, 0.0);
+      expect(summary.totalReplacementCostCents, 0.0);
+      expect(summary.totalAcquisitionCostCents, 0.0);
+      expect(summary.valueCentsByRoom, isEmpty);
+      expect(summary.valueCentsByCategory, isEmpty);
     });
   });
 }

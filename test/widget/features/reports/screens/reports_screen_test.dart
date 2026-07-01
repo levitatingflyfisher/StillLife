@@ -33,9 +33,9 @@ void main() {
         buildSubject(
           summary: const DashboardSummary(
             totalItems: 42,
-            totalCurrentValue: 15000.0,
-            totalReplacementCost: 20000.0,
-            totalAcquisitionCost: 18000.0,
+            totalCurrentValueCents: 1500000,
+            totalReplacementCostCents: 2000000,
+            totalAcquisitionCostCents: 1800000,
           ),
         ),
       );

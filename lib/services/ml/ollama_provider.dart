@@ -2,30 +2,21 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show compute;
 import 'package:still_life/services/ml/analysis_provider.dart';
+import 'package:still_life/services/ml/multi_item_parser.dart';
+import 'package:still_life/services/ml/single_item_parser.dart';
 
 /// Tier 2: Local LLM provider via Ollama.
 ///
 /// Connects to a local Ollama instance for vision-capable LLM analysis.
 /// Supports configurable model (defaults to llava) and base URL.
-class OllamaProvider implements AnalysisProvider {
+class OllamaProvider extends AnalysisProvider {
   final Dio _dio;
   final String baseUrl;
   final String model;
 
   static const Duration _timeout = Duration(seconds: 30);
-
-  static const String _analysisPrompt = '''
-Analyze this image of a household item. Respond ONLY with a JSON object (no markdown, no explanation) with these fields:
-{
-  "name": "item name",
-  "brand": "brand name or null",
-  "model": "model number/name or null",
-  "description": "brief description of the item",
-  "category": "one of: Electronics, Furniture, Appliance, Clothing, Kitchenware, Decor, Tool, Book, Toy, Sporting Goods, Jewelry, Art, Musical Instrument, Other",
-  "estimatedRetailPrice": estimated price as a number or null
-}
-''';
 
   OllamaProvider({
     required Dio dio,
@@ -65,11 +56,11 @@ Analyze this image of a household item. Respond ONLY with a JSON object (no mark
     Uint8List? contextFrame,
     String? existingLabel,
   }) async {
-    final imageBase64 = base64Encode(imageBytes);
+    final imageBase64 = await compute(base64Encode, imageBytes);
 
     final prompt = existingLabel != null
-        ? 'This item has been labeled "$existingLabel". $_analysisPrompt'
-        : _analysisPrompt;
+        ? 'This item has been labeled "$existingLabel". $kSingleItemAnalysisPrompt'
+        : kSingleItemAnalysisPrompt;
 
     final requestBody = <String, dynamic>{
       'model': model,
@@ -103,17 +94,127 @@ Analyze this image of a household item. Respond ONLY with a JSON object (no mark
     }
   }
 
-  /// Video analysis is not directly supported by Ollama.
-  /// Use the analysis orchestrator for video processing.
+  /// Sends a shelf/room photo to Ollama's generate endpoint with the
+  /// multi-item prompt; parses the reply defensively into 0..25 results.
   @override
-  Stream<AnalysisProgress> analyzeVideo({
-    required String videoPath,
-    required AnalysisConfig config,
-  }) {
-    throw UnsupportedError(
-      'Ollama provider does not support direct video analysis. '
-      'Use the analysis orchestrator for video processing.',
-    );
+  Future<List<AnalysisResult>> analyzeImageMulti(
+    Uint8List imageBytes, {
+    AnalysisContext? context,
+  }) async {
+    final label = context?.existingLabel;
+    final prompt = label != null
+        ? 'This photo has been labeled "$label". $kMultiItemAnalysisPrompt'
+        : kMultiItemAnalysisPrompt;
+
+    final requestBody = <String, dynamic>{
+      'model': model,
+      'prompt': prompt,
+      'images': [await compute(base64Encode, imageBytes)],
+      'stream': false,
+    };
+
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '$baseUrl/api/generate',
+        data: requestBody,
+        options: Options(
+          sendTimeout: _timeout,
+          receiveTimeout: _timeout,
+          contentType: 'application/json',
+        ),
+      );
+
+      final data = response.data;
+      if (data == null) {
+        throw const AnalysisException('Empty response from Ollama');
+      }
+
+      return parseMultiItemResponse(
+        data['response'] as String? ?? '',
+        defaultConfidence: 0.7,
+      );
+    } on DioException catch (e) {
+      throw AnalysisException(
+        'Ollama request failed: ${e.message ?? e.type.name}',
+      );
+    }
+  }
+
+  /// Sends a text-only prompt to Ollama's generate endpoint. No image is
+  /// attached — this is the seam voice intake uses for transcript extraction.
+  @override
+  Future<AnalysisResult> analyzeText(
+    String prompt, {
+    AnalysisContext? context,
+  }) async {
+    final label = context?.existingLabel;
+    final fullPrompt = label != null
+        ? 'This item has been labeled "$label". $prompt'
+        : prompt;
+
+    final requestBody = <String, dynamic>{
+      'model': model,
+      'prompt': fullPrompt,
+      'stream': false,
+    };
+
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '$baseUrl/api/generate',
+        data: requestBody,
+        options: Options(
+          sendTimeout: _timeout,
+          receiveTimeout: _timeout,
+          contentType: 'application/json',
+        ),
+      );
+
+      final data = response.data;
+      if (data == null) {
+        throw const AnalysisException('Empty response from Ollama');
+      }
+
+      final responseText = data['response'] as String? ?? '';
+      return _parseResponse(responseText);
+    } on DioException catch (e) {
+      throw AnalysisException(
+        'Ollama request failed: ${e.message ?? e.type.name}',
+      );
+    }
+  }
+
+  /// Sends a raw text prompt to Ollama's generate endpoint and returns the
+  /// model's reply verbatim — no item-analysis parsing applied.
+  @override
+  Future<String> completeText(String prompt, {int maxTokens = 1000}) async {
+    final requestBody = <String, dynamic>{
+      'model': model,
+      'prompt': prompt,
+      'stream': false,
+      'options': {'num_predict': maxTokens},
+    };
+
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '$baseUrl/api/generate',
+        data: requestBody,
+        options: Options(
+          sendTimeout: _timeout,
+          receiveTimeout: _timeout,
+          contentType: 'application/json',
+        ),
+      );
+
+      final data = response.data;
+      if (data == null) {
+        throw const AnalysisException('Empty response from Ollama');
+      }
+      return data['response'] as String? ?? '';
+    } on DioException catch (e) {
+      throw AnalysisException(
+        'Ollama request failed: ${e.message ?? e.type.name}',
+      );
+    }
   }
 
   /// Parses the LLM response text, trying JSON first then falling back

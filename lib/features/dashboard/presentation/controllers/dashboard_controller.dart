@@ -11,28 +11,28 @@ final _itemCountStreamProvider = StreamProvider<int>((ref) {
   return db.itemDao.watchAllItems().map((l) => l.length);
 });
 
-/// Dashboard summary data.
+/// Dashboard summary data. All monetary figures are integer cents.
 class DashboardSummary {
   final int totalItems;
-  final double totalCurrentValue;
-  final double totalReplacementCost;
-  final double totalAcquisitionCost;
-  final Map<String, double> valueByRoom;
-  final Map<String, double> valueByCategory;
-  final double totalDepreciation;
-  final List<({String name, double value})> topItems;
-  final double? totalCoverageAmount;
+  final int totalCurrentValueCents;
+  final int totalReplacementCostCents;
+  final int totalAcquisitionCostCents;
+  final Map<String, int> valueCentsByRoom;
+  final Map<String, int> valueCentsByCategory;
+  final int totalDepreciationCents;
+  final List<({String name, int valueCents})> topItems;
+  final int? totalCoverageAmountCents;
 
   const DashboardSummary({
     this.totalItems = 0,
-    this.totalCurrentValue = 0.0,
-    this.totalReplacementCost = 0.0,
-    this.totalAcquisitionCost = 0.0,
-    this.valueByRoom = const {},
-    this.valueByCategory = const {},
-    this.totalDepreciation = 0.0,
+    this.totalCurrentValueCents = 0,
+    this.totalReplacementCostCents = 0,
+    this.totalAcquisitionCostCents = 0,
+    this.valueCentsByRoom = const {},
+    this.valueCentsByCategory = const {},
+    this.totalDepreciationCents = 0,
     this.topItems = const [],
-    this.totalCoverageAmount,
+    this.totalCoverageAmountCents,
   });
 }
 
@@ -46,29 +46,29 @@ final dashboardSummaryProvider = FutureProvider<DashboardSummary>((ref) async {
   final aggregator = DashboardAggregator(db);
 
   final totalItems = await db.itemDao.countItems();
-  final totalValue = await db.itemDao.getTotalValue();
-  final totalReplacement = await db.itemDao.getTotalReplacementCost();
-  final totalAcquisition = await db.itemDao.getTotalAcquisitionCost();
-  final valueByRoom = await aggregator.getValueByRoom();
-  final valueByCategory = await aggregator.getValueByCategory();
-  final totalDepreciation = await aggregator.getTotalDepreciation();
+  final totalValueCents = await db.itemDao.getTotalValueCents();
+  final totalReplacementCents = await db.itemDao.getTotalReplacementCostCents();
+  final totalAcquisitionCents = await db.itemDao.getTotalAcquisitionCostCents();
+  final valueCentsByRoom = await aggregator.getValueCentsByRoom();
+  final valueCentsByCategory = await aggregator.getValueCentsByCategory();
+  final totalDepreciationCents = await aggregator.getTotalDepreciationCents();
   final topItems = await aggregator.getTopItemsByValue(5);
 
   // Sum coverage from all policies
   final policies = await db.policyDao.getAll();
-  final totalCoverage = policies.isEmpty
+  final totalCoverageCents = policies.isEmpty
       ? null
-      : policies.fold(0.0, (sum, p) => sum + (p.coverageAmount ?? 0));
+      : policies.fold(0, (int sum, p) => sum + (p.coverageAmountCents ?? 0));
 
   return DashboardSummary(
     totalItems: totalItems,
-    totalCurrentValue: totalValue,
-    totalReplacementCost: totalReplacement,
-    totalAcquisitionCost: totalAcquisition,
-    valueByRoom: valueByRoom,
-    valueByCategory: valueByCategory,
-    totalDepreciation: totalDepreciation,
+    totalCurrentValueCents: totalValueCents,
+    totalReplacementCostCents: totalReplacementCents,
+    totalAcquisitionCostCents: totalAcquisitionCents,
+    valueCentsByRoom: valueCentsByRoom,
+    valueCentsByCategory: valueCentsByCategory,
+    totalDepreciationCents: totalDepreciationCents,
     topItems: topItems,
-    totalCoverageAmount: totalCoverage,
+    totalCoverageAmountCents: totalCoverageCents,
   );
 });

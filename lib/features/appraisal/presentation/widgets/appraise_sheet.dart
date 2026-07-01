@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../core/providers/appraisal_providers.dart';
+import '../../../../core/utils/safe_external_url.dart';
 import '../../../inventory/domain/entities/item.dart';
 import '../../domain/entities/appraisal.dart';
 import '../../domain/entities/appraisal_source.dart';
@@ -21,6 +23,10 @@ class AppraiseSheet extends ConsumerStatefulWidget {
 
 class _AppraiseSheetState extends ConsumerState<AppraiseSheet> {
   bool _triggered = false;
+
+  /// Id of the appraisal the user applied to the item, if any. A refresh
+  /// produces a new appraisal id, which naturally re-arms the button.
+  String? _appliedId;
 
   ({String itemId, AppraisalMode mode}) get _key =>
       (itemId: widget.item.id, mode: widget.mode);
@@ -81,7 +87,9 @@ class _AppraiseSheetState extends ConsumerState<AppraiseSheet> {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 16),
         child: Text(
-          'Tap "Run estimate" to search current market prices for this item.',
+          'Tap "Run estimate" to search current market prices for this '
+          'item.\nEstimates run on Anthropic (Claude) — via your Claude '
+          'API key or a Pro account.',
           textAlign: TextAlign.center,
         ),
       );
@@ -101,7 +109,7 @@ class _AppraiseSheetState extends ConsumerState<AppraiseSheet> {
       children: [
         Center(
           child: Text(
-            fmt.format(a.value),
+            fmt.format(a.valueCents / 100),
             style: Theme.of(context).textTheme.displaySmall,
           ),
         ),
@@ -115,7 +123,47 @@ class _AppraiseSheetState extends ConsumerState<AppraiseSheet> {
           const SizedBox(height: OhSpacing.xs),
           ...a.sources.map((s) => _SourceTile(source: s)),
         ],
+        const SizedBox(height: OhSpacing.md),
+        _buildApplyRow(context, a),
       ],
+    );
+  }
+
+  /// The value loop: an explicit, per-appraisal write-back. Never automatic —
+  /// nothing touches the item until the user taps.
+  Widget _buildApplyRow(BuildContext context, Appraisal a) {
+    final isResale = widget.mode == AppraisalMode.resale;
+    final applied = _appliedId == a.id;
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            isResale
+                ? "Applies this estimate as the item's current value."
+                : "Applies this estimate as the item's replacement cost.",
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+        const SizedBox(width: OhSpacing.sm),
+        FilledButton.tonalIcon(
+          onPressed: applied ? null : () => _apply(a),
+          icon: Icon(applied ? Icons.check : Icons.save_alt, size: 18),
+          label: Text(applied ? 'Applied ✓' : 'Apply to item'),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _apply(Appraisal a) async {
+    final res = await ref.read(appraisalRepositoryProvider).applyToItem(a);
+    if (!mounted) return;
+    res.when(
+      success: (_) => setState(() => _appliedId = a.id),
+      failure: (f) => ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not apply: $f'))),
     );
   }
 
@@ -142,7 +190,9 @@ class _SourceTile extends StatelessWidget {
           ? null
           : Text(NumberFormat.simpleCurrency(name: 'USD').format(source.price)),
       onTap: () async {
-        final uri = Uri.tryParse(source.url);
+        // The URL is model output — only plain web URLs may launch
+        // (an injected intent:// or javascript: URI must go nowhere).
+        final uri = safeExternalHttpUri(source.url);
         if (uri != null) {
           await launchUrl(uri, mode: LaunchMode.externalApplication);
         }

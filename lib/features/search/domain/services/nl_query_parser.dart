@@ -2,6 +2,7 @@ import '../../../inventory/domain/entities/category.dart';
 import '../../../inventory/domain/repositories/item_repository.dart';
 import '../../../locations/domain/entities/room.dart';
 import '../../../locations/domain/entities/storage_container.dart';
+import '../../../../core/utils/money.dart';
 
 /// The result of parsing a natural-language query string.
 class ParseResult {
@@ -130,8 +131,8 @@ class NlQueryParser {
     String? roomId;
     String? categoryId;
     String? containerId;
-    double? minValue;
-    double? maxValue;
+    int? minValueCents;
+    int? maxValueCents;
     DateTime? addedAfter;
     bool? hasPhoto;
     bool? hasReceipt;
@@ -141,7 +142,7 @@ class NlQueryParser {
 
     // ---- sort keywords ----
     if (_mostValuableRe.hasMatch(text)) {
-      sortBy = ItemSortField.currentValue;
+      sortBy = ItemSortField.currentValueCents;
       ascending = false;
       text = text.replaceAll(_mostValuableRe, '');
     } else if (_newestRe.hasMatch(text)) {
@@ -153,20 +154,20 @@ class NlQueryParser {
     // ---- price range ----
     final overMatch = _overRe.firstMatch(text);
     if (overMatch != null) {
-      minValue = double.tryParse(overMatch.group(1)!);
+      minValueCents = centsFromDollarsOrNull(double.tryParse(overMatch.group(1)!));
       text = text.replaceAll(_overRe, '');
     }
     final underMatch = _underRe.firstMatch(text);
     if (underMatch != null) {
-      maxValue = double.tryParse(underMatch.group(1)!);
+      maxValueCents = centsFromDollarsOrNull(double.tryParse(underMatch.group(1)!));
       text = text.replaceAll(_underRe, '');
     }
     if (_expensiveRe.hasMatch(text)) {
-      minValue ??= 500.0;
+      minValueCents ??= 50000;
       text = text.replaceAll(_expensiveRe, '');
     }
     if (_cheapRe.hasMatch(text)) {
-      maxValue ??= 100.0;
+      maxValueCents ??= 10000;
       text = text.replaceAll(_cheapRe, '');
     }
 
@@ -267,8 +268,8 @@ class NlQueryParser {
         roomId != null ||
         categoryId != null ||
         containerId != null ||
-        minValue != null ||
-        maxValue != null ||
+        minValueCents != null ||
+        maxValueCents != null ||
         addedAfter != null ||
         hasPhoto != null ||
         hasReceipt != null ||
@@ -286,8 +287,8 @@ class NlQueryParser {
         roomId: roomId,
         categoryId: categoryId,
         containerId: containerId,
-        minValue: minValue,
-        maxValue: maxValue,
+        minValueCents: minValueCents,
+        maxValueCents: maxValueCents,
         addedAfter: addedAfter,
         hasPhoto: hasPhoto,
         hasReceipt: hasReceipt,

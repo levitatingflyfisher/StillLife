@@ -150,8 +150,8 @@ class _PolicyTile extends StatelessWidget {
               'Policy #${policy.policyNumber}',
               style: theme.textTheme.bodySmall,
             ),
-          if (policy.coverageAmount != null)
-            Text('Coverage: ${policy.coverageAmount!.toCurrency()}'),
+          if (policy.coverageAmountCents != null)
+            Text('Coverage: ${policy.coverageAmountCents!.centsToCurrency()}'),
           if (policy.expiryDate != null)
             Text(
               policy.isExpired

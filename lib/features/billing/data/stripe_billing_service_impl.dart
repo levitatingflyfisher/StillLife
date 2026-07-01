@@ -31,6 +31,12 @@ class StripeBillingServiceImpl implements BillingService {
        _storage = storage,
        _checkoutUrl = checkoutUrl;
 
+  /// Typed failure for every remote call when no backend is configured
+  /// (empty [baseUrl]) — fail closed, never attempt HTTP.
+  static const _notConfigured = Err<Never>(
+    ValidationFailure('Hosted service is not configured'),
+  );
+
   @override
   Uri buildCheckoutUrl() => _checkoutUrl;
 
@@ -42,6 +48,7 @@ class StripeBillingServiceImpl implements BillingService {
 
   @override
   Future<Result<Account>> getAccount() async {
+    if (baseUrl.isEmpty) return _notConfigured;
     final bearer = await _storage.read(key: kHostedBearerStorageKey);
     if (bearer == null || bearer.isEmpty) {
       return const Err(ValidationFailure('No bearer'));
@@ -73,6 +80,7 @@ class StripeBillingServiceImpl implements BillingService {
 
   @override
   Future<Result<void>> activate(String sessionId) async {
+    if (baseUrl.isEmpty) return _notConfigured;
     try {
       final r = await _dio.post<Map<String, dynamic>>(
         '$baseUrl/v1/activate',
@@ -91,6 +99,7 @@ class StripeBillingServiceImpl implements BillingService {
 
   @override
   Future<Result<void>> rotateBearer() async {
+    if (baseUrl.isEmpty) return _notConfigured;
     final bearer = await _storage.read(key: kHostedBearerStorageKey);
     if (bearer == null) {
       return const Err(ValidationFailure('No bearer to rotate'));
@@ -112,6 +121,7 @@ class StripeBillingServiceImpl implements BillingService {
 
   @override
   Future<Result<void>> deleteAccount() async {
+    if (baseUrl.isEmpty) return _notConfigured;
     final bearer = await _storage.read(key: kHostedBearerStorageKey);
     if (bearer == null) {
       return const Err(ValidationFailure('No bearer'));

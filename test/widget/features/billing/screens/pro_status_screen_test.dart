@@ -38,6 +38,28 @@ void main() {
     expect(find.byType(UsageMeter), findsNothing);
   });
 
+  testWidgets('hides the Upgrade CTA when no checkout URL is configured — '
+      'never launch an unowned domain as a payment page', (t) async {
+    final b = _FakeBilling();
+    when(() => b.buildCheckoutUrl()).thenReturn(Uri.parse(''));
+
+    await t.pumpWidget(
+      ProviderScope(
+        overrides: [
+          billingServiceProvider.overrideWithValue(b),
+          accountProvider.overrideWith(_NullAccountNotifier.new),
+        ],
+        child: const MaterialApp(home: ProStatusScreen()),
+      ),
+    );
+    await t.pumpAndSettle();
+
+    expect(find.byType(UpgradeCta), findsNothing,
+        reason: 'an Upgrade button wired to nowhere (or to whoever '
+            'registers the placeholder domain) must not render');
+    expect(find.textContaining('not available in this build'), findsOneWidget);
+  });
+
   testWidgets('shows UsageMeter and status chip when account is active', (
     t,
   ) async {

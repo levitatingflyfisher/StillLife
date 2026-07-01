@@ -21,7 +21,8 @@ class Appraisal extends Equatable {
   final String id;
   final String itemId;
   final AppraisalMode mode;
-  final double value;
+  /// Integer cents (see core/utils/money.dart).
+  final int valueCents;
   final String currency;
   final double confidence;
   final List<AppraisalSource> sources;
@@ -34,7 +35,7 @@ class Appraisal extends Equatable {
     required this.id,
     required this.itemId,
     required this.mode,
-    required this.value,
+    required this.valueCents,
     required this.currency,
     required this.confidence,
     required this.sources,
@@ -48,13 +49,13 @@ class Appraisal extends Equatable {
   bool get isFresh => expiresAt.isAfter(DateTime.now());
 
   /// True when the LLM returned a non-zero-confidence estimate.
-  bool get hasData => confidence > 0.0 && value > 0.0;
+  bool get hasData => confidence > 0.0 && valueCents > 0;
 
   Appraisal copyWith({
     String? id,
     String? itemId,
     AppraisalMode? mode,
-    double? Function()? value,
+    int? Function()? valueCents,
     String? Function()? currency,
     double? Function()? confidence,
     List<AppraisalSource>? Function()? sources,
@@ -66,7 +67,7 @@ class Appraisal extends Equatable {
     id: id ?? this.id,
     itemId: itemId ?? this.itemId,
     mode: mode ?? this.mode,
-    value: value == null ? this.value : value() ?? this.value,
+    valueCents: valueCents == null ? this.valueCents : valueCents() ?? this.valueCents,
     currency: currency == null ? this.currency : currency() ?? this.currency,
     confidence: confidence == null
         ? this.confidence
@@ -85,7 +86,7 @@ class Appraisal extends Equatable {
     id,
     itemId,
     mode,
-    value,
+    valueCents,
     currency,
     confidence,
     sources,

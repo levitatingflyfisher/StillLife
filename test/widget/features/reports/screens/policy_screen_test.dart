@@ -41,7 +41,7 @@ void main() {
           propertyId: 'prop1',
           provider: 'State Farm',
           policyNumber: 'SF-001',
-          coverageAmount: 200000,
+          coverageAmountCents: 200000,
           createdAt: now,
         ),
         Policy(
@@ -78,7 +78,7 @@ void main() {
         id: 'pol1',
         propertyId: 'prop1',
         provider: 'State Farm',
-        coverageAmount: 150000,
+        coverageAmountCents: 150000,
         createdAt: now,
       );
       await tester.pumpWidget(buildSubject(policies: [policy]));

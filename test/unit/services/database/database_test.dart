@@ -20,7 +20,7 @@ void main() {
   group('AppDatabase', () {
     test('creates in-memory database successfully', () {
       expect(db, isNotNull);
-      expect(db.schemaVersion, 11);
+      expect(db.schemaVersion, 15);
     });
 
     test('creates all tables', () async {
@@ -245,7 +245,7 @@ void main() {
           );
     });
 
-    test('getTotalValue returns sum of currentValue', () async {
+    test('getTotalValueCents returns sum of currentValueCents', () async {
       final now = DateTime.now();
       await db.itemDao.insertItem(
         ItemsCompanion.insert(
@@ -253,7 +253,7 @@ void main() {
           name: 'TV',
           categoryId: categoryId,
           roomId: roomId,
-          currentValue: const Value(500.0),
+          currentValueCents: const Value(50000),
           createdAt: now,
           modifiedAt: now,
         ),
@@ -264,17 +264,17 @@ void main() {
           name: 'Speaker',
           categoryId: categoryId,
           roomId: roomId,
-          currentValue: const Value(300.0),
+          currentValueCents: const Value(30000),
           createdAt: now,
           modifiedAt: now,
         ),
       );
 
-      final total = await db.itemDao.getTotalValue();
-      expect(total, 800.0);
+      final total = await db.itemDao.getTotalValueCents();
+      expect(total, 80000);
     });
 
-    test('getTotalValue filtered by room', () async {
+    test('getTotalValueCents filtered by room', () async {
       final now = DateTime.now();
       await db
           .into(db.rooms)
@@ -294,7 +294,7 @@ void main() {
           name: 'TV',
           categoryId: categoryId,
           roomId: roomId,
-          currentValue: const Value(500.0),
+          currentValueCents: const Value(50000),
           createdAt: now,
           modifiedAt: now,
         ),
@@ -305,17 +305,17 @@ void main() {
           name: 'Lamp',
           categoryId: categoryId,
           roomId: 'room2',
-          currentValue: const Value(100.0),
+          currentValueCents: const Value(10000),
           createdAt: now,
           modifiedAt: now,
         ),
       );
 
-      final total = await db.itemDao.getTotalValue(roomId: roomId);
-      expect(total, 500.0);
+      final total = await db.itemDao.getTotalValueCents(roomId: roomId);
+      expect(total, 50000);
     });
 
-    test('getValueByCategory returns grouped totals', () async {
+    test('getValueCentsByCategory returns grouped totals', () async {
       final now = DateTime.now();
       await db
           .into(db.categories)
@@ -334,7 +334,7 @@ void main() {
           name: 'TV',
           categoryId: categoryId,
           roomId: roomId,
-          currentValue: const Value(500.0),
+          currentValueCents: const Value(50000),
           createdAt: now,
           modifiedAt: now,
         ),
@@ -345,15 +345,15 @@ void main() {
           name: 'Sofa',
           categoryId: 'cat2',
           roomId: roomId,
-          currentValue: const Value(800.0),
+          currentValueCents: const Value(80000),
           createdAt: now,
           modifiedAt: now,
         ),
       );
 
-      final byCategory = await db.itemDao.getValueByCategory();
-      expect(byCategory[categoryId], 500.0);
-      expect(byCategory['cat2'], 800.0);
+      final byCategory = await db.itemDao.getValueCentsByCategory();
+      expect(byCategory[categoryId], 50000);
+      expect(byCategory['cat2'], 80000);
     });
 
     test('countItems returns correct count', () async {

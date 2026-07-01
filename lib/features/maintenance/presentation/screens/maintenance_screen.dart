@@ -224,10 +224,10 @@ class _MaintenanceTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Performed: ${fmt.format(log.performedAt)}'),
-            if (log.cost != null) Text('Cost: ${log.cost!.toCurrency()}'),
+            if (log.costCents != null) Text('Cost: ${log.costCents!.centsToCurrency()}'),
           ],
         ),
-        isThreeLine: log.cost != null,
+        isThreeLine: log.costCents != null,
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [

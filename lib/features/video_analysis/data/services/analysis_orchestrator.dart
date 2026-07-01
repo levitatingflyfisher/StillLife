@@ -1,323 +1,261 @@
-import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:still_life/features/video_analysis/domain/entities/analysis_session.dart';
 import 'package:still_life/features/video_analysis/domain/entities/detected_object.dart';
 import 'package:still_life/features/video_analysis/domain/entities/frame_data.dart';
 import 'package:still_life/services/ml/analysis_provider.dart';
+import 'package:still_life/services/ml/provider_manager.dart';
 
-import 'classifier.dart';
-import 'frame_extractor.dart';
-import 'frame_selector.dart';
-import 'object_detector.dart';
-import 'object_tracker.dart';
+import 'frame_quality_gate.dart';
+import 'suggestion_merger.dart';
+import 'video_session_log.dart';
 
-/// Coordinates the full video analysis pipeline:
+/// The extraction seam: native builds plug in the ffmpeg extractor, tests
+/// plug in a canned stream, web gets the honest unsupported error.
+typedef FrameStream =
+    Stream<FrameData> Function({
+      required String videoPath,
+      required AnalysisConfig config,
+    });
+
+/// What the orchestrator tells the UI, one event at a time.
+sealed class VideoAnalysisEvent {
+  const VideoAnalysisEvent();
+}
+
+/// A tier was found; the pipeline is running on it.
+final class VideoAnalysisStarted extends VideoAnalysisEvent {
+  final AnalysisTier tier;
+  const VideoAnalysisStarted(this.tier);
+}
+
+/// No AI tier is configured/available. Not an error — the UI explains and
+/// points at Settings instead of spinning.
+final class VideoNoAiConfigured extends VideoAnalysisEvent {
+  const VideoNoAiConfigured();
+}
+
+/// The pipeline moved to a new stage.
+final class VideoStageChanged extends VideoAnalysisEvent {
+  final AnalysisStatus stage;
+  const VideoStageChanged(this.stage);
+}
+
+/// Work ticked forward. During extraction [total] is 0 (ffmpeg does not
+/// announce frame counts up front); during analysis it is the selected
+/// frame count. [itemsSoFar] is always the MERGED item count and
+/// [items] the merged partial findings so far — so stopping mid-run has
+/// something reviewable to keep (empty during extraction).
+final class VideoFrameProgress extends VideoAnalysisEvent {
+  final int processed;
+  final int total;
+  final int itemsSoFar;
+  final List<DetectedObject> items;
+  const VideoFrameProgress({
+    required this.processed,
+    required this.total,
+    required this.itemsSoFar,
+    this.items = const [],
+  });
+}
+
+/// The quality gate chose the frames — each one costs one analysis call,
+/// so this is the moment the cost disclosure becomes concrete.
+final class VideoFramesSelected extends VideoAnalysisEvent {
+  final int count;
+  const VideoFramesSelected(this.count);
+}
+
+/// The walkthrough is analyzed; [items] are merged and review-ready.
+final class VideoAnalysisCompleted extends VideoAnalysisEvent {
+  final List<DetectedObject> items;
+  const VideoAnalysisCompleted(this.items);
+}
+
+/// The pipeline could not finish (extraction failure, etc.).
+final class VideoAnalysisFailed extends VideoAnalysisEvent {
+  final String message;
+  const VideoAnalysisFailed(this.message);
+}
+
+/// Coordinates the VLM walkthrough pipeline:
 ///
-/// 1. **Extract** frames from video at configured FPS
-/// 2. **Detect** objects in each frame via YOLOv8
-/// 3. **Track** detections across frames into unique objects
-/// 4. **Select** the best frame/crop for each tracked object
-/// 5. **Classify** each crop via MobileNetV3
-/// 6. **Enhance** (optional) via LLM provider for richer metadata
+/// 1. **Extract** frames at [AnalysisConfig.framesPerSecond] (ffmpeg seam)
+/// 2. **Select** the frames worth paying for ([FrameQualityGate])
+/// 3. **Analyze** each selected frame with `analyzeImageMulti` on the best
+///    available tier — the same guarded multi-item path shelf photos use
+/// 4. **Merge** findings across frames ([SuggestionMerger]) so one couch
+///    seen in twelve frames is one review row, tagged with its source frame
 ///
-/// Emits [AnalysisProgress] updates through a stream for UI consumption and
-/// maintains an [AnalysisSession] that reflects the current pipeline state.
+/// Every run is recorded in the `VideoAnalyses` table via
+/// [VideoSessionLog]. A single frame failing analysis is skipped; only
+/// extraction failure sinks the run.
 class AnalysisOrchestrator {
-  final FrameExtractor _frameExtractor;
-  final ObjectDetector _objectDetector;
-  final ObjectTracker _objectTracker;
-  final FrameSelector _frameSelector;
-  final Classifier _classifier;
-  final AnalysisProvider? _analysisProvider;
+  final FrameStream _frames;
+  final ProviderManager _providerManager;
+  final FrameQualityGate _gate;
+  final SuggestionMerger _merger;
+  final VideoSessionLog? _sessionLog;
 
-  /// Creates an [AnalysisOrchestrator] with all pipeline components.
-  ///
-  /// [analysisProvider] is optional — when provided, detected objects will be
-  /// enhanced with LLM-generated metadata (Tier 2/3/4). If omitted or if the
-  /// provider is unavailable, on-device results are kept as-is.
   AnalysisOrchestrator({
-    required FrameExtractor frameExtractor,
-    required ObjectDetector objectDetector,
-    required ObjectTracker objectTracker,
-    required FrameSelector frameSelector,
-    required Classifier classifier,
-    AnalysisProvider? analysisProvider,
-  }) : _frameExtractor = frameExtractor,
-       _objectDetector = objectDetector,
-       _objectTracker = objectTracker,
-       _frameSelector = frameSelector,
-       _classifier = classifier,
-       _analysisProvider = analysisProvider;
+    required FrameStream frames,
+    required ProviderManager providerManager,
+    FrameQualityGate gate = const FrameQualityGate(),
+    SuggestionMerger merger = const SuggestionMerger(),
+    VideoSessionLog? sessionLog,
+  }) : _frames = frames,
+       _providerManager = providerManager,
+       _gate = gate,
+       _merger = merger,
+       _sessionLog = sessionLog;
 
-  /// Runs the full analysis pipeline on [videoPath].
-  ///
-  /// Returns a stream of [AnalysisProgress] updates. The final
-  /// [AnalysisSession] can be retrieved from [lastSession] after the stream
-  /// completes.
-  ///
-  /// The pipeline handles partial failures gracefully:
-  /// - If object detection fails on a frame, that frame is skipped.
-  /// - If classification fails, the YOLO label is used as fallback.
-  /// - If LLM enhancement fails, on-device results are preserved.
-  Stream<AnalysisProgress> analyze({
+  Stream<VideoAnalysisEvent> analyze({
+    required String sessionId,
     required String videoPath,
     required AnalysisConfig config,
-    String? sessionId,
     String? roomId,
   }) async* {
-    final session = AnalysisSession(
-      id: sessionId ?? DateTime.now().millisecondsSinceEpoch.toString(),
+    AnalysisProvider? provider;
+    try {
+      // Every walkthrough frame is a multi-item scene, so the whole
+      // session needs a multi-capable tier.
+      provider = await _providerManager.getBestAvailable(
+        AnalysisCapability.imageMulti,
+      );
+    } catch (_) {
+      provider = null;
+    }
+    if (provider == null) {
+      await _sessionLog?.recordNoAi(
+        id: sessionId,
+        videoPath: videoPath,
+        roomId: roomId,
+      );
+      yield const VideoNoAiConfigured();
+      return;
+    }
+
+    yield VideoAnalysisStarted(provider.tier);
+    await _sessionLog?.begin(
+      id: sessionId,
       videoPath: videoPath,
       roomId: roomId,
-      startedAt: DateTime.now(),
-      providerTier: _analysisProvider?.tier ?? AnalysisTier.onDevice,
+      providerTier: provider.tier.name,
     );
 
-    _lastSession = session.copyWith(status: AnalysisStatus.extracting);
-
-    // ── Stage 1: Frame Extraction ──────────────────────────────────────
-    yield _progress(stage: 'Extracting frames', currentFrame: 0);
-
-    final frames = <int, FrameData>{};
-    final frameStream = _frameExtractor.extractFrames(
-      videoPath: videoPath,
-      config: config,
-    );
-
-    await for (final frame in frameStream) {
-      frames[frame.index] = frame;
-
-      yield _progress(
-        stage: 'Extracting frames',
-        currentFrame: frame.index + 1,
-        totalFrames: frame.index + 1, // Updated as we discover total.
-      );
-    }
-
-    final totalFrames = frames.length;
-    _lastSession = _lastSession!.copyWith(
-      status: AnalysisStatus.detecting,
-      totalFrames: totalFrames,
-    );
-
-    // ── Stage 2: Object Detection ──────────────────────────────────────
-    yield _progress(stage: 'Detecting objects', totalFrames: totalFrames);
-
-    final detectionsByFrame = <int, List<Detection>>{};
-    var processedFrames = 0;
-    var totalDetections = 0;
-
-    for (final entry in frames.entries) {
-      final frameIndex = entry.key;
-      final frame = entry.value;
-
-      try {
-        final detections = await _objectDetector.detect(
-          imageBytes: frame.imageBytes,
-          frameIndex: frameIndex,
+    // ── Stage 1: extraction ────────────────────────────────────────────
+    yield const VideoStageChanged(AnalysisStatus.extracting);
+    final frames = <FrameData>[];
+    try {
+      await for (final frame in _frames(
+        videoPath: videoPath,
+        config: config,
+      )) {
+        frames.add(frame);
+        yield VideoFrameProgress(
+          processed: frames.length,
+          total: 0,
+          itemsSoFar: 0,
         );
-
-        if (detections.isNotEmpty) {
-          detectionsByFrame[frameIndex] = detections;
-          totalDetections += detections.length;
-        }
-      } catch (_) {
-        // Skip frames where detection fails.
       }
-
-      processedFrames++;
-      yield _progress(
-        stage: 'Detecting objects',
-        currentFrame: processedFrames,
-        totalFrames: totalFrames,
-        itemsDetected: totalDetections,
+    } catch (e) {
+      await _sessionLog?.finish(
+        id: sessionId,
+        status: 'failed',
+        frameCount: frames.length,
+        itemsDetected: 0,
       );
+      yield VideoAnalysisFailed('$e');
+      return;
     }
 
-    _lastSession = _lastSession!.copyWith(
-      status: AnalysisStatus.tracking,
-      processedFrames: processedFrames,
-    );
+    // ── Stage 2: quality gate ──────────────────────────────────────────
+    yield const VideoStageChanged(AnalysisStatus.selecting);
+    final selected = _gate.select(frames, config: config);
+    // Only the gate's winners are needed from here on — release every
+    // other frame's bytes instead of holding the whole walkthrough in
+    // memory for the rest of the run.
+    final extractedFrameCount = frames.length;
+    frames.clear();
+    yield VideoFramesSelected(selected.length);
 
-    // ── Stage 3: Object Tracking ───────────────────────────────────────
-    yield _progress(
-      stage: 'Tracking objects',
-      currentFrame: processedFrames,
-      totalFrames: totalFrames,
-      itemsDetected: totalDetections,
-    );
-
-    final trackedObjects = _objectTracker.trackDetections(detectionsByFrame);
-
-    _lastSession = _lastSession!.copyWith(status: AnalysisStatus.selecting);
-
-    // ── Stage 4: Best Frame Selection ──────────────────────────────────
-    yield _progress(
-      stage: 'Selecting best frames',
-      currentFrame: processedFrames,
-      totalFrames: totalFrames,
-      itemsDetected: trackedObjects.length,
-    );
-
-    final selectedObjects = _frameSelector.selectBestFrames(
-      trackedObjects: trackedObjects,
-      frames: frames,
-    );
-
-    final croppedImages = _frameSelector.cropBestFrames(
-      trackedObjects: selectedObjects,
-      frames: frames,
-    );
-
-    _lastSession = _lastSession!.copyWith(status: AnalysisStatus.classifying);
-
-    // ── Stage 5: Classification ────────────────────────────────────────
-    yield _progress(
-      stage: 'Classifying items',
-      currentFrame: processedFrames,
-      totalFrames: totalFrames,
-      itemsDetected: selectedObjects.length,
-    );
-
-    final detectedObjects = <DetectedObject>[];
-
-    for (final tracked in selectedObjects) {
-      final cropped = croppedImages[tracked.id];
-      if (cropped == null) continue;
-
-      // Classify the cropped object.
-      String? category;
-      String label = tracked.label;
-      double confidence = tracked.maxConfidence;
-
+    // ── Stage 3: per-frame VLM analysis ────────────────────────────────
+    yield const VideoStageChanged(AnalysisStatus.analyzing);
+    final frameBytes = <int, Uint8List>{
+      for (final f in selected) f.index: f.imageBytes,
+    };
+    final raw = <FrameSuggestion>[];
+    var merged = <FrameSuggestion>[];
+    var analyzed = 0;
+    for (final frame in selected) {
       try {
-        final result = await _classifier.classify(cropped);
-        if (result != null && result.confidence > confidence) {
-          category = result.category;
-          label = result.label;
-          confidence = result.confidence;
-        }
-      } catch (_) {
-        // Keep YOLO label on classification failure.
-      }
-
-      detectedObjects.add(
-        DetectedObject(
-          id: tracked.id,
-          label: label,
-          confidence: confidence,
-          boundingBox: tracked.bestBoundingBox,
-          croppedImage: cropped,
-          frameIndex: tracked.bestFrameIndex,
-          category: category,
-        ),
-      );
-
-      // Enforce max objects limit.
-      if (detectedObjects.length >= config.maxObjectsPerSession) break;
-    }
-
-    // ── Stage 6: LLM Enhancement (optional) ────────────────────────────
-    if (config.enhanceWithLlm && _analysisProvider != null) {
-      _lastSession = _lastSession!.copyWith(status: AnalysisStatus.enhancing);
-
-      yield _progress(
-        stage: 'Enhancing with AI',
-        currentFrame: processedFrames,
-        totalFrames: totalFrames,
-        itemsDetected: detectedObjects.length,
-      );
-
-      final enhanced = await _enhanceWithProvider(detectedObjects, frames);
-      detectedObjects
-        ..clear()
-        ..addAll(enhanced);
-    }
-
-    // ── Complete ───────────────────────────────────────────────────────
-    _lastSession = _lastSession!.copyWith(
-      status: AnalysisStatus.reviewing,
-      detectedObjects: detectedObjects,
-      completedAt: DateTime.now(),
-    );
-
-    yield _progress(
-      stage: 'Ready for review',
-      currentFrame: totalFrames,
-      totalFrames: totalFrames,
-      itemsDetected: detectedObjects.length,
-    );
-  }
-
-  /// Enhances detected objects using the configured [AnalysisProvider].
-  ///
-  /// If the provider is unavailable or fails for individual objects, the
-  /// original on-device results are preserved.
-  Future<List<DetectedObject>> _enhanceWithProvider(
-    List<DetectedObject> objects,
-    Map<int, FrameData> frames,
-  ) async {
-    final provider = _analysisProvider;
-    if (provider == null) return objects;
-
-    final isAvailable = await provider.isAvailable();
-    if (!isAvailable) return objects;
-
-    final enhanced = <DetectedObject>[];
-
-    for (final obj in objects) {
-      try {
-        // Provide the full frame as context alongside the crop.
-        final contextFrame = frames[obj.frameIndex]?.imageBytes;
-
-        final result = await provider.analyzeImage(
-          imageBytes: obj.croppedImage,
-          contextFrame: contextFrame,
-          existingLabel: obj.label,
-        );
-
-        enhanced.add(
-          obj.copyWith(
-            enhancedName: result.itemName,
-            brand: result.brand,
-            model: result.model,
-            description: result.description,
-            estimatedPrice: result.estimatedPrice,
-            category: result.category,
+        final results = await provider.analyzeImageMulti(frame.imageBytes);
+        raw.addAll(
+          results.map(
+            (r) => FrameSuggestion(frameIndex: frame.index, result: r),
           ),
         );
       } catch (_) {
-        // Keep original on-device result on LLM failure.
-        enhanced.add(obj);
+        // One refused frame must not sink the walkthrough.
       }
+      analyzed++;
+      merged = _merger.merge(raw);
+      yield VideoFrameProgress(
+        processed: analyzed,
+        total: selected.length,
+        itemsSoFar: merged.length,
+        // The merged partials, review-ready: cancelling mid-run keeps
+        // what the completed calls already paid for.
+        items: _buildItems(sessionId, merged, frameBytes, config),
+      );
     }
 
-    return enhanced;
+    // ── Stage 4: merged, capped, frame-tagged results ──────────────────
+    final items = _buildItems(sessionId, merged, frameBytes, config);
+
+    await _sessionLog?.finish(
+      id: sessionId,
+      status: 'completed',
+      frameCount: extractedFrameCount,
+      itemsDetected: items.length,
+    );
+    yield VideoAnalysisCompleted(items);
   }
 
-  /// The most recent [AnalysisSession] state. Updated throughout the pipeline.
-  AnalysisSession? _lastSession;
+  List<DetectedObject> _buildItems(
+    String sessionId,
+    List<FrameSuggestion> merged,
+    Map<int, Uint8List> frameBytes,
+    AnalysisConfig config,
+  ) {
+    final capped = merged.take(config.maxObjectsPerSession).toList();
+    return <DetectedObject>[
+      for (var i = 0; i < capped.length; i++)
+        _toDetectedObject(sessionId, i, capped[i], frameBytes),
+    ];
+  }
 
-  /// Returns the current or most recent [AnalysisSession].
-  AnalysisSession? get lastSession => _lastSession;
-
-  /// Builds an [AnalysisProgress] for the current pipeline state.
-  AnalysisProgress _progress({
-    required String stage,
-    int currentFrame = 0,
-    int totalFrames = 0,
-    int itemsDetected = 0,
-  }) {
-    final progress = totalFrames > 0
-        ? (currentFrame / totalFrames).clamp(0.0, 1.0)
-        : 0.0;
-
-    return AnalysisProgress(
-      currentFrame: currentFrame,
-      totalFrames: totalFrames,
-      itemsDetected: itemsDetected,
-      stage: stage,
-      progress: progress,
+  static DetectedObject _toDetectedObject(
+    String sessionId,
+    int index,
+    FrameSuggestion suggestion,
+    Map<int, Uint8List> frameBytes,
+  ) {
+    final r = suggestion.result;
+    return DetectedObject(
+      id: '$sessionId-$index',
+      label: r.itemName.trim().isEmpty ? 'Unidentified item' : r.itemName,
+      confidence: r.confidence,
+      frameImage: frameBytes[suggestion.frameIndex] ?? Uint8List(0),
+      frameIndex: suggestion.frameIndex,
+      brand: _nullIfEmpty(r.brand),
+      model: _nullIfEmpty(r.model),
+      description: _nullIfEmpty(r.description),
+      estimatedPrice: r.estimatedPrice,
+      category: _nullIfEmpty(r.category),
     );
   }
+
+  static String? _nullIfEmpty(String? s) =>
+      (s == null || s.trim().isEmpty) ? null : s;
 }

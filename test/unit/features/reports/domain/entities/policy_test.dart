@@ -17,9 +17,9 @@ void main() {
       expect(policy.propertyId, 'prop1');
       expect(policy.provider, 'State Farm');
       expect(policy.policyNumber, isNull);
-      expect(policy.coverageAmount, isNull);
-      expect(policy.deductible, isNull);
-      expect(policy.premium, isNull);
+      expect(policy.coverageAmountCents, isNull);
+      expect(policy.deductibleCents, isNull);
+      expect(policy.premiumCents, isNull);
       expect(policy.expiryDate, isNull);
       expect(policy.createdAt, now);
     });
@@ -31,17 +31,17 @@ void main() {
         propertyId: 'prop1',
         provider: 'Allstate',
         policyNumber: 'POL-12345',
-        coverageAmount: 500000.0,
-        deductible: 1000.0,
-        premium: 1200.0,
+        coverageAmountCents: 50000000,
+        deductibleCents: 100000,
+        premiumCents: 120000,
         expiryDate: expiry,
         createdAt: now,
       );
 
       expect(policy.policyNumber, 'POL-12345');
-      expect(policy.coverageAmount, 500000.0);
-      expect(policy.deductible, 1000.0);
-      expect(policy.premium, 1200.0);
+      expect(policy.coverageAmountCents, 50000000);
+      expect(policy.deductibleCents, 100000);
+      expect(policy.premiumCents, 120000);
       expect(policy.expiryDate, expiry);
     });
 
@@ -55,12 +55,12 @@ void main() {
 
       final updated = policy.copyWith(
         provider: 'Allstate',
-        coverageAmount: 300000.0,
+        coverageAmountCents: 30000000,
       );
 
       expect(updated.id, 'p1');
       expect(updated.provider, 'Allstate');
-      expect(updated.coverageAmount, 300000.0);
+      expect(updated.coverageAmountCents, 30000000);
       expect(updated.propertyId, 'prop1');
     });
 

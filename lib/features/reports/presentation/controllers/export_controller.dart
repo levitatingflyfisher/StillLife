@@ -1,8 +1,8 @@
-import 'dart:io';
+import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path/path.dart' as p;
 import 'package:share_plus/share_plus.dart';
 
 import '../../../../core/errors/result.dart';
@@ -36,66 +36,70 @@ class ExportController extends StateNotifier<AsyncValue<void>> {
     required this.pdfGenerator,
   }) : super(const AsyncData(null));
 
-  /// Export as PDF and share the file.
+  static String _dateStamp() =>
+      DateTime.now().toIso8601String().split('T').first;
+
+  /// Shares [bytes] directly — no temp file, so the identical path works on
+  /// Android and web (same XFile.fromData pattern as the shopping-list
+  /// export). Returns the shared file name, or null on failure.
+  Future<String?> _shareBytes(
+    Uint8List bytes,
+    String name,
+    String mimeType,
+  ) async {
+    await Share.shareXFiles([
+      XFile.fromData(bytes, mimeType: mimeType, name: name),
+    ], fileNameOverrides: [name]);
+    return name;
+  }
+
+  /// Export as PDF and share it.
   Future<String?> exportPdf({String? propertyId}) async {
     state = const AsyncLoading();
     try {
       final bytes = await pdfGenerator.generateReport(propertyId: propertyId);
-
-      final dir = await Directory.systemTemp.createTemp('still_life_export');
-      final fileName =
-          'still_life_report_${DateTime.now().toIso8601String().split('T').first}.pdf';
-      final file = File(p.join(dir.path, fileName));
-      await file.writeAsBytes(bytes);
-
-      await Share.shareXFiles([XFile(file.path)]);
-
+      final name = 'still_life_report_${_dateStamp()}.pdf';
+      await _shareBytes(bytes, name, 'application/pdf');
       state = const AsyncData(null);
-      return file.path;
+      return name;
     } catch (e) {
       state = AsyncError(e, StackTrace.current);
       return null;
     }
   }
 
-  /// Export as JSON and share the file.
+  /// Export as JSON and share it.
   Future<String?> exportJson() async {
     state = const AsyncLoading();
     try {
       final jsonString = await jsonExport.exportToJson();
-
-      final dir = await Directory.systemTemp.createTemp('still_life_export');
-      final fileName =
-          'still_life_${DateTime.now().toIso8601String().split('T').first}.json';
-      final file = File(p.join(dir.path, fileName));
-      await file.writeAsString(jsonString);
-
-      await Share.shareXFiles([XFile(file.path)]);
-
+      final name = 'still_life_${_dateStamp()}.json';
+      await _shareBytes(
+        Uint8List.fromList(utf8.encode(jsonString)),
+        name,
+        'application/json',
+      );
       state = const AsyncData(null);
-      return file.path;
+      return name;
     } catch (e) {
       state = AsyncError(e, StackTrace.current);
       return null;
     }
   }
 
-  /// Export as CSV and share the file.
+  /// Export as CSV and share it.
   Future<String?> exportCsv() async {
     state = const AsyncLoading();
     try {
       final csvString = await csvExport.exportItemsToCsv();
-
-      final dir = await Directory.systemTemp.createTemp('still_life_export');
-      final fileName =
-          'still_life_items_${DateTime.now().toIso8601String().split('T').first}.csv';
-      final file = File(p.join(dir.path, fileName));
-      await file.writeAsString(csvString);
-
-      await Share.shareXFiles([XFile(file.path)]);
-
+      final name = 'still_life_items_${_dateStamp()}.csv';
+      await _shareBytes(
+        Uint8List.fromList(utf8.encode(csvString)),
+        name,
+        'text/csv',
+      );
       state = const AsyncData(null);
-      return file.path;
+      return name;
     } catch (e) {
       state = AsyncError(e, StackTrace.current);
       return null;
@@ -106,19 +110,21 @@ class ExportController extends StateNotifier<AsyncValue<void>> {
   Future<Result<ImportSummary>?> importJson() async {
     state = const AsyncLoading();
     try {
+      // withData: the picker hands back the file's bytes, which is the only
+      // thing available on the web (there is no path) and works everywhere.
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['json'],
+        withData: true,
       );
 
-      if (result == null || result.files.single.path == null) {
+      final bytes = result?.files.single.bytes;
+      if (bytes == null) {
         state = const AsyncData(null);
         return null;
       }
 
-      final file = File(result.files.single.path!);
-      final jsonString = await file.readAsString();
-
+      final jsonString = utf8.decode(bytes);
       final importResult = await importService.importFromJson(jsonString);
       state = const AsyncData(null);
       return importResult;

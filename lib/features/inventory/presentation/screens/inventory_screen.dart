@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -234,12 +235,12 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                                 _currentFilter.categoryId ??
                                 parsed.query.categoryId,
                             containerId: parsed.query.containerId,
-                            minValue:
-                                _currentFilter.minValue ??
-                                parsed.query.minValue,
-                            maxValue:
-                                _currentFilter.maxValue ??
-                                parsed.query.maxValue,
+                            minValueCents:
+                                _currentFilter.minValueCents ??
+                                parsed.query.minValueCents,
+                            maxValueCents:
+                                _currentFilter.maxValueCents ??
+                                parsed.query.maxValueCents,
                             priceField: _currentFilter.priceField,
                             hasPhoto:
                                 _currentFilter.hasPhoto ??
@@ -332,7 +333,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                       child: Text('Name'),
                     ),
                     const PopupMenuItem(
-                      value: ItemSortField.currentValue,
+                      value: ItemSortField.currentValueCents,
                       child: Text('Value'),
                     ),
                     const PopupMenuItem(
@@ -340,7 +341,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                       child: Text('Date Added'),
                     ),
                     const PopupMenuItem(
-                      value: ItemSortField.replacementCost,
+                      value: ItemSortField.replacementCostCents,
                       child: Text('Replacement Cost'),
                     ),
                   ],
@@ -396,8 +397,8 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                     ),
                     Text(
                       items
-                          .fold(0.0, (sum, i) => sum + (i.currentValue ?? 0))
-                          .toCurrency(),
+                          .fold(0, (int sum, i) => sum + (i.currentValueCents ?? 0))
+                          .centsToCurrency(),
                       style: theme.textTheme.labelLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -418,7 +419,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                         onChanged: (_) => _toggleSelection(item.id),
                         title: Text(item.name),
                         subtitle: Text(
-                          item.currentValue?.toCurrency() ?? '',
+                          item.currentValueCents.centsToCurrencyOrEmpty(),
                           style: theme.textTheme.bodySmall,
                         ),
                         secondary: isSelected
@@ -465,7 +466,10 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
           ? null
           : SpeedDialFab(
               onPhoto: () => onPhotoAddItem(context, ref),
-              onVoice: () => onVoiceAddItem(context, ref),
+              onVoice: kIsWeb ? null : () => onVoiceAddItem(context, ref),
+              onVideo: kIsWeb
+                  ? null
+                  : () => context.pushNamed('videoCapture'),
               onManual: () => context.pushNamed('addItem'),
             ),
     );

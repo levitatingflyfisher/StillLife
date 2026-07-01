@@ -3,22 +3,21 @@ import 'package:equatable/equatable.dart';
 import '../../../../services/ml/analysis_provider.dart';
 import 'detected_object.dart';
 
+/// The VLM walkthrough pipeline: extract → select → analyze → review,
+/// plus the honest terminal states — a session that cannot run because no
+/// AI tier is configured says so instead of spinning forever.
 enum AnalysisStatus {
   recording('Recording'),
   extracting('Extracting frames'),
-  detecting('Detecting objects'),
-  tracking('Tracking objects'),
-  selecting('Selecting best frames'),
-  classifying('Classifying items'),
-  enhancing('Enhancing with AI'),
+  selecting('Choosing sharp frames'),
+  analyzing('Identifying items'),
   reviewing('Ready for review'),
-  complete('Complete');
+  complete('Complete'),
+  noAiConfigured('No AI configured'),
+  failed('Analysis failed');
 
   final String label;
   const AnalysisStatus(this.label);
-
-  int get stageIndex => index;
-  static int get totalStages => values.length - 1; // exclude 'complete'
 }
 
 class AnalysisSession extends Equatable {
@@ -28,10 +27,23 @@ class AnalysisSession extends Equatable {
   final AnalysisStatus status;
   final int totalFrames;
   final int processedFrames;
+
+  /// How many frames survived the quality gate — each one costs exactly
+  /// one analysis call, so this number IS the cost disclosure.
+  final int selectedFrames;
+
+  /// Running MERGED item count while analysis is still going.
+  /// [detectedObjects] carries the merged partial findings during the
+  /// analysis stage and the final list on completion.
+  final int itemsSoFar;
+
   final List<DetectedObject> detectedObjects;
   final AnalysisTier providerTier;
   final DateTime startedAt;
   final DateTime? completedAt;
+
+  /// Set when [status] is [AnalysisStatus.failed].
+  final String? failureMessage;
 
   const AnalysisSession({
     required this.id,
@@ -40,10 +52,13 @@ class AnalysisSession extends Equatable {
     this.status = AnalysisStatus.recording,
     this.totalFrames = 0,
     this.processedFrames = 0,
+    this.selectedFrames = 0,
+    this.itemsSoFar = 0,
     this.detectedObjects = const [],
     this.providerTier = AnalysisTier.onDevice,
     required this.startedAt,
     this.completedAt,
+    this.failureMessage,
   });
 
   double get progress {
@@ -53,9 +68,9 @@ class AnalysisSession extends Equatable {
 
   bool get isComplete => status == AnalysisStatus.complete;
   bool get isProcessing =>
-      status != AnalysisStatus.recording &&
-      status != AnalysisStatus.reviewing &&
-      status != AnalysisStatus.complete;
+      status == AnalysisStatus.extracting ||
+      status == AnalysisStatus.selecting ||
+      status == AnalysisStatus.analyzing;
 
   int get itemCount => detectedObjects.length;
 
@@ -68,9 +83,12 @@ class AnalysisSession extends Equatable {
     AnalysisStatus? status,
     int? totalFrames,
     int? processedFrames,
+    int? selectedFrames,
+    int? itemsSoFar,
     List<DetectedObject>? detectedObjects,
     AnalysisTier? providerTier,
     DateTime? completedAt,
+    String? failureMessage,
   }) {
     return AnalysisSession(
       id: id,
@@ -79,13 +97,23 @@ class AnalysisSession extends Equatable {
       status: status ?? this.status,
       totalFrames: totalFrames ?? this.totalFrames,
       processedFrames: processedFrames ?? this.processedFrames,
+      selectedFrames: selectedFrames ?? this.selectedFrames,
+      itemsSoFar: itemsSoFar ?? this.itemsSoFar,
       detectedObjects: detectedObjects ?? this.detectedObjects,
       providerTier: providerTier ?? this.providerTier,
       startedAt: startedAt,
       completedAt: completedAt ?? this.completedAt,
+      failureMessage: failureMessage ?? this.failureMessage,
     );
   }
 
   @override
-  List<Object?> get props => [id, status, processedFrames, detectedObjects];
+  List<Object?> get props => [
+    id,
+    status,
+    processedFrames,
+    selectedFrames,
+    itemsSoFar,
+    detectedObjects,
+  ];
 }

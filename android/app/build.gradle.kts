@@ -29,6 +29,12 @@ android {
         versionName = flutter.versionName
     }
 
+    androidResources {
+        // ML Kit image labeling ships its bundled .tflite model as an
+        // asset; APK compression would corrupt the mmap'd model.
+        noCompress += "tflite"
+    }
+
     buildTypes {
         release {
             // Using debug keys for local builds. Configure a release signing config before publishing.
@@ -46,6 +52,12 @@ flutter {
 }
 
 dependencies {
+    // llama.cpp runtime for the on-device VLM tier (SmolVLM2 via
+    // llama_cpp_dart). CPU arm64 build from the plugin's v0.9.0-dev.9
+    // release, sha256-verified against the published checksum
+    // (73ab5e75…). The Dart side dlopens libllama.so from this AAR's
+    // jniLibs. A -hexagon NPU variant exists upstream if ever wanted.
+    implementation(files("libs/llama-cpp-dart.aar"))
     // camera_android_camerax depends on camera-core which references
     // CallbackToFutureAdapter at compile time but doesn't pull in the
     // concurrent-futures artifact transitively under AGP 8.7. Pin it here.

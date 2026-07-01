@@ -79,9 +79,9 @@ class WhatShouldIInsureScreen extends ConsumerWidget {
                     return ListTile(
                       title: Text(item.name),
                       subtitle: Text(
-                        item.currentValue == null
+                        item.currentValueCents == null
                             ? 'No value'
-                            : fmt.format(item.currentValue),
+                            : fmt.format(item.currentValueCents),
                       ),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => context.pushNamed(

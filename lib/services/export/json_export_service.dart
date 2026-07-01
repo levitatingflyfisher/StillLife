@@ -1,34 +1,75 @@
 import 'dart:convert';
 
+import '../../core/utils/money.dart';
 import '../database/database.dart';
 
 class JsonExportService {
   final AppDatabase _db;
 
+  /// The int schema version stamped into the envelope (v2 retention key,
+  /// additive next to the legacy string 'version'). Bump when the payload
+  /// shape changes incompatibly; StillLifeBackupSerializer gates restores
+  /// on it via BackupEnvelope.unwrap.
+  static const int currentSchemaVersion = 1;
+
   JsonExportService(this._db);
 
   /// Export the entire database as a JSON string.
+  ///
+  /// All table reads run inside a single read transaction so the snapshot is a
+  /// consistent point-in-time view. Without it, a concurrent LAN-sync import
+  /// (itself a `_db.transaction`) committing between two of these selects could
+  /// land a new item's photo row in the export while its parent item — read
+  /// earlier — is absent, producing a torn backup no single DB state ever held.
   Future<String> exportToJson() async {
-    final properties = await _db.select(_db.properties).get();
-    final rooms = await _db.select(_db.rooms).get();
-    final containers = await _db.select(_db.storageContainers).get();
-    final categories = await _db.select(_db.categories).get();
-    final items = await _db.select(_db.items).get();
-    final tags = await _db.select(_db.tags).get();
-    final itemTags = await _db.select(_db.itemTags).get();
-    final photos = await _db.select(_db.photos).get();
-    final receipts = await _db.select(_db.receipts).get();
-    final priceHistory = await _db.select(_db.priceHistoryEntries).get();
-    final policies = await _db.select(_db.policies).get();
-    final maintenanceLogs = await _db.select(_db.maintenanceLogs).get();
-    final loansList = await _db.select(_db.loans).get();
-    final profilesList = await _db.select(_db.profiles).get();
-    final appraisalsList = await _db.select(_db.appraisals).get();
+    final rows = await _db.transaction(() async {
+      return (
+        properties: await _db.select(_db.properties).get(),
+        rooms: await _db.select(_db.rooms).get(),
+        containers: await _db.select(_db.storageContainers).get(),
+        categories: await _db.select(_db.categories).get(),
+        items: await _db.select(_db.items).get(),
+        tags: await _db.select(_db.tags).get(),
+        itemTags: await _db.select(_db.itemTags).get(),
+        photos: await _db.select(_db.photos).get(),
+        receipts: await _db.select(_db.receipts).get(),
+        priceHistory: await _db.select(_db.priceHistoryEntries).get(),
+        policies: await _db.select(_db.policies).get(),
+        maintenanceLogs: await _db.select(_db.maintenanceLogs).get(),
+        loans: await _db.select(_db.loans).get(),
+        profiles: await _db.select(_db.profiles).get(),
+        appraisals: await _db.select(_db.appraisals).get(),
+      );
+    });
+    final properties = rows.properties;
+    final rooms = rows.rooms;
+    final containers = rows.containers;
+    final categories = rows.categories;
+    final items = rows.items;
+    final tags = rows.tags;
+    final itemTags = rows.itemTags;
+    final photos = rows.photos;
+    final receipts = rows.receipts;
+    final priceHistory = rows.priceHistory;
+    final policies = rows.policies;
+    final maintenanceLogs = rows.maintenanceLogs;
+    final loansList = rows.loans;
+    final profilesList = rows.profiles;
+    final appraisalsList = rows.appraisals;
 
     final data = {
+      // Legacy keys FIRST and unchanged: the shipped app gates restore on
+      // app == 'still_life' + the string major of 'version', and old readers
+      // ignore unknown keys — so the two v2 keys below are strictly additive
+      // (wire-compat law: new backups must restore on old installs).
       'version': '1.0',
       'app': 'still_life',
       'exportedAt': DateTime.now().toIso8601String(),
+      // v2 retention keys (BACKUP_RETENTION_SPEC §2.F): the UTC stamp feeds
+      // preview/staleness copy; the int schemaVersion feeds
+      // BackupEnvelope.unwrap's future-schema gate.
+      'createdAt': DateTime.now().toUtc().toIso8601String(),
+      'schemaVersion': currentSchemaVersion,
       'data': {
         'properties': properties.map(_propertyToMap).toList(),
         'rooms': rooms.map(_roomToMap).toList(),
@@ -111,12 +152,18 @@ class JsonExportService {
     'roomId': i.roomId,
     'containerId': i.containerId,
     'purchaseDate': i.purchaseDate?.toIso8601String(),
-    'purchasePrice': i.purchasePrice,
-    'currentValue': i.currentValue,
-    'replacementCost': i.replacementCost,
+    // Wire keys and units are frozen: dollars, as every released backup
+    // and sync peer speaks. Storage is cents; convert at this boundary.
+    'purchasePrice': dollarsFromCentsOrNull(i.purchasePriceCents),
+    'currentValue': dollarsFromCentsOrNull(i.currentValueCents),
+    'replacementCost': dollarsFromCentsOrNull(i.replacementCostCents),
     'condition': i.condition,
     'serialNumber': i.serialNumber,
     'warrantyExpiration': i.warrantyExpiration?.toIso8601String(),
+    'brand': i.brand,
+    'model': i.model,
+    'asin': i.asin,
+    'receiptId': i.receiptId,
     'barcode': i.barcode,
     'storeUrl': i.storeUrl,
     'notes': i.notes,
@@ -173,7 +220,7 @@ class JsonExportService {
     'photoPath': r.photoPath,
     'storeName': r.storeName,
     'purchaseDate': r.purchaseDate?.toIso8601String(),
-    'totalAmount': r.totalAmount,
+    'totalAmount': dollarsFromCentsOrNull(r.totalAmountCents),
     'ocrText': r.ocrText,
     'createdAt': r.createdAt.toIso8601String(),
     'nodeId': r.nodeId,
@@ -184,7 +231,7 @@ class JsonExportService {
   Map<String, dynamic> _priceHistoryToMap(PriceHistoryEntry p) => {
     'id': p.id,
     'itemId': p.itemId,
-    'price': p.price,
+    'price': dollarsFromCents(p.priceCents),
     'source': p.source,
     'recordedAt': p.recordedAt.toIso8601String(),
     'nodeId': p.nodeId,
@@ -197,9 +244,9 @@ class JsonExportService {
     'propertyId': p.propertyId,
     'provider': p.provider,
     'policyNumber': p.policyNumber,
-    'coverageAmount': p.coverageAmount,
-    'deductible': p.deductible,
-    'premium': p.premium,
+    'coverageAmount': dollarsFromCentsOrNull(p.coverageAmountCents),
+    'deductible': dollarsFromCentsOrNull(p.deductibleCents),
+    'premium': dollarsFromCentsOrNull(p.premiumCents),
     'expiryDate': p.expiryDate?.toIso8601String(),
     'createdAt': p.createdAt.toIso8601String(),
     'modifiedAt': p.modifiedAt.toIso8601String(),
@@ -214,7 +261,7 @@ class JsonExportService {
     'propertyId': m.propertyId,
     'title': m.title,
     'description': m.description,
-    'cost': m.cost,
+    'cost': dollarsFromCentsOrNull(m.costCents),
     'performedAt': m.performedAt.toIso8601String(),
     'nextDueAt': m.nextDueAt?.toIso8601String(),
     'servicedBy': m.servicedBy,
@@ -256,7 +303,7 @@ class JsonExportService {
     'id': a.id,
     'itemId': a.itemId,
     'mode': a.mode,
-    'value': a.value,
+    'value': dollarsFromCents(a.valueCents),
     'currency': a.currency,
     'confidence': a.confidence,
     'sourceUrls': a.sourceUrls,

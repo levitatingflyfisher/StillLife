@@ -30,6 +30,8 @@ class PhotoRepositoryImpl implements PhotoRepository {
         id: id,
         itemId: photo.itemId,
         filePath: photo.filePath,
+        bytes: Value(photo.bytes),
+        thumbBytes: Value(photo.thumbBytes),
         isPrimary: Value(photo.isPrimary),
         source: Value(photo.source.name),
         capturedAt: photo.capturedAt,
@@ -82,6 +84,8 @@ class PhotoRepositoryImpl implements PhotoRepository {
       id: row.id,
       itemId: row.itemId,
       filePath: row.filePath,
+      bytes: row.bytes,
+      thumbBytes: row.thumbBytes,
       isPrimary: row.isPrimary,
       source: PhotoSource.values.firstWhere(
         (e) => e.name == row.source,

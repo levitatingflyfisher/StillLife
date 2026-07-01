@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import '../../core/utils/money.dart';
+
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
@@ -43,12 +45,88 @@ class ImportService {
     // If we couldn't resolve a sandbox root (e.g. in tests), skip the check.
     if (photoRoot == null) return true;
     final normalized = p.normalize(rawPath);
-    if (p.equals(photoRoot, normalized)) return true;
-    return p.isWithin(photoRoot, normalized);
+    // Only accept paths inside the dedicated media subdirectories. Validating
+    // against the whole documents root let a crafted import point a filePath at
+    // the database itself (still_life.db lives in the ROOT, not a media dir);
+    // a later item delete would then unlink it and wipe the entire database.
+    for (final sub in const ['photos', 'thumbnails', 'receipts']) {
+      if (p.isWithin(p.join(photoRoot, sub), normalized)) return true;
+    }
+    return false;
+  }
+
+  /// content JSON key → SQL table name, for the CRDT tables that carry an `id`
+  /// primary key + `hlc`. itemTags (composite PK) is intentionally excluded.
+  static const _lwwTables = <String, String>{
+    'properties': 'properties',
+    'rooms': 'rooms',
+    'categories': 'categories',
+    'items': 'items',
+    'tags': 'tags',
+    'photos': 'photos',
+    'receipts': 'receipts',
+    'loans': 'loans',
+    'policies': 'policies',
+    'maintenanceLogs': 'maintenance_logs',
+    'priceHistory': 'price_history_entries',
+    'storageContainers': 'storage_containers',
+  };
+
+  /// Returns [content] with every CRDT table's rows filtered to only those that
+  /// win last-writer-wins against the current local row (see [_lwwShouldWrite]).
+  Future<Map<String, dynamic>> _lwwFilter(Map<String, dynamic> content) async {
+    final out = Map<String, dynamic>.from(content);
+    for (final entry in _lwwTables.entries) {
+      final rows = content[entry.key];
+      if (rows is! List) continue;
+      final kept = <dynamic>[];
+      for (final row in rows) {
+        if (row is! Map) {
+          kept.add(row);
+          continue;
+        }
+        final id = row['id'] as String?;
+        final hlc = row['hlc'] as String? ?? '';
+        if (id == null || await _lwwShouldWrite(entry.value, id, hlc)) {
+          kept.add(row);
+        }
+      }
+      out[entry.key] = kept;
+    }
+    return out;
+  }
+
+  /// True when the incoming record should be applied under HLC last-writer-wins:
+  /// no local row, no incoming HLC (legacy — preserve blind-apply), the local
+  /// row has no HLC, or the incoming HLC is strictly greater. HLC strings are
+  /// designed to sort lexicographically.
+  Future<bool> _lwwShouldWrite(
+    String table,
+    String id,
+    String incomingHlc,
+  ) async {
+    if (incomingHlc.isEmpty) return true;
+    final rows = await _db.customSelect(
+      'SELECT hlc FROM $table WHERE id = ? LIMIT 1',
+      variables: [Variable<String>(id)],
+    ).get();
+    if (rows.isEmpty) return true;
+    final localHlc = rows.first.read<String?>('hlc') ?? '';
+    if (localHlc.isEmpty) return true;
+    return incomingHlc.compareTo(localHlc) > 0;
   }
 
   /// Import data from a JSON string. Inserts or replaces records.
-  Future<Result<ImportSummary>> importFromJson(String jsonString) async {
+  /// [lww] enables per-record last-writer-wins by HLC: a row is applied only
+  /// when there is no local row, the row carries no HLC (legacy), or the
+  /// incoming HLC is strictly greater than the local one. Sync merges must pass
+  /// `lww: true` so a stale peer can't overwrite a newer local edit or
+  /// resurrect a newer tombstone. Backup RESTORE keeps the default (false) —
+  /// a restore intentionally replaces local data wholesale.
+  Future<Result<ImportSummary>> importFromJson(
+    String jsonString, {
+    bool lww = false,
+  }) async {
     try {
       final data = json.decode(jsonString) as Map<String, dynamic>;
       final photoRoot = await _resolvePhotoRoot();
@@ -62,7 +140,7 @@ class ImportService {
         return const Err(ImportFailure('Missing version in backup file'));
       }
 
-      final content = data['data'] as Map<String, dynamic>? ?? {};
+      final content0 = data['data'] as Map<String, dynamic>? ?? {};
 
       var propertiesCount = 0;
       var roomsCount = 0;
@@ -78,6 +156,11 @@ class ImportService {
       var appraisalsCount = 0;
 
       await _db.transaction(() async {
+        // For a sync merge, drop incoming rows that are not strictly newer than
+        // the local row (HLC last-writer-wins). The upsert loop below then only
+        // ever writes winning rows, so a stale peer can't clobber newer local
+        // edits or flip a newer tombstone back to live.
+        final content = lww ? await _lwwFilter(content0) : content0;
         // Import in dependency order:
         // properties → rooms → storageContainers → categories → tags → items → itemTags → photos → receipts → priceHistory
 
@@ -107,6 +190,11 @@ class ImportService {
         final rooms = (content['rooms'] as List<dynamic>?) ?? [];
         for (final r in rooms) {
           final map = r as Map<String, dynamic>;
+          // A room's photoPath is a file that room-delete can unlink, so it must
+          // pass the same media-dir guard as photos/receipts (was unchecked).
+          final rawRoomPhoto = map['photoPath'] as String?;
+          final roomPhoto =
+              _isPathSafe(rawRoomPhoto, photoRoot) ? rawRoomPhoto : null;
           await _db
               .into(_db.rooms)
               .insertOnConflictUpdate(
@@ -117,7 +205,7 @@ class ImportService {
                   name: map['name'] as String,
                   floor: Value(map['floor'] as String?),
                   sortOrder: Value(map['sortOrder'] as int? ?? 0),
-                  photoPath: Value(map['photoPath'] as String?),
+                  photoPath: Value(roomPhoto),
                   createdAt: DateTime.parse(map['createdAt'] as String),
                   modifiedAt: DateTime.parse(map['modifiedAt'] as String),
                   nodeId: Value(map['nodeId'] as String? ?? ''),
@@ -235,17 +323,30 @@ class ImportService {
                         ? DateTime.parse(map['purchaseDate'] as String)
                         : null,
                   ),
-                  purchasePrice: Value(
-                    (map['purchasePrice'] as num?)?.toDouble(),
+                  // The wire speaks dollars; storage is integer cents.
+                  purchasePriceCents: Value(
+                    centsFromDollarsOrNull(
+                      (map['purchasePrice'] as num?)?.toDouble(),
+                    ),
                   ),
-                  currentValue: Value(
-                    (map['currentValue'] as num?)?.toDouble(),
+                  currentValueCents: Value(
+                    centsFromDollarsOrNull(
+                      (map['currentValue'] as num?)?.toDouble(),
+                    ),
                   ),
-                  replacementCost: Value(
-                    (map['replacementCost'] as num?)?.toDouble(),
+                  replacementCostCents: Value(
+                    centsFromDollarsOrNull(
+                      (map['replacementCost'] as num?)?.toDouble(),
+                    ),
                   ),
                   condition: Value(map['condition'] as String?),
                   serialNumber: Value(map['serialNumber'] as String?),
+                  // Absent in pre-v13 backups → null (backward-compatible).
+                  brand: Value(map['brand'] as String?),
+                  model: Value(map['model'] as String?),
+                  asin: Value(map['asin'] as String?),
+                  // Absent in pre-v14 backups → null (backward-compatible).
+                  receiptId: Value(map['receiptId'] as String?),
                   warrantyExpiration: Value(
                     map['warrantyExpiration'] != null
                         ? DateTime.parse(map['warrantyExpiration'] as String)
@@ -381,7 +482,11 @@ class ImportService {
                         ? DateTime.parse(map['purchaseDate'] as String)
                         : null,
                   ),
-                  totalAmount: Value((map['totalAmount'] as num?)?.toDouble()),
+                  totalAmountCents: Value(
+                    centsFromDollarsOrNull(
+                      (map['totalAmount'] as num?)?.toDouble(),
+                    ),
+                  ),
                   ocrText: Value(map['ocrText'] as String?),
                   createdAt: DateTime.parse(map['createdAt'] as String),
                   nodeId: Value(map['nodeId'] as String? ?? ''),
@@ -403,7 +508,7 @@ class ImportService {
                 PriceHistoryEntriesCompanion.insert(
                   id: map['id'] as String,
                   itemId: map['itemId'] as String,
-                  price: (map['price'] as num).toDouble(),
+                  priceCents: centsFromDollars((map['price'] as num).toDouble()),
                   source: map['source'] as String? ?? 'manual',
                   recordedAt: DateTime.parse(map['recordedAt'] as String),
                   nodeId: Value(map['nodeId'] as String? ?? ''),
@@ -426,11 +531,21 @@ class ImportService {
                   propertyId: map['propertyId'] as String,
                   provider: map['provider'] as String,
                   policyNumber: Value(map['policyNumber'] as String?),
-                  coverageAmount: Value(
-                    (map['coverageAmount'] as num?)?.toDouble(),
+                  coverageAmountCents: Value(
+                    centsFromDollarsOrNull(
+                      (map['coverageAmount'] as num?)?.toDouble(),
+                    ),
                   ),
-                  deductible: Value((map['deductible'] as num?)?.toDouble()),
-                  premium: Value((map['premium'] as num?)?.toDouble()),
+                  deductibleCents: Value(
+                    centsFromDollarsOrNull(
+                      (map['deductible'] as num?)?.toDouble(),
+                    ),
+                  ),
+                  premiumCents: Value(
+                    centsFromDollarsOrNull(
+                      (map['premium'] as num?)?.toDouble(),
+                    ),
+                  ),
                   expiryDate: Value(
                     map['expiryDate'] != null
                         ? DateTime.parse(map['expiryDate'] as String)
@@ -459,7 +574,9 @@ class ImportService {
                   propertyId: Value(map['propertyId'] as String?),
                   title: map['title'] as String,
                   description: Value(map['description'] as String?),
-                  cost: Value((map['cost'] as num?)?.toDouble()),
+                  costCents: Value(
+                    centsFromDollarsOrNull((map['cost'] as num?)?.toDouble()),
+                  ),
                   performedAt: DateTime.parse(map['performedAt'] as String),
                   nextDueAt: Value(
                     map['nextDueAt'] != null
@@ -488,7 +605,7 @@ class ImportService {
                   id: map['id'] as String,
                   itemId: map['itemId'] as String,
                   mode: map['mode'] as String,
-                  value: (map['value'] as num).toDouble(),
+                  valueCents: centsFromDollars((map['value'] as num).toDouble()),
                   currency: Value(map['currency'] as String? ?? 'USD'),
                   confidence: Value(
                     (map['confidence'] as num?)?.toDouble() ?? 0.5,

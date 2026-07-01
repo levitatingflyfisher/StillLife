@@ -1,5 +1,31 @@
 import 'dart:typed_data';
 
+/// Anthropic model id used by every Claude-backed analysis path (BYO
+/// Claude tier, hosted /v1/messages passthrough, item chat).
+///
+/// A current ALIAS, deliberately not a dated snapshot: the previous pin
+/// ('claude-sonnet-4-20250514') was deprecated with retirement announced,
+/// which would have 404'd every photo/voice/receipt analysis with no
+/// settings-level fix. Matches [kAppraiserDefaultModel]'s alias policy.
+const String kDefaultClaudeAnalysisModel = 'claude-sonnet-4-6';
+
+/// What kinds of analysis calls a provider can serve. The cascade matches
+/// each call to a capability so a partial provider (e.g. an on-device
+/// image labeler with no text model) is never handed a call it would
+/// throw on.
+enum AnalysisCapability {
+  /// Single-item photo analysis ([AnalysisProvider.analyzeImage]).
+  image,
+
+  /// Multi-item shelf/room photo analysis
+  /// ([AnalysisProvider.analyzeImageMulti]).
+  imageMulti,
+
+  /// Text-only calls — both [AnalysisProvider.analyzeText] and
+  /// [AnalysisProvider.completeText] need a general text model.
+  text,
+}
+
 /// The 4 tiers of LLM analysis providers.
 enum AnalysisTier {
   onDevice('On-Device ML'),
@@ -10,6 +36,19 @@ enum AnalysisTier {
   final String label;
   const AnalysisTier(this.label);
 }
+
+/// Default tier priority: quality-first, with on-device LAST. The
+/// on-device tier is always available on Android (bundled labeler), so
+/// putting it first would silently downgrade every configured user's
+/// photo analysis to coarse labels. As the floor, it only answers when
+/// nothing better is configured; privacy-first users can drag it to the
+/// top in settings.
+const List<AnalysisTier> kDefaultTierPriority = [
+  AnalysisTier.localLlm,
+  AnalysisTier.cloudApi,
+  AnalysisTier.hosted,
+  AnalysisTier.onDevice,
+];
 
 /// Result of an LLM analysis on an image.
 class AnalysisResult {
@@ -34,48 +73,46 @@ class AnalysisResult {
   });
 }
 
-/// Progress information during video analysis.
-class AnalysisProgress {
-  final int currentFrame;
-  final int totalFrames;
-  final int itemsDetected;
-  final String stage;
-  final double progress;
-
-  const AnalysisProgress({
-    required this.currentFrame,
-    required this.totalFrames,
-    required this.itemsDetected,
-    required this.stage,
-    required this.progress,
-  });
-}
-
-/// Configuration for video analysis pipeline.
+/// Configuration for the video-walkthrough analysis pipeline.
 class AnalysisConfig {
   final double framesPerSecond;
   final double blurThreshold; // Laplacian variance minimum
-  final double confidenceThreshold; // YOLO detection minimum
-  final double iouTrackingThreshold; // IoU for same-object tracking
   final int maxObjectsPerSession;
-  final bool enhanceWithLlm;
-  final AnalysisTier? preferredTier;
+
+  /// How many frames survive the quality gate and get an analysis call.
+  /// Every frame is one VLM call, so this is the cost/coverage dial.
+  final int topKFrames;
 
   const AnalysisConfig({
     this.framesPerSecond = 2.0,
     this.blurThreshold = 100.0,
-    this.confidenceThreshold = 0.4,
-    this.iouTrackingThreshold = 0.3,
     this.maxObjectsPerSession = 200,
-    this.enhanceWithLlm = true,
-    this.preferredTier,
+    this.topKFrames = 12,
   });
+}
+
+/// Optional context accompanying a text analysis request. Providers may
+/// fold it into their prompt (e.g. a label the user already assigned).
+class AnalysisContext {
+  final String? existingLabel;
+
+  const AnalysisContext({this.existingLabel});
 }
 
 /// All 4 LLM tiers implement this interface.
 abstract class AnalysisProvider {
   String get name;
   AnalysisTier get tier;
+
+  /// Which call types this provider can serve. Defaults to all of them —
+  /// the four full-LLM tiers do everything. A partial provider (vision-only
+  /// on-device labeler) overrides this so the cascade never routes it a
+  /// call it cannot handle.
+  Set<AnalysisCapability> get capabilities => const {
+    AnalysisCapability.image,
+    AnalysisCapability.imageMulti,
+    AnalysisCapability.text,
+  };
 
   /// Check if this provider is currently available.
   Future<bool> isAvailable();
@@ -87,9 +124,21 @@ abstract class AnalysisProvider {
     String? existingLabel,
   });
 
-  /// Analyze a video file and stream progress updates.
-  Stream<AnalysisProgress> analyzeVideo({
-    required String videoPath,
-    required AnalysisConfig config,
+  /// Analyze one image containing MANY items (a shelf, a room corner) and
+  /// return one result per distinct item found, capped at kMultiItemCap
+  /// (multi_item_parser.dart). Malformed model output degrades to fewer
+  /// (or zero) results — never a crash.
+  Future<List<AnalysisResult>> analyzeImageMulti(
+    Uint8List imageBytes, {
+    AnalysisContext? context,
   });
+
+  /// Analyze a free-text prompt (no image) and return item identification.
+  /// Used by voice intake and other text-only extraction flows.
+  Future<AnalysisResult> analyzeText(String prompt, {AnalysisContext? context});
+
+  /// Send a raw text prompt and return the model's raw reply, with NO
+  /// item-analysis parsing applied. The seam for flows whose reply is not
+  /// an [AnalysisResult] — receipt structuring parses its own shape.
+  Future<String> completeText(String prompt, {int maxTokens = 1000});
 }

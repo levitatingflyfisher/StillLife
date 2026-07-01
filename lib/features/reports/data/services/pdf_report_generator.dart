@@ -47,15 +47,15 @@ class PdfReportGenerator {
     // Calculate totals
     final totalCurrentValue = items.fold(
       0.0,
-      (sum, i) => sum + (i.currentValue ?? 0),
+      (sum, i) => sum + (i.currentValueCents ?? 0),
     );
     final totalReplacementCost = items.fold(
       0.0,
-      (sum, i) => sum + (i.replacementCost ?? 0),
+      (sum, i) => sum + (i.replacementCostCents ?? 0),
     );
     final totalAcquisitionCost = items.fold(
       0.0,
-      (sum, i) => sum + (i.purchasePrice ?? 0),
+      (sum, i) => sum + (i.purchasePriceCents ?? 0),
     );
 
     // Group items by room
@@ -69,7 +69,7 @@ class PdfReportGenerator {
     for (final item in items) {
       final catName = categoryMap[item.categoryId] ?? 'Uncategorized';
       valueByCategory[catName] =
-          (valueByCategory[catName] ?? 0) + (item.currentValue ?? 0);
+          (valueByCategory[catName] ?? 0) + (item.currentValueCents ?? 0);
     }
 
     final currencyFormat = NumberFormat.currency(symbol: '\$');
@@ -157,7 +157,7 @@ class PdfReportGenerator {
       final roomItems = entry.value;
       final roomTotal = roomItems.fold(
         0.0,
-        (sum, i) => sum + (i.currentValue ?? 0),
+        (sum, i) => sum + (i.currentValueCents ?? 0),
       );
 
       pdf.addPage(
@@ -200,11 +200,11 @@ class PdfReportGenerator {
                 return [
                   item.name,
                   categoryMap[item.categoryId] ?? '-',
-                  item.currentValue != null
-                      ? currencyFormat.format(item.currentValue)
+                  item.currentValueCents != null
+                      ? currencyFormat.format(item.currentValueCents)
                       : '-',
-                  item.replacementCost != null
-                      ? currencyFormat.format(item.replacementCost)
+                  item.replacementCostCents != null
+                      ? currencyFormat.format(item.replacementCostCents)
                       : '-',
                   item.condition ?? '-',
                 ];

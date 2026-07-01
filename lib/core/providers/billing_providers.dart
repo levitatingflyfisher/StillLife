@@ -8,19 +8,27 @@ import '../../features/billing/domain/billing_service.dart';
 
 /// Compile-time-configurable base URL for the hosted-LLM proxy.
 ///
-/// In debug builds this points at the production host; wranglers/operators
-/// override it via `--dart-define=HOSTED_BASE_URL=https://staging...` when
-/// testing against staging or local `wrangler dev`.
+/// Defaults to EMPTY — the hosted tier is disabled unless an operator
+/// explicitly opts in via `--dart-define=HOSTED_BASE_URL=https://...`.
+/// (The old placeholder default pointed at a domain nothing ties to this
+/// project; builds would have sent Authorization bearers and photos to
+/// whoever registers it. Fail closed instead.)
 const String kHostedBaseUrl = String.fromEnvironment(
   'HOSTED_BASE_URL',
-  defaultValue: 'https://hosted-llm.stilllife.app',
+  defaultValue: '',
 );
 
-/// Stripe Checkout URL (external browser link). Overridable via
-/// `--dart-define=CHECKOUT_URL=...` to target test-mode Stripe.
+/// Stripe Checkout URL (external browser link), set by operators via
+/// `--dart-define=CHECKOUT_URL=...`.
+///
+/// Defaults to EMPTY, exactly like [kHostedBaseUrl] and for the same
+/// reason: the old default pointed at a domain nothing ties to this
+/// project, and the Upgrade button would have launched whatever whoever
+/// registers it serves — presented to the user as a payment page. Fail
+/// closed; the UI hides the CTA when unset.
 const String kCheckoutUrl = String.fromEnvironment(
   'CHECKOUT_URL',
-  defaultValue: 'https://stilllife.app/pro/checkout',
+  defaultValue: '',
 );
 
 /// Singleton BillingService for the app. Holds a Dio instance scoped to

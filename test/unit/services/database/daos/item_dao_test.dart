@@ -188,7 +188,7 @@ void main() {
               id: 'a1',
               itemId: 'i1',
               mode: 'resale',
-              value: 500.0,
+              valueCents: 50000,
               itemModelKey: 'tv|good',
               queriedAt: queriedAt,
               expiresAt: expiresAt,

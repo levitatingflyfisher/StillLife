@@ -53,38 +53,19 @@ void main() {
     test('has sensible defaults', () {
       const config = AnalysisConfig();
       expect(config.framesPerSecond, 2.0);
-      expect(config.confidenceThreshold, 0.4);
-      expect(config.enhanceWithLlm, true);
-      expect(config.preferredTier, isNull);
+      expect(config.blurThreshold, 100.0);
+      expect(config.maxObjectsPerSession, 200);
     });
 
     test('can be customized', () {
       const config = AnalysisConfig(
         framesPerSecond: 5.0,
-        confidenceThreshold: 0.6,
-        enhanceWithLlm: false,
-        preferredTier: AnalysisTier.localLlm,
+        blurThreshold: 40.0,
+        maxObjectsPerSession: 25,
       );
       expect(config.framesPerSecond, 5.0);
-      expect(config.preferredTier, AnalysisTier.localLlm);
-    });
-  });
-
-  group('AnalysisProgress', () {
-    test('tracks processing progress', () {
-      const progress = AnalysisProgress(
-        currentFrame: 50,
-        totalFrames: 100,
-        itemsDetected: 5,
-        stage: 'Object Detection',
-        progress: 0.5,
-      );
-
-      expect(progress.currentFrame, 50);
-      expect(progress.totalFrames, 100);
-      expect(progress.itemsDetected, 5);
-      expect(progress.stage, 'Object Detection');
-      expect(progress.progress, 0.5);
+      expect(config.blurThreshold, 40.0);
+      expect(config.maxObjectsPerSession, 25);
     });
   });
 }

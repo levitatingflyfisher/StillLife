@@ -20,6 +20,9 @@ class DepreciationInfo {
 }
 
 /// Calculates straight-line depreciation with a 10% residual value floor.
+///
+/// The math is unit-agnostic: pass dollars to get dollars, cents to get
+/// cents. Callers own the unit; the fleet stores money as integer cents.
 class DepreciationCalculator {
   /// Standard useful life in years by category (case-insensitive).
   static const Map<String, int> _usefulLifeByCategory = {

@@ -6,10 +6,12 @@ import '../../features/billing/data/stripe_billing_service_impl.dart'
     show kHostedBearerStorageKey;
 import '../../features/search/data/services/saved_search_service.dart';
 import 'billing_providers.dart' show accountProvider, kHostedBaseUrl;
+import 'cloud_api_settings.dart';
 import '../../services/voice/voice_input_service.dart';
 import '../../services/database/database.dart' show PriceHistoryEntry;
 import '../../services/storage/photo_storage_service.dart';
 import '../../services/ml/analysis_provider.dart';
+import '../../services/ml/on_device/on_device_support.dart';
 import '../../services/ml/on_device_provider.dart';
 import '../../services/ml/ollama_provider.dart';
 import '../../services/ml/cloud_api_provider.dart';
@@ -18,6 +20,7 @@ import '../../services/ml/provider_manager.dart';
 import '../../features/inventory/data/services/item_photo_analysis_service.dart';
 import '../../features/settings/presentation/screens/llm_settings_screen.dart'
     show
+        isPrivateNetworkHost,
         llmTierPriorityProvider,
         llmTierEnabledProvider,
         ollamaHostProvider,
@@ -60,7 +63,12 @@ final _photoStorageServiceProvider = Provider<PhotoStorageService>((ref) {
 
 // Stable Dio instance for Ollama/cloud/hosted providers.
 // Separate from the product lookup Dio to allow independent config.
-final _mlDioProvider = Provider<Dio>((ref) => Dio());
+// connectTimeout bounds the TCP connect phase — the per-request send/
+// receive timeouts the providers set never engage when the connect
+// itself hangs (e.g. probing an unreachable Ollama host mid-photo-flow).
+final _mlDioProvider = Provider<Dio>(
+  (ref) => Dio(BaseOptions(connectTimeout: const Duration(seconds: 10))),
+);
 
 // Stable Dio for the product lookup service. Previously the service was
 // constructed with a fresh `Dio()` on every provider rebuild, leaking
@@ -136,13 +144,23 @@ final productLookupServiceProvider = Provider<ProductLookupService>((ref) {
   );
 });
 
+/// The platform's on-device AI runtime: engines for the Tier-1 cascade
+/// plus the model-management surface for settings. io on Android; the
+/// web/desktop stub reports unsupported with zero engines, so the tier
+/// behaves exactly like the old honest-unavailable seam there.
+final onDeviceSupportProvider = Provider<OnDeviceSupport>(
+  (ref) => buildOnDeviceSupport(),
+);
+
 final providerManagerProvider = Provider<ProviderManager>((ref) {
   final priority =
       ref.watch(llmTierPriorityProvider).valueOrNull ??
-      AnalysisTier.values.toList();
+      List.of(kDefaultTierPriority);
   final enabled =
       ref.watch(llmTierEnabledProvider).valueOrNull ??
-      {for (final t in AnalysisTier.values) t: true};
+      // Mirrors LlmTierEnabledNotifier's defaults: local LLM is opt-in
+      // (never probe an unconfigured localhost port with user photos).
+      {for (final t in AnalysisTier.values) t: t != AnalysisTier.localLlm};
   final ollamaHost = ref.watch(ollamaHostProvider).valueOrNull ?? 'localhost';
   final ollamaPort = ref.watch(ollamaPortProvider).valueOrNull ?? 11434;
   final ollamaModel = ref.watch(ollamaModelProvider).valueOrNull ?? 'llava';
@@ -150,10 +168,24 @@ final providerManagerProvider = Provider<ProviderManager>((ref) {
 
   final ollamaBaseUrl = 'http://$ollamaHost:$ollamaPort';
 
+  // Stored BYO cloud config (tier 3). Until the async load completes the
+  // tier is simply unavailable; the manager rebuilds when it arrives.
+  final cloudConfig = ref.watch(cloudApiConfigProvider).valueOrNull;
+
   final allProviders = <AnalysisProvider>[
-    OnDeviceProvider(),
-    OllamaProvider(dio: dio, baseUrl: ollamaBaseUrl, model: ollamaModel),
-    CloudApiProvider(dio: dio, apiKey: '', apiType: CloudApiType.openai),
+    OnDeviceProvider(engines: ref.watch(onDeviceSupportProvider).engines),
+    // Ollama speaks plain HTTP and the manifest permits non-localhost
+    // cleartext for it, so the tier only exists for local-network hosts —
+    // a pasted public hostname must never receive cleartext photo bytes.
+    if (isPrivateNetworkHost(ollamaHost))
+      OllamaProvider(dio: dio, baseUrl: ollamaBaseUrl, model: ollamaModel),
+    CloudApiProvider(
+      dio: dio,
+      apiKey: cloudConfig?.selectedApiKey ?? '',
+      apiType: cloudConfig?.apiType ?? CloudApiType.claude,
+      openAiBaseUrl: cloudConfig?.openAiBaseUrl ?? kOpenAiCompatDefaultBaseUrl,
+      openAiModel: cloudConfig?.openAiModel ?? kOpenAiCompatDefaultModel,
+    ),
     HostedProvider(
       dio: dio,
       baseUrl: kHostedBaseUrl,

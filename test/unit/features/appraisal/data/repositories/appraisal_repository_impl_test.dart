@@ -73,7 +73,7 @@ void main() {
       id: id,
       itemId: 'item1',
       mode: AppraisalMode.resale,
-      value: 100,
+      valueCents: 10000,
       currency: 'USD',
       confidence: 0.8,
       sources: sources,
@@ -93,12 +93,27 @@ void main() {
           success: (saved) {
             expect(saved.id, isNotEmpty);
             expect(saved.itemId, 'item1');
-            expect(saved.value, 100);
+            expect(saved.valueCents, 10000);
           },
           failure: (f) => fail('expected success, got $f'),
         );
       },
     );
+
+    test('whole cents in, whole cents out — the rounding law is structural',
+        () async {
+      // Fractional dollars can no longer reach a save: valueCents is an int,
+      // and the dollars->cents crossing (centsFromDollars) owns the rounding.
+      final r = await repo.save(buildAppraisal().copyWith(valueCents: () => 101));
+      expect(r.value.valueCents, 101,
+          reason: 'the returned entity must match what was written');
+      final back = await repo.getLatestByItemAndMode(
+        'item1',
+        AppraisalMode.resale,
+      );
+      expect(back?.valueCents, 101,
+          reason: 'the database stores the exact cent count');
+    });
 
     test('round-trips sources as JSON', () async {
       final src = [
@@ -122,6 +137,105 @@ void main() {
     });
   });
 
+  group('AppraisalRepositoryImpl.applyToItem', () {
+    Appraisal appraisalWith({
+      required AppraisalMode mode,
+      required int valueCents,
+    }) {
+      final current = DateTime.now();
+      return Appraisal(
+        id: 'apply-1',
+        itemId: 'item1',
+        mode: mode,
+        valueCents: valueCents,
+        currency: 'USD',
+        confidence: 0.9,
+        sources: const [],
+        itemModelKey: 'tv|good',
+        countryCode: 'US',
+        queriedAt: current,
+        expiresAt: current.add(const Duration(days: 30)),
+      );
+    }
+
+    Future<db_pkg.Item> item1() => (db.select(db.items)
+          ..where((t) => t.id.equals('item1')))
+        .getSingle();
+
+    test('resale sets currentValueCents and writes llm_estimate price history',
+        () async {
+      final r = await repo.applyToItem(
+        appraisalWith(mode: AppraisalMode.resale, valueCents: 45000),
+      );
+      expect(r.isSuccess, isTrue);
+
+      final row = await item1();
+      expect(row.currentValueCents, 45000);
+      expect(row.replacementCostCents, isNull);
+
+      final history = await db.select(db.priceHistoryEntries).get();
+      expect(history, hasLength(1));
+      expect(history.single.itemId, 'item1');
+      expect(history.single.priceCents, 45000);
+      expect(history.single.source, 'llm_estimate');
+    });
+
+    test('replace_new sets replacementCostCents and writes NO price history',
+        () async {
+      final r = await repo.applyToItem(
+        appraisalWith(mode: AppraisalMode.replaceNew, valueCents: 79999),
+      );
+      expect(r.isSuccess, isTrue);
+
+      final row = await item1();
+      expect(row.replacementCostCents, 79999);
+      expect(row.currentValueCents, isNull);
+      expect(await db.select(db.priceHistoryEntries).get(), isEmpty);
+    });
+
+    test('replace_equivalent also targets replacementCostCents', () async {
+      final r = await repo.applyToItem(
+        appraisalWith(mode: AppraisalMode.replaceEquivalent, valueCents: 50000),
+      );
+      expect(r.isSuccess, isTrue);
+      expect((await item1()).replacementCostCents, 50000);
+    });
+
+    test('cent counts propagate exactly to the item and the history',
+        () async {
+      // Decimal rounding (1.005 -> 101, 123.456789 -> 12346) is owned by
+      // centsFromDollars at the wire/input boundaries — covered in
+      // money_cents_test.dart. From the domain inward, money is an int and
+      // must move without any arithmetic at all.
+      await repo.applyToItem(
+        appraisalWith(mode: AppraisalMode.resale, valueCents: 12346),
+      );
+      final row = await item1();
+      expect(row.currentValueCents, 12346);
+      final history = await db.select(db.priceHistoryEntries).get();
+      expect(history.single.priceCents, 12346);
+    });
+
+    test('fails cleanly for an unknown item', () async {
+      final a = Appraisal(
+        id: 'apply-x',
+        itemId: 'no-such-item',
+        mode: AppraisalMode.resale,
+        valueCents: 1000,
+        currency: 'USD',
+        confidence: 0.5,
+        sources: const [],
+        itemModelKey: 'x|good',
+        countryCode: 'US',
+        queriedAt: DateTime.now(),
+        expiresAt: DateTime.now().add(const Duration(days: 1)),
+      );
+      final r = await repo.applyToItem(a);
+      expect(r.isSuccess, isFalse);
+      expect(await db.select(db.priceHistoryEntries).get(), isEmpty);
+    });
+  });
+
   group('AppraisalRepositoryImpl.watchForItem', () {
     test('emits stored appraisals newest first', () async {
       final r1 = await repo.save(buildAppraisal());
@@ -140,7 +254,7 @@ void main() {
         'US',
       );
       expect(found, isNotNull);
-      expect(found!.value, 100);
+      expect(found!.valueCents, 10000);
     });
   });
 

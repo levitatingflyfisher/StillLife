@@ -3,6 +3,8 @@ import 'package:still_life/core/errors/result.dart';
 import 'package:still_life/features/inventory/domain/entities/item.dart';
 import 'package:still_life/services/appraisal/appraiser_service.dart';
 import 'package:still_life/services/chat/item_chat_service.dart';
+import 'package:still_life/services/ml/analysis_provider.dart'
+    show kDefaultClaudeAnalysisModel;
 
 class _StubTransport implements MessagesTransport {
   @override
@@ -43,6 +45,9 @@ void main() {
       expect(req['system'], isA<String>());
       expect((req['messages'] as List), hasLength(1));
       expect((req['messages'] as List).first['role'], 'user');
+      expect(req['model'], kDefaultClaudeAnalysisModel,
+          reason: 'chat must default to the current shared model alias, '
+              'never a dated deprecated snapshot');
     });
   });
 

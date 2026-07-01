@@ -59,9 +59,10 @@ class Items extends Table {
   TextColumn get categoryId => text().references(Categories, #id)();
   TextColumn get roomId => text().references(Rooms, #id)();
   DateTimeColumn get purchaseDate => dateTime().nullable()();
-  RealColumn get purchasePrice => real().nullable()();
-  RealColumn get currentValue => real().nullable()();
-  RealColumn get replacementCost => real().nullable()();
+  // Money is integer cents (v15): exact arithmetic, no float drift.
+  IntColumn get purchasePriceCents => integer().nullable()();
+  IntColumn get currentValueCents => integer().nullable()();
+  IntColumn get replacementCostCents => integer().nullable()();
   TextColumn get condition => text().nullable()();
   TextColumn get serialNumber => text().nullable()();
   DateTimeColumn get warrantyExpiration => dateTime().nullable()();
@@ -87,6 +88,21 @@ class Items extends Table {
       text().nullable().references(Profiles, #id)();
   TextColumn get ownerProfileId =>
       text().nullable().references(Profiles, #id)();
+
+  // Product identity (v13) — real columns so AI suggestions, barcode
+  // lookups, and marketplace imports stop smuggling identity into
+  // name/notes. `asin` has no form field; it is set programmatically
+  // (e.g. Amazon order imports).
+  TextColumn get brand => text().nullable()();
+  TextColumn get model => text().nullable()();
+  TextColumn get asin => text().nullable()();
+
+  // Receipt linkage (v14) — points at Receipts.id. A plain column, not a
+  // `references()`, because Receipts.itemId already references Items and a
+  // declared cycle would break table-creation ordering. One receipt links
+  // many items (a multi-item import), so the link lives here and
+  // Receipts.itemId stays null for those rows.
+  TextColumn get receiptId => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -126,7 +142,17 @@ class ItemTags extends Table {
 class Photos extends Table {
   TextColumn get id => text()();
   TextColumn get itemId => text().references(Items, #id)();
+
+  /// Legacy pre-v12 location of the photo on disk. New photos store '' here;
+  /// the bytes live in [bytes]. Kept so old JSON exports keep importing.
   TextColumn get filePath => text()();
+
+  /// Full-size photo bytes (v12+). Null only for legacy rows whose backing
+  /// file had already vanished before the v12 backfill.
+  BlobColumn get bytes => blob().nullable()();
+
+  /// JPEG thumbnail (~200px wide) derived from [bytes]; best-effort.
+  BlobColumn get thumbBytes => blob().nullable()();
   BoolColumn get isPrimary => boolean().withDefault(const Constant(false))();
   TextColumn get source => text().withDefault(
     const Constant('camera'),
@@ -146,10 +172,17 @@ class Photos extends Table {
 class Receipts extends Table {
   TextColumn get id => text()();
   TextColumn get itemId => text().nullable().references(Items, #id)();
+
+  /// Legacy pre-v12 location of the receipt photo on disk. New receipts
+  /// store '' here; the bytes live in [photoBytes].
   TextColumn get photoPath => text()();
+
+  /// Receipt photo bytes (v12+). Null only for legacy rows whose backing
+  /// file had already vanished before the v12 backfill.
+  BlobColumn get photoBytes => blob().nullable()();
   TextColumn get storeName => text().nullable()();
   DateTimeColumn get purchaseDate => dateTime().nullable()();
-  RealColumn get totalAmount => real().nullable()();
+  IntColumn get totalAmountCents => integer().nullable()();
   TextColumn get ocrText => text().nullable()();
   TextColumn get nodeId => text().withDefault(const Constant(''))();
   TextColumn get hlc => text().withDefault(const Constant(''))();
@@ -164,7 +197,7 @@ class Receipts extends Table {
 class PriceHistoryEntries extends Table {
   TextColumn get id => text()();
   TextColumn get itemId => text().references(Items, #id)();
-  RealColumn get price => real()();
+  IntColumn get priceCents => integer()();
   TextColumn get source =>
       text()(); // "amazon", "manual", "receipt", "llm_estimate"
   DateTimeColumn get recordedAt => dateTime()();
@@ -182,9 +215,9 @@ class Policies extends Table {
   TextColumn get propertyId => text().references(Properties, #id)();
   TextColumn get provider => text()();
   TextColumn get policyNumber => text().nullable()();
-  RealColumn get coverageAmount => real().nullable()();
-  RealColumn get deductible => real().nullable()();
-  RealColumn get premium => real().nullable()();
+  IntColumn get coverageAmountCents => integer().nullable()();
+  IntColumn get deductibleCents => integer().nullable()();
+  IntColumn get premiumCents => integer().nullable()();
   DateTimeColumn get expiryDate => dateTime().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get modifiedAt => dateTime()();
@@ -203,7 +236,7 @@ class MaintenanceLogs extends Table {
   TextColumn get propertyId => text().nullable().references(Properties, #id)();
   TextColumn get title => text().withLength(min: 1, max: 300)();
   TextColumn get description => text().nullable()();
-  RealColumn get cost => real().nullable()();
+  IntColumn get costCents => integer().nullable()();
   DateTimeColumn get performedAt => dateTime()();
   DateTimeColumn get nextDueAt => dateTime().nullable()();
   TextColumn get servicedBy => text().nullable()();
@@ -269,7 +302,8 @@ class VideoAnalyses extends Table {
   TextColumn get id => text()();
   TextColumn get videoPath => text()();
   TextColumn get roomId => text().nullable()();
-  TextColumn get status => text()(); // pending, processing, completed, failed
+  TextColumn get status =>
+      text()(); // processing, completed, failed, no_ai
   TextColumn get providerTier => text().nullable()();
   IntColumn get frameCount => integer().withDefault(const Constant(0))();
   IntColumn get itemsDetected => integer().withDefault(const Constant(0))();
@@ -310,7 +344,7 @@ class Appraisals extends Table {
   TextColumn get itemId => text().references(Items, #id)();
   TextColumn get mode =>
       text()(); // 'resale' | 'replace_new' | 'replace_equivalent'
-  RealColumn get value => real()();
+  IntColumn get valueCents => integer()();
   TextColumn get currency => text().withDefault(const Constant('USD'))();
   RealColumn get confidence => real().withDefault(const Constant(0.5))();
   TextColumn get sourceUrls =>

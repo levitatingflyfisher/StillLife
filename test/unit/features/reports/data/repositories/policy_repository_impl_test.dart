@@ -34,16 +34,16 @@ void main() {
   Policy makePolicy({
     String id = 'pol1',
     String provider = 'State Farm',
-    double? coverage = 200000,
+    int? coverage = 200000,
     DateTime? expiry,
   }) => Policy(
     id: id,
     propertyId: 'prop1',
     provider: provider,
     policyNumber: 'SF-12345',
-    coverageAmount: coverage,
-    deductible: 1000,
-    premium: 1200,
+    coverageAmountCents: coverage,
+    deductibleCents: 1000,
+    premiumCents: 1200,
     expiryDate: expiry,
     createdAt: now,
   );
@@ -59,7 +59,7 @@ void main() {
       final list = await stream.first;
       expect(list, hasLength(1));
       expect(list.first.id, 'pol1');
-      expect(list.first.coverageAmount, 200000);
+      expect(list.first.coverageAmountCents, 200000);
     });
 
     test('create assigns generated id when empty', () async {
@@ -77,7 +77,7 @@ void main() {
       final result = await repo.update(updated);
       expect(result, isA<Success<Policy>>());
       expect((result as Success<Policy>).value.provider, 'Allstate');
-      expect(result.value.coverageAmount, 300000);
+      expect(result.value.coverageAmountCents, 300000);
     });
 
     test('update returns Err for non-existent id', () async {

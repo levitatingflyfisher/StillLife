@@ -11,7 +11,7 @@ void main() {
       description: '55 inch OLED',
       categoryId: 'cat1',
       roomId: 'room1',
-      currentValue: 899.99,
+      currentValueCents: 89999,
       categoryName: 'Electronics',
       roomName: 'Living Room',
       createdAt: DateTime(2024, 1, 1),
@@ -70,7 +70,7 @@ void main() {
         description: '',
         categoryId: 'cat1',
         roomId: 'room1',
-        currentValue: null,
+        currentValueCents: null,
         createdAt: DateTime(2024, 1, 1),
         modifiedAt: DateTime(2024, 1, 1),
       );

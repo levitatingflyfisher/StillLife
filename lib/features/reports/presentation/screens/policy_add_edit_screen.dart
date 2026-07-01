@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 import '../../domain/entities/policy.dart';
 import '../controllers/policy_controller.dart';
 import '../../../locations/presentation/controllers/location_controller.dart';
+import '../../../../core/utils/money_input.dart';
 
 const _uuid = Uuid();
 
@@ -35,6 +36,10 @@ class _PolicyAddEditScreenState extends ConsumerState<PolicyAddEditScreen> {
 
   bool get _isEdit => widget.existing != null;
 
+  /// Cents rendered as plain editable dollars text ("12.50"), no symbols.
+  static String _editText(int? cents) =>
+      cents == null ? '' : (cents / 100).toStringAsFixed(2);
+
   @override
   void initState() {
     super.initState();
@@ -42,13 +47,13 @@ class _PolicyAddEditScreenState extends ConsumerState<PolicyAddEditScreen> {
     _providerCtrl = TextEditingController(text: e?.provider ?? '');
     _policyNumberCtrl = TextEditingController(text: e?.policyNumber ?? '');
     _coverageCtrl = TextEditingController(
-      text: e?.coverageAmount?.toStringAsFixed(2) ?? '',
+      text: _editText(e?.coverageAmountCents),
     );
     _deductibleCtrl = TextEditingController(
-      text: e?.deductible?.toStringAsFixed(2) ?? '',
+      text: _editText(e?.deductibleCents),
     );
     _premiumCtrl = TextEditingController(
-      text: e?.premium?.toStringAsFixed(2) ?? '',
+      text: _editText(e?.premiumCents),
     );
     _selectedPropertyId = e?.propertyId;
     _expiryDate = e?.expiryDate;
@@ -90,9 +95,12 @@ class _PolicyAddEditScreenState extends ConsumerState<PolicyAddEditScreen> {
       policyNumber: _policyNumberCtrl.text.trim().isEmpty
           ? null
           : _policyNumberCtrl.text.trim(),
-      coverageAmount: double.tryParse(_coverageCtrl.text),
-      deductible: double.tryParse(_deductibleCtrl.text),
-      premium: double.tryParse(_premiumCtrl.text),
+      // The locale-tolerant parser + cents conversion in one step — the
+      // rounding law is structural here now (this path used to accept
+      // unrounded raw doubles).
+      coverageAmountCents: parseMoneyInputCents(_coverageCtrl.text),
+      deductibleCents: parseMoneyInputCents(_deductibleCtrl.text),
+      premiumCents: parseMoneyInputCents(_premiumCtrl.text),
       expiryDate: _expiryDate,
       createdAt: widget.existing?.createdAt ?? DateTime.now(),
     );
@@ -176,7 +184,7 @@ class _PolicyAddEditScreenState extends ConsumerState<PolicyAddEditScreen> {
                   child: TextFormField(
                     controller: _premiumCtrl,
                     decoration: const InputDecoration(
-                      labelText: 'Annual premium',
+                      labelText: 'Annual premiumCents',
                       prefixText: '\$',
                       border: OutlineInputBorder(),
                     ),

@@ -27,8 +27,8 @@ class ItemDao extends DatabaseAccessor<AppDatabase> with _$ItemDaoMixin {
     String? categoryId,
     String? containerId,
     String? condition,
-    double? minValue,
-    double? maxValue,
+    int? minValueCents,
+    int? maxValueCents,
     String? priceField,
     DateTime? addedAfter,
     DateTime? addedBefore,
@@ -55,25 +55,25 @@ class ItemDao extends DatabaseAccessor<AppDatabase> with _$ItemDaoMixin {
     if (condition != null) {
       query.where((t) => t.condition.equals(condition));
     }
-    // Apply min/max to the selected price field (defaults to currentValue).
-    if (minValue != null) {
+    // Apply min/max to the selected price field (defaults to currentValueCents).
+    if (minValueCents != null) {
       switch (priceField) {
-        case 'purchasePrice':
-          query.where((t) => t.purchasePrice.isBiggerOrEqualValue(minValue));
-        case 'replacementCost':
-          query.where((t) => t.replacementCost.isBiggerOrEqualValue(minValue));
+        case 'purchasePriceCents':
+          query.where((t) => t.purchasePriceCents.isBiggerOrEqualValue(minValueCents));
+        case 'replacementCostCents':
+          query.where((t) => t.replacementCostCents.isBiggerOrEqualValue(minValueCents));
         default:
-          query.where((t) => t.currentValue.isBiggerOrEqualValue(minValue));
+          query.where((t) => t.currentValueCents.isBiggerOrEqualValue(minValueCents));
       }
     }
-    if (maxValue != null) {
+    if (maxValueCents != null) {
       switch (priceField) {
-        case 'purchasePrice':
-          query.where((t) => t.purchasePrice.isSmallerOrEqualValue(maxValue));
-        case 'replacementCost':
-          query.where((t) => t.replacementCost.isSmallerOrEqualValue(maxValue));
+        case 'purchasePriceCents':
+          query.where((t) => t.purchasePriceCents.isSmallerOrEqualValue(maxValueCents));
+        case 'replacementCostCents':
+          query.where((t) => t.replacementCostCents.isSmallerOrEqualValue(maxValueCents));
         default:
-          query.where((t) => t.currentValue.isSmallerOrEqualValue(maxValue));
+          query.where((t) => t.currentValueCents.isSmallerOrEqualValue(maxValueCents));
       }
     }
     if (addedAfter != null) {
@@ -110,13 +110,13 @@ class ItemDao extends DatabaseAccessor<AppDatabase> with _$ItemDaoMixin {
     // Sorting
     final orderMode = ascending ? OrderingMode.asc : OrderingMode.desc;
     switch (sortBy) {
-      case 'currentValue':
+      case 'currentValueCents':
         query.orderBy([
-          (t) => OrderingTerm(expression: t.currentValue, mode: orderMode),
+          (t) => OrderingTerm(expression: t.currentValueCents, mode: orderMode),
         ]);
-      case 'replacementCost':
+      case 'replacementCostCents':
         query.orderBy([
-          (t) => OrderingTerm(expression: t.replacementCost, mode: orderMode),
+          (t) => OrderingTerm(expression: t.replacementCostCents, mode: orderMode),
         ]);
       case 'createdAt':
         query.orderBy([
@@ -376,9 +376,9 @@ class ItemDao extends DatabaseAccessor<AppDatabase> with _$ItemDaoMixin {
     ).watch().map((rows) => rows.map((row) => items.map(row.data)).toList());
   }
 
-  /// Get total value of all items (excludes soft-deleted).
-  Future<double> getTotalValue({String? roomId, String? categoryId}) async {
-    final sumExpr = items.currentValue.sum();
+  /// Get total value in cents of all items (excludes soft-deleted).
+  Future<int> getTotalValueCents({String? roomId, String? categoryId}) async {
+    final sumExpr = items.currentValueCents.sum();
     final query = selectOnly(items)
       ..addColumns([sumExpr])
       ..where(items.isDeleted.equals(false));
@@ -389,15 +389,15 @@ class ItemDao extends DatabaseAccessor<AppDatabase> with _$ItemDaoMixin {
       query.where(items.categoryId.equals(categoryId));
     }
     final result = await query.getSingle();
-    return result.read(sumExpr) ?? 0.0;
+    return result.read(sumExpr) ?? 0;
   }
 
-  /// Get total replacement cost (excludes soft-deleted).
-  Future<double> getTotalReplacementCost({
+  /// Get total replacement cost in cents (excludes soft-deleted).
+  Future<int> getTotalReplacementCostCents({
     String? roomId,
     String? categoryId,
   }) async {
-    final sumExpr = items.replacementCost.sum();
+    final sumExpr = items.replacementCostCents.sum();
     final query = selectOnly(items)
       ..addColumns([sumExpr])
       ..where(items.isDeleted.equals(false));
@@ -408,12 +408,12 @@ class ItemDao extends DatabaseAccessor<AppDatabase> with _$ItemDaoMixin {
       query.where(items.categoryId.equals(categoryId));
     }
     final result = await query.getSingle();
-    return result.read(sumExpr) ?? 0.0;
+    return result.read(sumExpr) ?? 0;
   }
 
-  /// Get total acquisition cost (excludes soft-deleted).
-  Future<double> getTotalAcquisitionCost({String? roomId}) async {
-    final sumExpr = items.purchasePrice.sum();
+  /// Get total acquisition cost in cents (excludes soft-deleted).
+  Future<int> getTotalAcquisitionCostCents({String? roomId}) async {
+    final sumExpr = items.purchasePriceCents.sum();
     final query = selectOnly(items)
       ..addColumns([sumExpr])
       ..where(items.isDeleted.equals(false));
@@ -421,12 +421,12 @@ class ItemDao extends DatabaseAccessor<AppDatabase> with _$ItemDaoMixin {
       query.where(items.roomId.equals(roomId));
     }
     final result = await query.getSingle();
-    return result.read(sumExpr) ?? 0.0;
+    return result.read(sumExpr) ?? 0;
   }
 
-  /// Get value breakdown by room (excludes soft-deleted).
-  Future<Map<String, double>> getValueByRoom() async {
-    final sumExpr = items.currentValue.sum();
+  /// Get value breakdown in cents by room (excludes soft-deleted).
+  Future<Map<String, int>> getValueCentsByRoom() async {
+    final sumExpr = items.currentValueCents.sum();
     final query = selectOnly(items)
       ..addColumns([items.roomId, sumExpr])
       ..where(items.isDeleted.equals(false))
@@ -434,7 +434,7 @@ class ItemDao extends DatabaseAccessor<AppDatabase> with _$ItemDaoMixin {
     final results = await query.get();
     return {
       for (final row in results)
-        row.read(items.roomId)!: row.read(sumExpr) ?? 0.0,
+        row.read(items.roomId)!: row.read(sumExpr) ?? 0,
     };
   }
 
@@ -453,9 +453,9 @@ class ItemDao extends DatabaseAccessor<AppDatabase> with _$ItemDaoMixin {
         .get();
   }
 
-  /// Get value breakdown by category (excludes soft-deleted).
-  Future<Map<String, double>> getValueByCategory() async {
-    final sumExpr = items.currentValue.sum();
+  /// Get value breakdown in cents by category (excludes soft-deleted).
+  Future<Map<String, int>> getValueCentsByCategory() async {
+    final sumExpr = items.currentValueCents.sum();
     final query = selectOnly(items)
       ..addColumns([items.categoryId, sumExpr])
       ..where(items.isDeleted.equals(false))
@@ -463,7 +463,7 @@ class ItemDao extends DatabaseAccessor<AppDatabase> with _$ItemDaoMixin {
     final results = await query.get();
     return {
       for (final row in results)
-        row.read(items.categoryId)!: row.read(sumExpr) ?? 0.0,
+        row.read(items.categoryId)!: row.read(sumExpr) ?? 0,
     };
   }
 }

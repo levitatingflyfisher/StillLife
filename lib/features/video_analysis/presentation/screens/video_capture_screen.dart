@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:camera/camera.dart';
 import 'package:openhearth_design/openhearth_design.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../../core/widgets/web_unavailable_state.dart';
 import '../../../locations/domain/entities/room.dart';
 import '../../../locations/presentation/controllers/location_controller.dart';
 import '../controllers/video_analysis_controller.dart';
@@ -12,7 +16,11 @@ import '../controllers/video_analysis_controller.dart';
 class VideoCaptureScreen extends ConsumerStatefulWidget {
   final String? roomId;
 
-  const VideoCaptureScreen({super.key, this.roomId});
+  /// Injectable so tests can exercise the web gating on the VM — kIsWeb
+  /// itself cannot be overridden in widget tests.
+  final bool isWeb;
+
+  const VideoCaptureScreen({super.key, this.roomId, this.isWeb = kIsWeb});
 
   @override
   ConsumerState<VideoCaptureScreen> createState() => _VideoCaptureScreenState();
@@ -33,7 +41,7 @@ class _VideoCaptureScreenState extends ConsumerState<VideoCaptureScreen>
     super.initState();
     _selectedRoomId = widget.roomId;
     WidgetsBinding.instance.addObserver(this);
-    _initCamera();
+    if (!widget.isWeb) _initCamera(); // video analysis is native-only
   }
 
   Future<void> _initCamera() async {
@@ -102,10 +110,7 @@ class _VideoCaptureScreenState extends ConsumerState<VideoCaptureScreen>
       final file = await controller.stopVideoRecording();
       setState(() => _isRecording = false);
       if (!mounted) return;
-      ref
-          .read(videoAnalysisControllerProvider.notifier)
-          .startSession(file.path, _selectedRoomId);
-      context.go('/video/processing');
+      _startAnalysis(file.path);
     } catch (_) {
       if (mounted) setState(() => _isRecording = false);
     }
@@ -117,18 +122,40 @@ class _VideoCaptureScreenState extends ConsumerState<VideoCaptureScreen>
       final picker = ImagePicker();
       final video = await picker.pickVideo(source: ImageSource.gallery);
       if (video != null && mounted) {
-        ref
-            .read(videoAnalysisControllerProvider.notifier)
-            .startSession(video.path, _selectedRoomId);
-        context.go('/video/processing');
+        _startAnalysis(video.path);
       }
     } finally {
       if (mounted) setState(() => _isImporting = false);
     }
   }
 
+  /// Kicks off the real pipeline and moves to the processing screen. The
+  /// controller creates the session synchronously, so the processing
+  /// screen never renders an empty "no active session" flash.
+  void _startAnalysis(String videoPath) {
+    unawaited(
+      ref
+          .read(videoAnalysisControllerProvider.notifier)
+          .runAnalysis(videoPath: videoPath, roomId: _selectedRoomId),
+    );
+    context.go('/video/processing');
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (widget.isWeb) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Record Video'), centerTitle: true),
+        body: const WebUnavailableState(
+          icon: Icons.videocam_off_outlined,
+          featureName: 'Video walkthrough analysis',
+          explanation:
+              'Recording and on-device AI analysis need the Android app. '
+              'You can still add items with photos from this browser.',
+        ),
+      );
+    }
+
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final roomsAsync = ref.watch(roomsProvider);

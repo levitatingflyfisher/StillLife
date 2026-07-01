@@ -87,6 +87,47 @@ void main() {
       );
     });
 
+    testWidgets('pre-fills Brand and Model fields from ItemSuggestion', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 5000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: _baseOverrides(),
+          child: const MaterialApp(
+            home: ItemEditScreen(
+              initialSuggestion: ItemSuggestion(
+                name: 'Bosch Drill',
+                brand: 'Bosch',
+                model: 'GSB 18V-55',
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(find.text('Brand'), findsOneWidget);
+      expect(find.text('Model'), findsOneWidget);
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is EditableText && w.controller.text == 'Bosch',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is EditableText && w.controller.text == 'GSB 18V-55',
+        ),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('shows AI banner when showAiBanner is true', (tester) async {
       tester.view.physicalSize = const Size(800, 5000);
       tester.view.devicePixelRatio = 1.0;

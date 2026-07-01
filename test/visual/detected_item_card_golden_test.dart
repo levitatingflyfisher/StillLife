@@ -1,5 +1,4 @@
 import 'dart:typed_data';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -22,8 +21,7 @@ void main() {
                 id: 'obj-1',
                 label: 'Camera',
                 confidence: 0.95,
-                boundingBox: const Rect.fromLTWH(0, 0, 100, 100),
-                croppedImage: Uint8List(1),
+                frameImage: Uint8List(1),
                 frameIndex: 0,
                 enhancedName: 'Sony A7III Camera',
                 brand: 'Sony',

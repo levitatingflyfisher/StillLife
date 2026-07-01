@@ -61,13 +61,13 @@ void main() {
 
   PriceHistoryEntriesCompanion entry(
     String id,
-    double price,
+    int priceCents,
     DateTime recordedAt,
   ) {
     return PriceHistoryEntriesCompanion.insert(
       id: id,
       itemId: 'i1',
-      price: price,
+      priceCents: priceCents,
       source: 'manual',
       recordedAt: recordedAt,
     );
@@ -88,9 +88,9 @@ void main() {
       final entries = await db.priceHistoryDao.watchPriceHistory('i1').first;
       expect(entries.length, 3);
       // newest first
-      expect(entries[0].price, 200);
-      expect(entries[1].price, 150);
-      expect(entries[2].price, 100);
+      expect(entries[0].priceCents, 200);
+      expect(entries[1].priceCents, 150);
+      expect(entries[2].priceCents, 100);
     });
 
     test('getLatestPrice returns the most recent entry', () async {
@@ -102,7 +102,7 @@ void main() {
       );
 
       final latest = await db.priceHistoryDao.getLatestPrice('i1');
-      expect(latest?.price, 500);
+      expect(latest?.priceCents, 500);
     });
 
     test('getLatestPrice returns null when no entries exist', () async {

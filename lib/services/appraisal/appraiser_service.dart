@@ -9,6 +9,7 @@ import '../../features/appraisal/domain/entities/appraisal_source.dart';
 import '../../features/appraisal/domain/repositories/appraisal_repository.dart';
 import '../../features/inventory/domain/entities/item.dart';
 import 'appraiser_prompt.dart';
+import '../../core/utils/money.dart';
 
 /// Thin abstraction over "send a Messages API body and get JSON back".
 /// Implemented by [MessagesTransportAdapter] (Task 7) in production; tests
@@ -25,17 +26,25 @@ class AppraiserService {
   final String Function() _countryCode;
   final DateTime Function() _now;
 
+  /// Resolves the model id per call (the production wiring reads the stored
+  /// setting each time so changes take effect without a restart).
+  final Future<String> Function() _model;
+
   AppraiserService({
     required AppraisalRepository repo,
     required MessagesTransport transport,
     required String Function() countryCode,
+    Future<String> Function()? model,
     Uuid? uuid,
     DateTime Function()? now,
   }) : _repo = repo,
        _transport = transport,
        _countryCode = countryCode,
+       _model = model ?? _defaultModel,
        _uuid = uuid ?? const Uuid(),
        _now = now ?? DateTime.now;
+
+  static Future<String> _defaultModel() async => kAppraiserDefaultModel;
 
   Future<Result<Appraisal>> appraise(
     Item item,
@@ -60,7 +69,7 @@ class AppraiserService {
           id: _uuid.v4(),
           itemId: item.id,
           mode: mode,
-          value: cached.value,
+          valueCents: cached.valueCents,
           currency: cached.currency,
           confidence: cached.confidence,
           sources: cached.sources,
@@ -77,6 +86,7 @@ class AppraiserService {
       item: item,
       mode: mode,
       countryCode: country,
+      model: await _model(),
     );
     final res = await _transport.send(body);
     return res.when(
@@ -95,7 +105,8 @@ class AppraiserService {
           id: _uuid.v4(),
           itemId: item.id,
           mode: mode,
-          value: parsed['value'] as double,
+          // The appraiser wire speaks dollars; storage is cents.
+          valueCents: centsFromDollars(parsed['value'] as double),
           currency: parsed['currency'] as String,
           confidence: parsed['confidence'] as double,
           sources: (parsed['sources'] as List).cast<AppraisalSource>(),
@@ -138,10 +149,20 @@ class AppraiserService {
           .map(AppraisalSource.fromJson)
           .where((s) => s.url.isNotEmpty)
           .toList(growable: false);
+      // The prompt contract demands explicit value/currency/confidence in
+      // every reply — even the "cannot find" case returns literal zeros. A
+      // reply that omits or garbles any of them is malformed and must fail
+      // validation: coercing a missing value to 0.0 would persist a
+      // fabricated $0.00 appraisal the model never made.
+      final value = j['value'];
+      final currency = j['currency'];
+      final confidence = j['confidence'];
+      if (value is! num || confidence is! num) return null;
+      if (currency is! String || currency.isEmpty) return null;
       return {
-        'value': (j['value'] as num?)?.toDouble() ?? 0.0,
-        'currency': j['currency'] as String? ?? 'USD',
-        'confidence': (j['confidence'] as num?)?.toDouble() ?? 0.0,
+        'value': value.toDouble(),
+        'currency': currency,
+        'confidence': confidence.toDouble(),
         'sources': srcs,
       };
     } catch (_) {

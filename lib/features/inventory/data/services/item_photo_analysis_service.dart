@@ -1,61 +1,127 @@
-import 'dart:convert';
 import 'dart:typed_data';
 import 'package:still_life/features/inventory/domain/entities/item_suggestion.dart';
+import 'package:still_life/services/ml/analysis_provider.dart';
 import 'package:still_life/services/ml/provider_manager.dart';
+
+/// Typed result of a photo/voice analysis attempt so the UI can tell
+/// "no AI configured" (say so, fall through to the manual form) apart
+/// from a transient failure — instead of a null/stub suggestion or an
+/// exception blob.
+sealed class AnalysisOutcome {
+  const AnalysisOutcome();
+}
+
+/// The provider chain produced a usable suggestion.
+final class AnalysisSuggestion extends AnalysisOutcome {
+  final ItemSuggestion suggestion;
+  const AnalysisSuggestion(this.suggestion);
+}
+
+/// A shelf/room photo produced one suggestion per item found (possibly
+/// zero — an honest "nothing identified" the caller decides how to
+/// degrade, never an error dressed up as data).
+final class ShelfSuggestions extends AnalysisOutcome {
+  final List<ItemSuggestion> suggestions;
+  const ShelfSuggestions(this.suggestions);
+}
+
+/// No AI tier is configured/available. Not an error — the UI should
+/// explain and fall through to manual entry.
+final class NoAiConfigured extends AnalysisOutcome {
+  const NoAiConfigured();
+}
+
+/// A configured provider was found but the analysis failed.
+final class AnalysisFailed extends AnalysisOutcome {
+  final String message;
+  const AnalysisFailed(this.message);
+}
 
 class ItemPhotoAnalysisService {
   final ProviderManager _manager;
 
   ItemPhotoAnalysisService(this._manager);
 
-  /// Analyze a photo (raw bytes) and return a suggestion, or null if
-  /// no LLM is configured or the call fails.
-  Future<ItemSuggestion?> analyzePhoto(Uint8List imageBytes) async {
+  /// Analyze a photo (raw bytes) into a typed [AnalysisOutcome].
+  Future<AnalysisOutcome> analyzePhoto(Uint8List imageBytes) async {
+    final AnalysisProvider? provider;
     try {
-      final provider = await _manager.getBestAvailable();
-      if (provider == null) return null;
+      provider = await _manager.getBestAvailable(AnalysisCapability.image);
+    } catch (e) {
+      return AnalysisFailed('$e');
+    }
+    if (provider == null) return const NoAiConfigured();
+    try {
       final result = await provider.analyzeImage(imageBytes: imageBytes);
-      return ItemSuggestion(
-        name: result.itemName.isEmpty ? null : result.itemName,
-        categoryName: result.category.isEmpty ? null : result.category,
-        estimatedValue: result.estimatedPrice,
-        notes: result.description.isEmpty ? null : result.description,
-      );
-    } catch (_) {
-      return null;
+      return AnalysisSuggestion(_toSuggestion(result));
+    } catch (e) {
+      return AnalysisFailed('$e');
     }
   }
 
-  /// Send a voice transcript through the LLM chain using a minimal image
-  /// and an extraction prompt in existingLabel. Returns null on failure.
-  Future<ItemSuggestion?> analyzeVoice(String transcript) async {
+  /// Analyze a shelf/room photo (raw bytes) into one suggestion per item
+  /// found — [ShelfSuggestions] on success, the usual typed outcomes when
+  /// no tier is configured or the analysis fails.
+  Future<AnalysisOutcome> analyzeShelfPhoto(Uint8List imageBytes) async {
+    final AnalysisProvider? provider;
     try {
-      final provider = await _manager.getBestAvailable();
-      if (provider == null) return null;
-      final result = await provider.analyzeImage(
-        imageBytes: _minimalPng(),
-        existingLabel:
-            'Extract item name, category (one of: Electronics, Furniture, '
-            'Appliances, Clothing, Tools, Sports, Books, Kitchenware, Other), '
-            'and estimated value in USD from this spoken description. '
-            'Description: "$transcript"',
+      provider = await _manager.getBestAvailable(
+        AnalysisCapability.imageMulti,
       );
-      return ItemSuggestion(
-        name: result.itemName.isEmpty ? null : result.itemName,
-        categoryName: result.category.isEmpty ? null : result.category,
-        estimatedValue: result.estimatedPrice,
-        notes: result.description.isEmpty ? null : result.description,
+    } catch (e) {
+      return AnalysisFailed('$e');
+    }
+    if (provider == null) return const NoAiConfigured();
+    try {
+      final results = await provider.analyzeImageMulti(imageBytes);
+      return ShelfSuggestions(
+        results.map(_toSuggestion).toList(growable: false),
       );
-    } catch (_) {
-      return null;
+    } catch (e) {
+      return AnalysisFailed('$e');
     }
   }
 
-  // Minimal 1x1 transparent PNG — satisfies the imageBytes parameter
-  // without requiring image_picker in the service layer.
-  static Uint8List _minimalPng() {
-    const b64 =
-        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
-    return base64Decode(b64);
+  /// Send a voice transcript through the LLM chain as a text-only
+  /// extraction prompt, returning a typed [AnalysisOutcome].
+  Future<AnalysisOutcome> analyzeVoice(String transcript) async {
+    final AnalysisProvider? provider;
+    try {
+      provider = await _manager.getBestAvailable(AnalysisCapability.text);
+    } catch (e) {
+      return AnalysisFailed('$e');
+    }
+    if (provider == null) return const NoAiConfigured();
+    try {
+      final result = await provider.analyzeText(_voicePrompt(transcript));
+      return AnalysisSuggestion(_toSuggestion(result));
+    } catch (e) {
+      return AnalysisFailed('$e');
+    }
   }
+
+  static ItemSuggestion _toSuggestion(AnalysisResult result) => ItemSuggestion(
+    name: result.itemName.isEmpty ? null : result.itemName,
+    brand: _nullIfEmpty(result.brand),
+    model: _nullIfEmpty(result.model),
+    categoryName: result.category.isEmpty ? null : result.category,
+    estimatedValue: result.estimatedPrice,
+    notes: result.description.isEmpty ? null : result.description,
+    confidence: result.confidence,
+  );
+
+  static String? _nullIfEmpty(String? s) =>
+      (s == null || s.isEmpty) ? null : s;
+
+  /// Terse JSON-extraction prompt. Field names match what the provider
+  /// response parsers already understand.
+  static String _voicePrompt(String transcript) =>
+      'Extract details of a household item from this spoken description. '
+      'Respond ONLY with compact JSON, no markdown: '
+      '{"name": string, "brand": string or null, "model": string or null, '
+      '"category": one of [Electronics, Furniture, '
+      'Appliances, Clothing, Tools, Sports, Books, Kitchenware, Other], '
+      '"estimatedRetailPrice": number or null, '
+      '"description": brief note or null}. '
+      'Description: "$transcript"';
 }
