@@ -29,7 +29,7 @@ void main() {
       await tester.pumpWidget(buildSubject());
 
       await tester.scrollUntilVisible(
-        find.text('AGPL-3.0 (Community Edition)'),
+        find.text('MIT'),
         200,
         scrollable: find.byType(Scrollable),
       );
@@ -38,7 +38,7 @@ void main() {
       // Version string is now sourced from package_info_plus at runtime
       // (default "Version …" while async-loading in tests).
       expect(find.textContaining('Version'), findsWidgets);
-      expect(find.text('AGPL-3.0 (Community Edition)'), findsOneWidget);
+      expect(find.text('MIT'), findsOneWidget);
     });
 
     testWidgets('displays privacy statement after scrolling', (tester) async {

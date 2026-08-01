@@ -232,7 +232,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const ListTile(
             leading: Icon(Icons.gavel_outlined),
             title: Text('License'),
-            subtitle: Text('AGPL-3.0 (Community Edition)'),
+            subtitle: Text('MIT'),
           ),
           const ListTile(
             leading: Icon(Icons.privacy_tip_outlined),

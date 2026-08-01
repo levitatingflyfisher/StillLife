@@ -35,20 +35,8 @@ or feature additions should be discussed in an issue first.
 
 ---
 
-## Contributor License Agreement
+## License
 
-**This project uses a dual-license model (AGPL-3.0 + commercial).** Because
-the maintainers distributes Still Life under both an open-source license and a
-separate commercial license, contributors must agree to the following before
-their contribution can be accepted:
-
-> By submitting a pull request, you (a) confirm that you have the right to
-> license your contribution, (b) grant the maintainers a perpetual, worldwide,
-> royalty-free license to use, reproduce, modify, and distribute your
-> contribution under both the AGPL-3.0 and any commercial license terms
-> that the maintainers offers, and (c) agree that your contribution is made
-> available under the AGPL-3.0.
-
-This is a standard requirement for dual-licensed projects and ensures
-the maintainers can continue to offer both free and commercial versions of
-the software.
+Still Life is [MIT licensed](LICENSE), like the rest of the OpenHearth fleet.
+By submitting a pull request you confirm you have the right to license your
+contribution, and you agree it is made available under the MIT License.

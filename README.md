@@ -24,7 +24,7 @@ Most home inventory apps force you to choose between convenience and privacy —
 | No account needed | ✓ | Requires signup | Requires signup |
 | LAN sync (no cloud) | ✓ | — | — |
 | AI-assisted cataloguing | ✓ (bring your key) | — | — |
-| Open source | ✓ (AGPL) | Proprietary | Proprietary |
+| Open source | ✓ (MIT) | Proprietary | Proprietary |
 | Free tier | Full feature set | Limited items | Limited items |
 | Container hierarchy | ✓ (shelf→item) | — | — |
 | QR labels (scan-to-find) | ✓ | Extra cost | — |
@@ -152,10 +152,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on reporting bugs and subm
 
 ## License
 
-Still Life is dual-licensed:
-
-- **Community (AGPL-3.0):** Free to use, modify, and distribute under the terms of the [GNU Affero General Public License v3](LICENSE). If you deploy a modified version as a network service, your modifications must be released under the same terms.
-- **Commercial:** A separate commercial license is available for those who need to embed Still Life in a proprietary product without AGPL obligations.
+Still Life is released under the [MIT License](LICENSE) — free to use, modify,
+and distribute, including commercially.
 
 ---
 

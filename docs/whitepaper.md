@@ -71,7 +71,7 @@ for a home inventory:
   capability, so refusing the cloud costs the user almost nothing and buys them
   everything.
 - The **portability stakes are high**: an inventory you can't export is a hostage. JSON
-  backup + CSV export in open formats, under an AGPL licence, mean you can always leave.
+  backup + CSV export in open formats, under an MIT licence, mean you can always leave.
 
 ## 4. The architecture, in one paragraph
 
@@ -95,7 +95,7 @@ matching the convenience*:
 | Where your list lives | Your device (+ destinations you choose) | Their servers |
 | Multi-device sync | LAN, no cloud | Cloud account |
 | AI help | On-device-first; your key optional | Their cloud |
-| Open source / exportable | AGPL; JSON + CSV | Proprietary; lock-in |
+| Open source / exportable | MIT; JSON + CSV | Proprietary; lock-in |
 | Container-level location | Room → container → item | Flat lists |
 
 The bet: a meaningful slice of people who keep a home inventory care that the list of

@@ -56,7 +56,7 @@ this app's voice. Breaking one is a design regression, not a feature.
    reporter, no telemetry in the dependency set. This is enforced by what *isn't*
    there, not just promised.
 5. **Your data is portable.** JSON backup and CSV export in open formats mean you can
-   leave at any time. The code is AGPL — a recipe worth sharing.
+   leave at any time. The code is MIT — a recipe worth sharing.
 6. **Fail safe on the user's data.** The database is the family's memory of their
    possessions; a boot glitch, a bad import, or a stale sync peer must never brick it
    or silently destroy it. ([ADR-0005](docs/adr/0005-boot-resilience.md),
