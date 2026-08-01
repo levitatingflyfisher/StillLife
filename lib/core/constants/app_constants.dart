@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 abstract final class AppConstants {
   static const String appName = 'Still Life';
-  static const String appVersion = '0.1.0';
 
   // Default categories
   static const List<String> defaultCategories = [
