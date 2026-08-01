@@ -6,6 +6,10 @@ import 'package:oh_fleet_conformance/oh_fleet_conformance.dart';
 
 void main() => runFleetConformance(const FleetAppConfig(
       appId: 'stilllife',
+      // Bundles its own type, so nothing falls back to a web font — a
+      // character the bundled families cannot draw is a box on a
+      // real phone. C7 sweeps lib/ for any.
+      checks: FleetAppConfig.withBundledFonts,
       styleTier: StyleTier.full,
       // The exact <uses-permission> surface of the main AndroidManifest —
       // camera/mic for the video walkthrough + barcode/OCR capture,
@@ -42,6 +46,4 @@ void main() => runFleetConformance(const FleetAppConfig(
       mergeSemanticsRestore: true,
       // StillLife carries a deliberately-tighter analysis_options.yaml.
       analysisOptionsOverrideRecorded: true,
-      // StillLife sits outside OpenHearth/ and needs the longer hop.
-      designPackagePath: '../OpenHearth/ohStyle/openhearth_design',
     ));

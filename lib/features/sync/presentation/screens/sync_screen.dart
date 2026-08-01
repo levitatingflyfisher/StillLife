@@ -61,7 +61,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
           featureName: 'Wi-Fi sync',
           explanation:
               'Pairing devices over your home network needs the Android '
-              'app. You can still back up from web: Settings → Export '
+              'app. You can still back up from web: Settings > Export '
               'creates a JSON file this or any other device can import.',
         ),
       );

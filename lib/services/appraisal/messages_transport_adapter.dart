@@ -53,7 +53,7 @@ class MessagesTransportAdapter implements MessagesTransport {
       ValidationFailure(
         'Market-value estimates need an Anthropic (Claude) API key or a '
         'Pro account — the OpenAI-compatible tier cannot run the '
-        'appraiser. Add a Claude key in Settings → AI Analysis.',
+        'appraiser. Add a Claude key in Settings > AI Analysis.',
       ),
     );
   }
@@ -77,7 +77,7 @@ class MessagesTransportAdapter implements MessagesTransport {
     throw StateError(
       'Market-value estimates need an Anthropic (Claude) API key or a '
       'Pro account — the OpenAI-compatible tier cannot run the appraiser. '
-      'Add a Claude key in Settings → AI Analysis.',
+      'Add a Claude key in Settings > AI Analysis.',
     );
   }
 }

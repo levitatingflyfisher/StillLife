@@ -9,9 +9,14 @@ abstract class OnDeviceModelsApi {
   Future<bool> isDownloaded(OnDeviceModel model);
 
   /// Downloads and verifies [model] (user-initiated only). [onProgress]
-  /// reports 0..1 across all files. Throws [ModelDownloadException] on
-  /// verification/transport failure, [ModelDownloadCancelled] when
-  /// [token] fires.
+  /// reports 0..1 across all files, never going backwards. Throws
+  /// [ModelDownloadException] on verification/transport failure,
+  /// [ModelDownloadCancelled] when [token] fires.
+  ///
+  /// A cancelled or dropped transfer keeps its partial file: calling this
+  /// again resumes from where it stopped rather than paying for the whole
+  /// artifact twice. Bytes that failed verification are the exception —
+  /// those are deleted, because no resume may ever build on them.
   Future<void> download(
     OnDeviceModel model, {
     void Function(double fraction)? onProgress,

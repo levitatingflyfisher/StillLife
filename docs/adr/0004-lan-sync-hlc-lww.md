@@ -44,6 +44,10 @@ fail-safe rules — are specified in the [yellow paper](../spec/yellow-paper.md)
     is lost.
   - The transport is **plaintext HTTP on the LAN** — it trusts the local network. It is
     not end-to-end encrypted and does not go beyond the LAN.
+    **Superseded by [ADR-0007](0007-sync-and-backup-encryption.md):** the wire is now
+    AEAD-framed with no plaintext fallback. Left standing as written, because an ADR
+    records what was decided at the time; the correction belongs in the record that
+    changed it, not painted over the one it replaced.
   - Sync currently moves **database rows, not the photo/receipt image files**; media
     does not yet propagate.
 - **Forecloses:** a cloud-account sync model. Any future beyond-LAN sync must preserve

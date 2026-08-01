@@ -31,14 +31,9 @@ OnDeviceSupport buildOnDeviceSupport() {
 
   // A dedicated client: model files are GB-scale, so no receive timeout —
   // stall detection is the connect timeout plus the user's cancel button.
+  // validateStatus stays at the default: the transfer engine recognises a
+  // 416 by the DioException it raises, so a non-2xx must stay an error.
   final dio = Dio(BaseOptions(connectTimeout: const Duration(seconds: 30)));
-  Stream<List<int>> fetch(String url) async* {
-    final response = await dio.get<ResponseBody>(
-      url,
-      options: Options(responseType: ResponseType.stream),
-    );
-    yield* response.data!.stream;
-  }
 
   final nano = AicoreNanoGateway();
   return OnDeviceSupport(
@@ -53,7 +48,7 @@ OnDeviceSupport buildOnDeviceSupport() {
     ],
     models: _IoOnDeviceModelsApi(
       store: store,
-      downloader: IoModelDownloader(store: store, fetch: fetch),
+      downloader: IoModelDownloader(store: store, dio: dio),
     ),
     nano: nano,
   );

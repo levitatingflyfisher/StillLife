@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [master]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   analyze:
     name: Analyze
@@ -15,19 +19,21 @@ jobs:
       - name: Clone the sibling packages
         # StillLife depends on sanctuary_auth_core / sanctuary_backup_ui and
         # openhearth_design by sibling path relative to the repo checkout
-        # (../OpenHearth/... per pubspec.yaml). Clone the public repos where
+        # (../... per pubspec.yaml). Clone the public repos where
         # `flutter pub get` expects them (SANCTUARY-BRIEF §3). openhearth_design
         # is a package inside the ohStyle repo.
         run: |
-          git clone --depth 1 https://github.com/levitatingflyfisher/sanctuaryAuthCore ../OpenHearth/packages/sanctuary_auth_core
-          git clone --depth 1 https://github.com/levitatingflyfisher/sanctuaryBackupUi ../OpenHearth/packages/sanctuary_backup_ui
-          git clone --depth 1 https://github.com/levitatingflyfisher/ohStyle ../OpenHearth/ohStyle
-          git clone --depth 1 https://github.com/levitatingflyfisher/ohFleetConformance ../OpenHearth/packages/oh_fleet_conformance
+          git clone --depth 1 https://github.com/levitatingflyfisher/sanctuaryAuthCore ../packages/sanctuary_auth_core
+          git clone --depth 1 https://github.com/levitatingflyfisher/sanctuaryBackupUi ../packages/sanctuary_backup_ui
+          git clone --depth 1 https://github.com/levitatingflyfisher/ohStyle ../ohStyle
+          git clone --depth 1 https://github.com/levitatingflyfisher/ohFleetConformance ../packages/oh_fleet_conformance
+          git clone --depth 1 https://github.com/levitatingflyfisher/DomovoiDiscernment ../DomovoiDiscernment
       - uses: subosito/flutter-action@v2
         with:
           # Must bundle Dart >= 3.10.7 to satisfy the sibling sanctuary packages'
           # pubspec `environment: sdk`; older Flutter fails version resolution.
           flutter-version: '3.38.7'
+          cache: true
           channel: stable
       - run: flutter pub get
       - run: dart run build_runner build --delete-conflicting-outputs
@@ -56,13 +62,15 @@ jobs:
       - uses: actions/checkout@v4
       - name: Clone the sibling packages
         run: |
-          git clone --depth 1 https://github.com/levitatingflyfisher/sanctuaryAuthCore ../OpenHearth/packages/sanctuary_auth_core
-          git clone --depth 1 https://github.com/levitatingflyfisher/sanctuaryBackupUi ../OpenHearth/packages/sanctuary_backup_ui
-          git clone --depth 1 https://github.com/levitatingflyfisher/ohStyle ../OpenHearth/ohStyle
-          git clone --depth 1 https://github.com/levitatingflyfisher/ohFleetConformance ../OpenHearth/packages/oh_fleet_conformance
+          git clone --depth 1 https://github.com/levitatingflyfisher/sanctuaryAuthCore ../packages/sanctuary_auth_core
+          git clone --depth 1 https://github.com/levitatingflyfisher/sanctuaryBackupUi ../packages/sanctuary_backup_ui
+          git clone --depth 1 https://github.com/levitatingflyfisher/ohStyle ../ohStyle
+          git clone --depth 1 https://github.com/levitatingflyfisher/ohFleetConformance ../packages/oh_fleet_conformance
+          git clone --depth 1 https://github.com/levitatingflyfisher/DomovoiDiscernment ../DomovoiDiscernment
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.38.7'
+          cache: true
           channel: stable
       - run: flutter pub get
       - run: dart run build_runner build --delete-conflicting-outputs
@@ -79,10 +87,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Clone the sibling packages
         run: |
-          git clone --depth 1 https://github.com/levitatingflyfisher/sanctuaryAuthCore ../OpenHearth/packages/sanctuary_auth_core
-          git clone --depth 1 https://github.com/levitatingflyfisher/sanctuaryBackupUi ../OpenHearth/packages/sanctuary_backup_ui
-          git clone --depth 1 https://github.com/levitatingflyfisher/ohStyle ../OpenHearth/ohStyle
-          git clone --depth 1 https://github.com/levitatingflyfisher/ohFleetConformance ../OpenHearth/packages/oh_fleet_conformance
+          git clone --depth 1 https://github.com/levitatingflyfisher/sanctuaryAuthCore ../packages/sanctuary_auth_core
+          git clone --depth 1 https://github.com/levitatingflyfisher/sanctuaryBackupUi ../packages/sanctuary_backup_ui
+          git clone --depth 1 https://github.com/levitatingflyfisher/ohStyle ../ohStyle
+          git clone --depth 1 https://github.com/levitatingflyfisher/ohFleetConformance ../packages/oh_fleet_conformance
+          git clone --depth 1 https://github.com/levitatingflyfisher/DomovoiDiscernment ../DomovoiDiscernment
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -90,6 +99,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.38.7'
+          cache: true
           channel: stable
       - run: flutter pub get
       - run: dart run build_runner build --delete-conflicting-outputs
@@ -103,13 +113,15 @@ jobs:
       - uses: actions/checkout@v4
       - name: Clone the sibling packages
         run: |
-          git clone --depth 1 https://github.com/levitatingflyfisher/sanctuaryAuthCore ../OpenHearth/packages/sanctuary_auth_core
-          git clone --depth 1 https://github.com/levitatingflyfisher/sanctuaryBackupUi ../OpenHearth/packages/sanctuary_backup_ui
-          git clone --depth 1 https://github.com/levitatingflyfisher/ohStyle ../OpenHearth/ohStyle
-          git clone --depth 1 https://github.com/levitatingflyfisher/ohFleetConformance ../OpenHearth/packages/oh_fleet_conformance
+          git clone --depth 1 https://github.com/levitatingflyfisher/sanctuaryAuthCore ../packages/sanctuary_auth_core
+          git clone --depth 1 https://github.com/levitatingflyfisher/sanctuaryBackupUi ../packages/sanctuary_backup_ui
+          git clone --depth 1 https://github.com/levitatingflyfisher/ohStyle ../ohStyle
+          git clone --depth 1 https://github.com/levitatingflyfisher/ohFleetConformance ../packages/oh_fleet_conformance
+          git clone --depth 1 https://github.com/levitatingflyfisher/DomovoiDiscernment ../DomovoiDiscernment
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.38.7'
+          cache: true
           channel: stable
       - run: |
           sudo apt-get update -y
@@ -127,13 +139,15 @@ jobs:
       - uses: actions/checkout@v4
       - name: Clone the sibling packages
         run: |
-          git clone --depth 1 https://github.com/levitatingflyfisher/sanctuaryAuthCore ../OpenHearth/packages/sanctuary_auth_core
-          git clone --depth 1 https://github.com/levitatingflyfisher/sanctuaryBackupUi ../OpenHearth/packages/sanctuary_backup_ui
-          git clone --depth 1 https://github.com/levitatingflyfisher/ohStyle ../OpenHearth/ohStyle
-          git clone --depth 1 https://github.com/levitatingflyfisher/ohFleetConformance ../OpenHearth/packages/oh_fleet_conformance
+          git clone --depth 1 https://github.com/levitatingflyfisher/sanctuaryAuthCore ../packages/sanctuary_auth_core
+          git clone --depth 1 https://github.com/levitatingflyfisher/sanctuaryBackupUi ../packages/sanctuary_backup_ui
+          git clone --depth 1 https://github.com/levitatingflyfisher/ohStyle ../ohStyle
+          git clone --depth 1 https://github.com/levitatingflyfisher/ohFleetConformance ../packages/oh_fleet_conformance
+          git clone --depth 1 https://github.com/levitatingflyfisher/DomovoiDiscernment ../DomovoiDiscernment
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.38.7'
+          cache: true
           channel: stable
       - run: flutter pub get
       - run: dart run build_runner build --delete-conflicting-outputs

@@ -11,6 +11,9 @@ Goal: get from a fresh clone to the app running on a device or emulator.
   [limitations](../limitations.md)).
 - The sibling design-system package at `../OpenHearth/ohStyle/openhearth_design`, which
   `pubspec.yaml` references by relative path. Check it out next to this repo.
+- The sibling transfer/AI control plane at `../OpenHearth/DomovoiDiscernment` (the
+  `domovoi` package), likewise by relative path — it owns the resumable download
+  engine the on-device model downloader runs on.
 
 ## Steps
 

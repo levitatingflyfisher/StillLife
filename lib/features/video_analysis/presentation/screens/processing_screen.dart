@@ -296,7 +296,7 @@ class _NoAiConfiguredScreen extends StatelessWidget {
               const SizedBox(height: OhSpacing.sm),
               Text(
                 'Video analysis needs an AI tier to identify items. '
-                'Add one in Settings → AI Analysis, then scan again.',
+                'Add one in Settings > AI Analysis, then scan again.',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: colorScheme.onSurfaceVariant,
                 ),

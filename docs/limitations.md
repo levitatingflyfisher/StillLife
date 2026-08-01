@@ -52,10 +52,13 @@ current implementation, which you should verify against the tests before relying
   and receipt *image files* are not carried to the other device (the JSON export marks
   `photosIncluded: false`). After a sync, the second device knows an item *has* a photo
   but doesn't have the file. Moving the media is an open problem.
-- **It's LAN-only and plaintext.** Sync works only between devices on the same local
-  network (mDNS discovery + HTTP on port 8420). The transport is **not TLS and not
-  end-to-end encrypted** — it trusts your local network and a shared secret Bearer
-  token. There is no sync beyond the LAN and no cloud relay.
+- **It's LAN-only.** Sync works only between devices on the same local network (mDNS
+  discovery + HTTP on port 8420). There is no sync beyond the LAN and no cloud relay.
+  The transport *is* end-to-end encrypted — bodies are AEAD frames keyed by your
+  household secret, there is no plaintext fallback path, and a frame that will not
+  open is refused before it reaches the database (ADR-0007). It is not TLS, which
+  matters only in that a network observer still sees that two devices are talking,
+  and how much.
 - **It's a full-snapshot exchange.** Each sync ships the entire database state, so
   bandwidth and time grow with the size of your inventory. There is no delta/incremental
   sync yet.

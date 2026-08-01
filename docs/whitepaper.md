@@ -126,8 +126,8 @@ absence.
 **not implemented** (the privacy-first tier reports itself unavailable and the cascade
 skips it); the **hosted AI tier and billing are scaffolding** for a future paid plan; the **appraiser** is an LLM estimate, not the
 marketplace scraping the roadmap implies; **sync moves rows, not photo/receipt files**,
-ships full snapshots (not deltas), resolves per-row (not per-field), and runs plaintext
-on the LAN; **iOS is not shipped**; encrypted off-site backup is roadmap.
+ships full snapshots (not deltas), and resolves per-row (not per-field); **iOS is not
+shipped**; encrypted off-site backup is roadmap.
 
 The honest boundary: the *offline catalogue* is real and trustworthy, and the privacy
 default is enforceable and checkable. AI recognition (photo, shelf, voice, receipt,

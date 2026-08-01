@@ -107,7 +107,7 @@ void main() {
     expect(repo.applied.single.id, 'a-resale');
   });
 
-  testWidgets('after applying, the button confirms inline with Applied ✓', (
+  testWidgets('after applying, the button confirms inline and goes inert', (
     tester,
   ) async {
     final repo = _StubRepo({
@@ -119,11 +119,11 @@ void main() {
     await tester.tap(find.text('Apply to item'));
     await settle(tester);
 
-    expect(find.text('Applied ✓'), findsOneWidget);
+    expect(find.text('Applied'), findsOneWidget);
     expect(find.text('Apply to item'), findsNothing);
 
     // A second tap must not double-write.
-    await tester.tap(find.text('Applied ✓'));
+    await tester.tap(find.text('Applied'));
     await settle(tester);
     expect(repo.applied, hasLength(1));
   });

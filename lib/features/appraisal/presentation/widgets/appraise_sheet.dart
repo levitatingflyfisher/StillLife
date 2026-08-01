@@ -150,7 +150,7 @@ class _AppraiseSheetState extends ConsumerState<AppraiseSheet> {
         FilledButton.tonalIcon(
           onPressed: applied ? null : () => _apply(a),
           icon: Icon(applied ? Icons.check : Icons.save_alt, size: 18),
-          label: Text(applied ? 'Applied ✓' : 'Apply to item'),
+          label: Text(applied ? 'Applied' : 'Apply to item'),
         ),
       ],
     );

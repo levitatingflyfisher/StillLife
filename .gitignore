@@ -57,3 +57,15 @@ test/visual/failures/
 
 # Flutter golden-test failure output
 test/**/failures/
+GEMINI.md
+.superpowers/
+
+# Generated sources — CI and every local build run build_runner, so a
+# committed copy is only a copy that can go stale:
+# `dart run build_runner build --delete-conflicting-outputs`
+*.g.dart
+
+# The llama.cpp runtime is fetched at build time and checksum-verified
+# (see android/app/build.gradle.kts). A binary in git is a binary nobody
+# reviews, and F-Droid's scanner treats one in the source tree as an error.
+android/app/libs/*.aar

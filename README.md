@@ -79,17 +79,19 @@ Most home inventory apps force you to choose between convenience and privacy —
 
 ### Build from source
 
-Still Life's encryption (LAN-sync + backups) and design tokens come from **sibling
-packages** consumed by relative path — clone them next to StillLife so `pub get`
-resolves (same layout as `eloEngine`):
+Still Life's encryption (LAN-sync + backups), model downloads and design tokens come
+from **sibling packages** consumed by relative path — clone them beside this repo so
+`pub get` resolves (the layout every OpenHearth app uses):
 
 ```
 OpenHearth/
   ohStyle/openhearth_design/
+  DomovoiDiscernment/         # github: levitatingflyfisher/DomovoiDiscernment
   packages/
     sanctuary_auth_core/      # github: levitatingflyfisher/sanctuaryAuthCore
     sanctuary_backup_ui/      # github: levitatingflyfisher/sanctuaryBackupUi
-StillLife/                    # this repo — deps at ../OpenHearth/...
+    oh_fleet_conformance/     # github: levitatingflyfisher/ohFleetConformance
+  StillLife/                  # this repo — deps at ../
 ```
 
 ```bash

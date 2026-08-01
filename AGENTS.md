@@ -41,6 +41,14 @@ files.
   user setting that is **off by default**, and must be reflected in
   [docs/privacy-model.md](docs/privacy-model.md). Adding a new network call means
   updating that doc in the same change.
+- **One stamp, one position.** Every HLC `CrdtManager` hands out is a position in
+  a total order, and last-writer-wins has no way to choose between two rows that
+  share one. Its clock mutations are serialized and its identity mint is memoized
+  as a FUTURE, not a value — read-await-write across three steps is exactly how
+  twenty concurrent stamps once came back identical, and how eight callers once
+  minted three node identities. If you touch that class, the concurrency group in
+  `test/unit/services/sync/crdt_manager_test.dart` is the contract, and a test
+  that calls one method at a time cannot see the bug.
 - **No telemetry, no analytics, no crash-reporter SDKs.** The dependency set is clean
   of them by design (verified by grep). Don't add Firebase/Sentry/analytics/etc.
 - **Don't let user data get bricked or wiped.** The database is the family's memory.
@@ -86,6 +94,7 @@ The short version, by concern:
 | **AI cataloguing / appraisal / chat** | `lib/services/ml/` (`provider_manager` + the four `*_provider`s), `lib/services/appraisal/`, `lib/services/chat/`; the video-walkthrough pipeline (frame gate, merger, orchestrator) is `lib/features/video_analysis/`; the paid tier's backend is `server/hosted-llm/` (TypeScript, separate) |
 | **Scanning & import: barcode, receipts, Amazon, product lookup** | `lib/features/scanning/`, `lib/services/product_lookup/`, `lib/services/import/` (`receipt_parser`, `receipt_structuring_parser`, `import_receipt_ocr_service`, `amazon_import_service`) |
 | **Boot / DB open / onboarding trap** | `lib/main.dart`, `lib/app/boot.dart`, `lib/services/database/database.dart` (`resolveAppDocumentsDir`), `lib/features/onboarding/` |
+| **On-device model downloads** | `lib/services/ml/on_device/`. The transfer itself is NOT ours — it delegates to `domovoi`'s `resumableDownload` (sibling package, `../DomovoiDiscernment`). Byte-range resume, `.part` handling and 416/Range recovery all live there; what stays here is the multi-file loop, the pinned-size/sha256 verification in `promote`, and the aggregate progress fraction. |
 | **DI wiring** | `lib/core/providers/` (Riverpod providers), `lib/core/config/feature_flags.dart` |
 | **QR labels** | `lib/features/labels/`, `lib/core/utils/label_id.dart` (adj-adj-noun IDs) |
 
@@ -115,7 +124,7 @@ flutter build apk --debug                                  # Android build sanit
   Android / Linux / Web, plus a separate Node job for `server/hosted-llm`. Note its
   triggers are `main`/`develop`; the live branch is `master`.
 - The custom design system comes from a sibling package
-  (`../OpenHearth/ohStyle/openhearth_design`) referenced by a path dependency.
+  (`../ohStyle/openhearth_design`) referenced by a path dependency.
 
 ## When you're unsure
 

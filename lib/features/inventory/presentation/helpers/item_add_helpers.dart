@@ -127,7 +127,7 @@ void _maybeExplainNoAi(BuildContext context, AnalysisOutcome outcome) {
   final message = switch (outcome) {
     NoAiConfigured() =>
       'No AI provider configured — opening the manual form. '
-          'Add one in Settings → AI Analysis.',
+          'Add one in Settings > AI Analysis.',
     AnalysisFailed(:final message) =>
       'AI analysis failed — opening the manual form. ($message)',
     _ => null,

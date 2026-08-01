@@ -15,9 +15,10 @@ you're fixing a mistake or unknowingly reopening a settled trade-off.
 | [0001](0001-flutter-clean-architecture.md) | Flutter + Clean Architecture (domain / data / presentation) | Accepted |
 | [0002](0002-local-first-no-account.md) | Local-first, no account required for core functionality | Accepted |
 | [0003](0003-drift-over-sqflite.md) | Drift over sqflite for local storage | Accepted |
-| [0004](0004-lan-sync-hlc-lww.md) | LAN sync via HLC last-writer-wins, not a cloud account | Accepted |
+| [0004](0004-lan-sync-hlc-lww.md) | LAN sync via HLC last-writer-wins, not a cloud account | Accepted — transport superseded by [0007](0007-sync-and-backup-encryption.md) |
 | [0005](0005-boot-resilience.md) | Boot survives a transient DB-open failure instead of bricking | Accepted |
 | [0006](0006-import-db-safety.md) | Import is sandboxed and transactional | Accepted |
+| [0007](0007-sync-and-backup-encryption.md) | The sync wire and the backup file are both encrypted, and fail closed | Accepted |
 
 ## Writing a new one
 

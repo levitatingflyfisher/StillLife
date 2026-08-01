@@ -1,0 +1,14 @@
+Nothing leaves your device unless you turn it on — and every switch that lets something leave is named, gated, and off to begin with.
+
+Still Life is a home inventory for the conversation you hope never to have: room, container, item, value, receipt.
+
+• Room → container → item, so you can actually find things again
+• Values, receipts and photos
+• Export an insurance report as PDF, CSV or JSON
+• Optional encrypted sync across your own devices on your own network
+• Encrypted backup with a 12-word recovery phrase
+
+Every network feature is opt-in and named. There is no account and no company server.
+
+Free and open source, MIT licensed.
+Source: https://github.com/levitatingflyfisher/StillLife

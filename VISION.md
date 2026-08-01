@@ -107,8 +107,9 @@ the code, run the test) before you rely on it. As of schema v14:
   apply-to-item write-back), *not* the marketplace-scraping the roadmap describes.
 - **Sync moves rows, not media.** LAN sync transfers database records; the photo and
   receipt image *files* are not carried across devices yet. Sync is also a full-
-  snapshot exchange (bandwidth grows with the library) and per-*row* last-writer-wins,
-  and it runs in plaintext on the local network. See [limitations](docs/limitations.md).
+  snapshot exchange (bandwidth grows with the library) and per-*row* last-writer-wins.
+  The wire itself is encrypted end to end (ADR-0007) and fails closed. See
+  [limitations](docs/limitations.md).
 - **iOS is not shipped.** Android is the live target; desktop/web build in CI. Cloud
   (encrypted off-site) backup is roadmap only.
 

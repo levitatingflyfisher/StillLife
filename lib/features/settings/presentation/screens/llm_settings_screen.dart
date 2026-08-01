@@ -778,7 +778,7 @@ class _LlmSettingsScreenState extends ConsumerState<LlmSettingsScreen> {
               title: Text(kHostedBaseUrl),
               subtitle: Text(
                 'Access keys are issued through account activation '
-                '(Settings → Pro status), not entered here.',
+                '(Settings > Pro status), not entered here.',
               ),
             ),
 

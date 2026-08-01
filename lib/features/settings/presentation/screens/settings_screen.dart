@@ -515,7 +515,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               'Request your data instead:',
             ),
             SizedBox(height: 12),
-            Text('1. Amazon → Account → Privacy Central → Request My Data'),
+            Text('1. Amazon > Account > Privacy Central > Request My Data'),
             Text('2. Select "Your Orders" and submit'),
             Text('3. The export arrives as a ZIP, usually within hours'),
             Text('4. Import the Retail.OrderHistory CSV from that ZIP'),

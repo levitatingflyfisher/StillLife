@@ -1,7 +1,7 @@
 name: still_life
 description: "Still Life - Home Inventory Management System. Offline-first, privacy-respecting home inventory with AI-powered video walkthrough analysis."
 publish_to: 'none'
-version: 0.1.0+1
+version: 0.1.0+2
 
 environment:
   sdk: ^3.10.7
@@ -25,16 +25,16 @@ dependencies:
 
   # UI / Theme
   openhearth_design:
-    path: ../OpenHearth/ohStyle/openhearth_design
+    path: ../ohStyle/openhearth_design
 
   # Encryption primitives (Ghost-tier backup + LAN-sync encryption).
   # Sibling path deps, mirroring openhearth_design above — clone the package
-  # repos next to StillLife (see README "Sibling packages").
+  # repos beside this one (see README "Sibling packages").
   sanctuary_auth_core:
-    path: ../OpenHearth/packages/sanctuary_auth_core
+    path: ../packages/sanctuary_auth_core
   # Drop-in encrypted-backup UI (seed setup + .ohbk export/restore).
   sanctuary_backup_ui:
-    path: ../OpenHearth/packages/sanctuary_backup_ui
+    path: ../packages/sanctuary_backup_ui
   fl_chart: ^0.70.2
   intl: ^0.20.2
   # Injectable wall clock (clock.now()) so date-relative domain logic
@@ -76,6 +76,13 @@ dependencies:
 
   # Hashing (model-download integrity verification)
   crypto: ^3.0.6
+
+  # The fleet's one resumable-transfer engine (byte-offset Range resume,
+  # 416/200-answering-Range recovery). A model bundle is GB-scale on a
+  # phone that sleeps; restarting from zero was never acceptable. Sibling
+  # path dep, same convention as openhearth_design above.
+  domovoi:
+    path: ../DomovoiDiscernment
 
   # PDF Generation
   pdf: ^3.11.3
@@ -145,7 +152,7 @@ dev_dependencies:
   # Fleet standards as tests that can fail (C1 style .. C6 harness) —
   # sibling path dep, same clone layout as the sanctuary packages above.
   oh_fleet_conformance:
-    path: ../OpenHearth/packages/oh_fleet_conformance
+    path: ../packages/oh_fleet_conformance
 
 flutter:
   uses-material-design: true
