@@ -9,7 +9,15 @@ void main() => runFleetConformance(const FleetAppConfig(
       // Bundles its own type, so nothing falls back to a web font — a
       // character the bundled families cannot draw is a box on a
       // real phone. C7 sweeps lib/ for any.
-      checks: FleetAppConfig.withBundledFonts,
+      // C8 rides along with the bundled-font set: StillLife builds on
+      // OhTheme, whose app-wide iconTheme paints a bare IconButton.filled
+      // glyph in the same colour as its own fill. Three of this app's
+      // buttons shipped that way — the quantity minus, the chat send, and
+      // the inline add — so the guard stays on permanently.
+      checks: {
+        ...FleetAppConfig.withBundledFonts,
+        FleetCheck.c8IconButtons,
+      },
       styleTier: StyleTier.full,
       // The exact <uses-permission> surface of the main AndroidManifest —
       // camera/mic for the video walkthrough + barcode/OCR capture,

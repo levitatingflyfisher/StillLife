@@ -292,7 +292,7 @@ class ItemDetailScreen extends ConsumerWidget {
                               ),
                             ],
                             const Spacer(),
-                            IconButton.filled(
+                            OhIconButton.filled(
                               icon: const Icon(Icons.remove),
                               onPressed: () => ref
                                   .read(quantityControllerProvider)

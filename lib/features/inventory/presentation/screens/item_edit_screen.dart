@@ -464,7 +464,7 @@ class _ItemEditScreenState extends ConsumerState<ItemEditScreen> {
                           ),
                           Padding(
                             padding: const EdgeInsets.only(top: 8),
-                            child: IconButton.filledTonal(
+                            child: OhIconButton.filledTonal(
                               icon: const Icon(Icons.add, size: 20),
                               tooltip: 'New category',
                               onPressed: () => _createCategoryInline(context),
@@ -507,7 +507,7 @@ class _ItemEditScreenState extends ConsumerState<ItemEditScreen> {
                         ),
                         Padding(
                           padding: const EdgeInsets.only(top: 8),
-                          child: IconButton.filledTonal(
+                          child: OhIconButton.filledTonal(
                             icon: const Icon(Icons.add, size: 20),
                             tooltip: 'New room',
                             onPressed: () => _createRoomInline(context),

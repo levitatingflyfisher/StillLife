@@ -178,7 +178,7 @@ class _ItemChatScreenState extends ConsumerState<ItemChatScreen> {
                     ),
                   ),
                   const SizedBox(width: OhSpacing.sm),
-                  IconButton.filled(
+                  OhIconButton.filled(
                     onPressed: _streaming || _item == null ? null : _send,
                     icon: _streaming
                         ? const SizedBox(
