@@ -1,7 +1,7 @@
 name: still_life
 description: "Still Life - Home Inventory Management System. Offline-first, privacy-respecting home inventory with AI-powered video walkthrough analysis."
 publish_to: 'none'
-version: 0.1.0+2
+version: 1.1.0+3
 
 environment:
   sdk: ^3.10.7

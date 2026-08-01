@@ -1,0 +1,9 @@
+Still Life 1.1.0 — exact money, safer restores, and three buttons you can finally see.
+
+• The quantity −, chat send, and inline + buttons were invisible; they now paint with proper contrast
+• Money is stored as exact integer cents — every total and sum is exact arithmetic
+• A price scrolled off-screen can no longer slip past Save unvalidated
+• Restores are safer: the rollback snapshot always opens with this device's own recovery words
+• Every entry of a safety snapshot is authenticated before a restore proceeds
+• A damaged backup says it is damaged instead of blaming your recovery words
+• Size budgets and the shared fleet conformance suite now guard this app in CI

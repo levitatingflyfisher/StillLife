@@ -7,6 +7,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.1.0] — 2026-08-16
+
+Everything below shipped in this release (build 3, versionCode 2003),
+alongside one fix that arrived from the fleet rather than from this app:
+
+### Icon buttons you can actually see
+- **Three buttons were painting their glyph in the colour of their own
+  fill.** The quantity **−** on an item, **send** in item chat, and the
+  inline **+** for a new category or room were all invisible circles: the
+  shared design package sets an app-wide icon colour, and Flutter resolves
+  that colour above a filled icon button's own default. Fixed at the
+  source — the design package now ships `OhIconButton`, and a fleet
+  conformance check (C8) fails the suite if a bare filled icon button ever
+  comes back
+
 ### Money correctness
 - **Money is now stored as integer cents (schema v15).** Every monetary
   column moves from floating-point dollars to exact integer cents via a
