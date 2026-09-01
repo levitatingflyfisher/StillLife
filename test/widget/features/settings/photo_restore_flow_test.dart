@@ -21,6 +21,8 @@ import 'package:still_life/services/export/import_service.dart';
 import 'package:still_life/services/export/json_export_service.dart';
 
 import '../../../test_setup.dart';
+import 'package:still_life/core/providers/sync_providers.dart';
+import 'package:still_life/core/sync/sync_stamp.dart';
 
 /// The key FakeCryptoService derives for any phrase (fill = 7).
 final _deviceKey = Uint8List(32)..fillRange(0, 32, 7);
@@ -156,7 +158,11 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          // StillLife's wiring first, so the test's key store wins.
+          ...sanctuaryBackupOverrides(),
           databaseProvider.overrideWithValue(db),
+          // No keystore in widget tests: writes go unstamped.
+          syncStampProvider.overrideWithValue(SyncStamp.none),
           secureKeyStoreProvider.overrideWithValue(
             keyStore ??
                 InMemorySecureKeyStore(mnemonic: _phrase, acknowledged: true),
@@ -171,7 +177,6 @@ void main() {
             (ref) => ImportService(ref.watch(databaseProvider),
                 photoRootResolver: () async => null),
           ),
-          ...sanctuaryBackupOverrides(),
         ],
         child: MaterialApp(
           home: Scaffold(
@@ -265,6 +270,9 @@ void main() {
     // No device key → the flow asks for the recovery words.
     expect(find.text('Enter your recovery words'), findsOneWidget);
     await tester.enterText(find.byType(TextField).last, _phrase);
+    // sanctuary_backup_ui 0.3.0 keeps Restore disabled until the live
+    // word count reaches twelve, so the count must rebuild first.
+    await tester.pump();
     await tester.tap(find.text('Restore').last);
     await tester.pumpAndSettle();
 
@@ -305,6 +313,7 @@ void main() {
         reason: 'the device key must fail first, prompting for the '
             "backup's words");
     await tester.enterText(find.byType(TextField).last, _foreignPhrase);
+    await tester.pump(); // Restore enables once twelve words are counted.
     await tester.tap(find.text('Restore').last);
     await tester.pumpAndSettle();
 
@@ -367,7 +376,11 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          // StillLife's wiring first, so the test's key store wins.
+          ...sanctuaryBackupOverrides(),
           databaseProvider.overrideWithValue(db),
+          // No keystore in widget tests: writes go unstamped.
+          syncStampProvider.overrideWithValue(SyncStamp.none),
           secureKeyStoreProvider.overrideWithValue(
             InMemorySecureKeyStore(mnemonic: _phrase, acknowledged: true),
           ),
@@ -378,7 +391,6 @@ void main() {
             (ref) => ImportService(ref.watch(databaseProvider),
                 photoRootResolver: () async => null),
           ),
-          ...sanctuaryBackupOverrides(),
         ],
         child: const MaterialApp(
           home: Scaffold(body: SingleChildScrollView(child: PhotoBackupTile())),

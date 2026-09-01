@@ -13,6 +13,9 @@ import '../../../inventory/presentation/widgets/speed_dial_fab.dart';
 import '../../../loans/presentation/controllers/loan_controller.dart';
 import '../../domain/entities/storage_container.dart';
 import '../controllers/location_controller.dart';
+import 'package:still_life/core/widgets/failure_feedback.dart';
+import '../../../recently_deleted/presentation/undo_providers.dart';
+import 'package:openhearth_design/openhearth_design.dart';
 
 const _uuid = Uuid();
 
@@ -42,43 +45,39 @@ class RoomDetailScreen extends ConsumerWidget {
           loading: () => const Text('Room'),
           error: (_, _) => const Text('Room'),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.delete_outline),
+        actions: [OhBarActions(children: [
+          OhBarAction(
+            icon: Icons.delete_outline,
+            label: 'Delete',
+            // Deliberate (its own button), so no question: delete softly,
+            // close, and let the shell offer an Undo with no timer.
             onPressed: () async {
-              final confirmed = await showDialog<bool>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Delete Room'),
-                  content: const Text(
-                    'Are you sure? Items in this room will need to be reassigned.',
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(false),
-                      child: const Text('Cancel'),
-                    ),
-                    FilledButton(
-                      onPressed: () => Navigator.of(context).pop(true),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: theme.colorScheme.error,
-                      ),
-                      child: const Text('Delete'),
-                    ),
-                  ],
-                ),
-              );
-              if (confirmed == true && context.mounted) {
-                await ref
-                    .read(roomControllerProvider.notifier)
-                    .deleteRoom(roomId);
-                if (context.mounted) context.pop();
+              final name = roomAsync.valueOrNull?.name;
+              final trash = ref.read(recentlyDeletedRepositoryProvider);
+              final undo = ref.read(shellUndoControllerProvider);
+              final ok = await ref
+                  .read(roomControllerProvider.notifier)
+                  .deleteRoom(roomId);
+              if (!ok) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Couldn’t delete this room.")),
+                  );
+                }
+                return;
               }
+              undo.show(
+                message: name == null ? 'Deleted the room' : 'Deleted room “$name”',
+                onUndo: () => trash.restoreRoom(roomId),
+              );
+              if (context.mounted) context.pop();
             },
           ),
-        ],
+        ])],
       ),
-      body: roomAsync.when(
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: roomAsync.when(
         data: (room) {
           if (room == null) {
             return const Center(child: Text('Room not found'));
@@ -115,7 +114,7 @@ class RoomDetailScreen extends ConsumerWidget {
                         child: Padding(
                           padding: EdgeInsets.fromLTRB(16, 4, 16, 8),
                           child: Text(
-                            'No containers yet — add a shelf, box or drawer.',
+                            'No containers yet—add a shelf, box or drawer.',
                             style: TextStyle(fontSize: 13),
                           ),
                         ),
@@ -181,7 +180,7 @@ class RoomDetailScreen extends ConsumerWidget {
                             Icon(
                               Icons.inventory_2_outlined,
                               size: 48,
-                              color: theme.colorScheme.onSurface.withAlpha(80),
+                              color: theme.colorScheme.onSurfaceVariant,
                             ),
                             const SizedBox(height: 12),
                             Text(
@@ -225,7 +224,13 @@ class RoomDetailScreen extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, st) => loadFailure(
+          e,
+          st,
+          title: "Couldn’t load this room",
+          onRetry: () => ref.invalidate(roomDetailProvider(roomId)),
+        ),
+      ),
       ),
       floatingActionButton: SpeedDialFab(
         onPhoto: () => onPhotoAddItem(context, ref, roomId: roomId),

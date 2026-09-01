@@ -6,6 +6,7 @@ import 'package:openhearth_design/openhearth_design.dart';
 
 import '../../../../core/providers/database_provider.dart';
 import '../../../../services/database/database.dart';
+import 'package:still_life/core/widgets/failure_feedback.dart';
 
 /// FutureProvider that fetches items with warranty expiring within 180 days.
 final warrantyExpiringSoonProvider = FutureProvider<List<Item>>((ref) async {
@@ -93,7 +94,8 @@ class WarrantyExpiryWidget extends ConsumerWidget {
                 );
               },
               loading: () => const LinearProgressIndicator(),
-              error: (e, _) => Text('Error: $e'),
+              error: (e, _) =>
+                  inlineLoadFailure(e, what: "Couldn’t load warranties."),
             ),
           ],
         ),

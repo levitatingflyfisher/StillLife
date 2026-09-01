@@ -26,13 +26,13 @@ class CoverageGapWidget extends StatelessWidget {
             Icon(
               Icons.shield_outlined,
               size: 48,
-              color: theme.colorScheme.onSurface.withAlpha(80),
+              color: theme.colorScheme.onSurfaceVariant,
             ),
             const SizedBox(height: 8),
             Text(
               'No policy configured',
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withAlpha(120),
+                color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
           ],

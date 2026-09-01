@@ -6,12 +6,17 @@ import '../../../../core/errors/result.dart';
 import '../../../../services/database/database.dart' as db_pkg;
 import '../../domain/entities/loan.dart';
 import '../../domain/repositories/loan_repository.dart';
+import '../../../../core/sync/sync_stamp.dart';
 
 const _uuid = Uuid();
 
 class LoanRepositoryImpl implements LoanRepository {
   final db_pkg.AppDatabase _db;
-  LoanRepositoryImpl(this._db);
+  LoanRepositoryImpl(this._db, {SyncStamp stamp = SyncStamp.none})
+    : _stamp = stamp;
+
+  /// Gives every write its sync stamp (see [SyncStamp]).
+  final SyncStamp _stamp;
 
   @override
   Stream<List<Loan>> watchByItem(String itemId) => _db.loanDao
@@ -35,15 +40,18 @@ class LoanRepositoryImpl implements LoanRepository {
 
       final id = loan.id.isEmpty ? _uuid.v4() : loan.id;
       final now = DateTime.now();
-      await _db.loanDao.insertLoan(
-        db_pkg.LoansCompanion.insert(
-          id: id,
-          itemId: loan.itemId,
-          borrowerName: loan.borrowerName,
-          expectedReturnDate: Value(loan.expectedReturnDate),
-          notes: Value(loan.notes),
-          createdAt: now,
-          modifiedAt: now,
+      await _stamp.write(
+        (c) => _db.loanDao.insertLoan(
+          db_pkg.LoansCompanion.insert(
+            id: id,
+            itemId: loan.itemId,
+            borrowerName: loan.borrowerName,
+            expectedReturnDate: Value(loan.expectedReturnDate),
+            notes: Value(loan.notes),
+            createdAt: now,
+            modifiedAt: now,
+          ),
+          crdt: c,
         ),
       );
       final pairs = await _db.loanDao.watchByItem(loan.itemId).first;
@@ -57,13 +65,16 @@ class LoanRepositoryImpl implements LoanRepository {
   @override
   Future<Result<Loan>> editLoan(Loan loan) async {
     try {
-      await _db.loanDao.updateLoan(
-        db_pkg.LoansCompanion(
-          id: Value(loan.id),
-          borrowerName: Value(loan.borrowerName),
-          expectedReturnDate: Value(loan.expectedReturnDate),
-          notes: Value(loan.notes),
-          modifiedAt: Value(DateTime.now()),
+      await _stamp.write(
+        (c) => _db.loanDao.updateLoan(
+          db_pkg.LoansCompanion(
+            id: Value(loan.id),
+            borrowerName: Value(loan.borrowerName),
+            expectedReturnDate: Value(loan.expectedReturnDate),
+            notes: Value(loan.notes),
+            modifiedAt: Value(DateTime.now()),
+          ),
+          crdt: c,
         ),
       );
       final pairs = await _db.loanDao.watchByItem(loan.itemId).first;
@@ -77,8 +88,14 @@ class LoanRepositoryImpl implements LoanRepository {
   @override
   Future<Result<void>> markReturned(String id) async {
     try {
-      await _db.loanDao.updateLoan(
-        db_pkg.LoansCompanion(id: Value(id), returnedAt: Value(DateTime.now())),
+      await _stamp.write(
+        (c) => _db.loanDao.updateLoan(
+          db_pkg.LoansCompanion(
+            id: Value(id),
+            returnedAt: Value(DateTime.now()),
+          ),
+          crdt: c,
+        ),
       );
       return const Success(null);
     } catch (e) {
@@ -89,7 +106,7 @@ class LoanRepositoryImpl implements LoanRepository {
   @override
   Future<Result<void>> deleteLoan(String id) async {
     try {
-      await _db.loanDao.softDelete(id);
+      await _stamp.write((c) => _db.loanDao.softDelete(id, crdt: c));
       return const Success(null);
     } catch (e) {
       return Err(DatabaseFailure('Failed to delete loan: $e'));

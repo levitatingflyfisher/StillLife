@@ -105,11 +105,11 @@ void main() {
     test('ambiguous input surfaces an ACTIONABLE message, not the generic one',
         () {
       expect(validateMoneyInput('1,234'),
-          'Ambiguous amount — use 1234 or 1,234.00');
+          'Ambiguous amount. Use 1234 or 1,234.00');
       expect(validateMoneyInput('1.234'),
-          'Ambiguous amount — use 1234 or 1,234.00');
+          'Ambiguous amount. Use 1234 or 1,234.00');
       expect(validateMoneyInput(r'$12,345'),
-          'Ambiguous amount — use 1234 or 1,234.00');
+          'Ambiguous amount. Use 1234 or 1,234.00');
     });
   });
 }

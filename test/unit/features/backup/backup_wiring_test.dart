@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sanctuary_auth_core/sanctuary_auth_core.dart';
 import 'package:sanctuary_backup_ui/sanctuary_backup_ui.dart';
 import 'package:still_life/features/backup/backup_wiring.dart';
 
@@ -32,6 +33,27 @@ void main() {
         () {
       expect(config.restoreReplaceConsequence, contains('merges'));
       expect(config.restoreReplaceConsequence, isNot(contains('delete all')));
+    });
+  });
+
+  group('key store scope', () {
+    // Every fleet PWA shares one browser origin; without the app-scoped
+    // store, StillLife's recovery words were readable by (and overwritten
+    // by) sibling apps. On native the keychain is already per app.
+    test('web: recovery words live under StillLife\'s own keys', () {
+      final c = ProviderContainer(
+        overrides: sanctuaryBackupOverrides(web: true),
+      );
+      addTearDown(c.dispose);
+      expect(c.read(secureKeyStoreProvider), isA<AppScopedSecureKeyStore>());
+    });
+
+    test('native: the platform keychain, unchanged', () {
+      final c = ProviderContainer(
+        overrides: sanctuaryBackupOverrides(web: false),
+      );
+      addTearDown(c.dispose);
+      expect(c.read(secureKeyStoreProvider), isA<FlutterSecureKeyStore>());
     });
   });
 }

@@ -122,7 +122,7 @@ class _AddLoanSheetState extends ConsumerState<AddLoanSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              isEditing ? 'Edit Loan' : 'Lend "${widget.itemName}"',
+              isEditing ? 'Edit Loan' : 'Lend “${widget.itemName}”',
               style: theme.textTheme.titleMedium,
             ),
             const SizedBox(height: 16),

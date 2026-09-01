@@ -182,7 +182,9 @@ void main() {
 
     final session = container.read(videoAnalysisControllerProvider)!;
     expect(session.status, AnalysisStatus.failed);
-    expect(session.failureMessage, contains('ffmpeg rc 1'));
+    // Shown on the processing screen: a plain sentence, not the exception.
+    expect(session.failureMessage, isNotNull);
+    expect(session.failureMessage, isNot(contains('ffmpeg rc 1')));
   });
 
   test('the session exists before the first await', () async {

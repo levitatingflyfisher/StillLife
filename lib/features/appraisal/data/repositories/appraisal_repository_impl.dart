@@ -9,13 +9,18 @@ import '../../../../services/database/database.dart' as db_pkg;
 import '../../domain/entities/appraisal.dart';
 import '../../domain/entities/appraisal_source.dart';
 import '../../domain/repositories/appraisal_repository.dart';
+import '../../../../core/sync/sync_stamp.dart';
 
 const _uuid = Uuid();
 
 /// Drift-backed implementation of [AppraisalRepository].
 class AppraisalRepositoryImpl implements AppraisalRepository {
   final db_pkg.AppDatabase _db;
-  AppraisalRepositoryImpl(this._db);
+  AppraisalRepositoryImpl(this._db, {SyncStamp stamp = SyncStamp.none})
+    : _stamp = stamp;
+
+  /// Gives every write its sync stamp (see [SyncStamp]).
+  final SyncStamp _stamp;
 
   @override
   Stream<List<Appraisal>> watchForItem(String itemId) => _db.appraisalDao
@@ -67,7 +72,9 @@ class AppraisalRepositoryImpl implements AppraisalRepository {
         sourceUrls: Value(_encodeSources(a.sources)),
         countryCode: Value(a.countryCode),
       );
-      await _db.appraisalDao.insertAppraisal(companion);
+      await _stamp.write(
+        (c) => _db.appraisalDao.insertAppraisal(companion, crdt: c),
+      );
       // The returned entity must match what was written, not the raw input.
       return Success(a.copyWith(id: id));
     } catch (e) {
@@ -84,12 +91,17 @@ class AppraisalRepositoryImpl implements AppraisalRepository {
       // Sparse companion — only the targeted value column and modifiedAt
       // change; going through itemDao directly (not ItemRepository.updateItem)
       // keeps its automatic 'manual' price-history write out of this path.
-      final updated = await _db.itemDao.updateItem(
-        db_pkg.ItemsCompanion(
-          id: Value(a.itemId),
-          currentValueCents: isResale ? Value(cents) : const Value.absent(),
-          replacementCostCents: isResale ? const Value.absent() : Value(cents),
-          modifiedAt: Value(DateTime.now()),
+      final updated = await _stamp.write(
+        (c) => _db.itemDao.updateItem(
+          db_pkg.ItemsCompanion(
+            id: Value(a.itemId),
+            currentValueCents: isResale ? Value(cents) : const Value.absent(),
+            replacementCostCents: isResale
+                ? const Value.absent()
+                : Value(cents),
+            modifiedAt: Value(DateTime.now()),
+          ),
+          crdt: c,
         ),
       );
       if (!updated) {
@@ -99,13 +111,16 @@ class AppraisalRepositoryImpl implements AppraisalRepository {
       // currentValueCents changes leave a price-history trail so the chart shows
       // where the number came from.
       if (isResale) {
-        await _db.priceHistoryDao.insertPriceEntry(
-          db_pkg.PriceHistoryEntriesCompanion.insert(
-            id: _uuid.v4(),
-            itemId: a.itemId,
-            priceCents: cents,
-            source: 'llm_estimate',
-            recordedAt: DateTime.now(),
+        await _stamp.write(
+          (c) => _db.priceHistoryDao.insertPriceEntry(
+            db_pkg.PriceHistoryEntriesCompanion.insert(
+              id: _uuid.v4(),
+              itemId: a.itemId,
+              priceCents: cents,
+              source: 'llm_estimate',
+              recordedAt: DateTime.now(),
+            ),
+            crdt: c,
           ),
         );
       }
@@ -118,7 +133,7 @@ class AppraisalRepositoryImpl implements AppraisalRepository {
   @override
   Future<Result<void>> delete(String id) async {
     try {
-      await _db.appraisalDao.softDelete(id);
+      await _stamp.write((c) => _db.appraisalDao.softDelete(id, crdt: c));
       return const Success(null);
     } catch (e) {
       return Err(DatabaseFailure('Failed to delete appraisal: $e'));

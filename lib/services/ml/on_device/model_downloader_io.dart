@@ -121,7 +121,7 @@ class IoModelDownloader {
     if (size != f.sizeBytes) {
       await _discard(part);
       throw ModelDownloadException(
-        '${f.filename}: got $size bytes, expected ${f.sizeBytes} — '
+        '${f.filename}: got $size bytes, expected ${f.sizeBytes}—'
         'refusing to install a truncated model.',
       );
     }
@@ -130,7 +130,7 @@ class IoModelDownloader {
     if (digest.toString() != f.sha256) {
       await _discard(part);
       throw ModelDownloadException(
-        '${f.filename}: sha256 mismatch — the artifact does not match '
+        '${f.filename}: sha256 mismatch—the artifact does not match '
         'the pinned release; refusing to install it.',
       );
     }

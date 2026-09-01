@@ -111,37 +111,40 @@ class _BankColumnMapScreenState extends State<BankColumnMapScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Map CSV Columns')),
-      body: Padding(
-        padding: OhSpacing.insetMd,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Assign each CSV column to the correct field:',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: OhSpacing.md),
-            _buildColumnDropdown(
-              label: 'Date column',
-              selectedIndex: _dateCol,
-              onChanged: (v) => setState(() => _dateCol = v),
-            ),
-            _buildColumnDropdown(
-              label: 'Description column',
-              selectedIndex: _descriptionCol,
-              onChanged: (v) => setState(() => _descriptionCol = v),
-            ),
-            _buildColumnDropdown(
-              label: 'Amount column',
-              selectedIndex: _amountCol,
-              onChanged: (v) => setState(() => _amountCol = v),
-            ),
-            const Spacer(),
-            FilledButton(
-              onPressed: _canContinue ? _onContinue : null,
-              child: const Text('Continue'),
-            ),
-          ],
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: Padding(
+          padding: OhSpacing.insetMd,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Assign each CSV column to the correct field:',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: OhSpacing.md),
+              _buildColumnDropdown(
+                label: 'Date column',
+                selectedIndex: _dateCol,
+                onChanged: (v) => setState(() => _dateCol = v),
+              ),
+              _buildColumnDropdown(
+                label: 'Description column',
+                selectedIndex: _descriptionCol,
+                onChanged: (v) => setState(() => _descriptionCol = v),
+              ),
+              _buildColumnDropdown(
+                label: 'Amount column',
+                selectedIndex: _amountCol,
+                onChanged: (v) => setState(() => _amountCol = v),
+              ),
+              const Spacer(),
+              FilledButton(
+                onPressed: _canContinue ? _onContinue : null,
+                child: const Text('Continue'),
+              ),
+            ],
+          ),
         ),
       ),
     );

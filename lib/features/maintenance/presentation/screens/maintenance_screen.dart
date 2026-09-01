@@ -7,6 +7,8 @@ import 'package:openhearth_design/openhearth_design.dart';
 import '../../../../core/extensions/currency_extensions.dart';
 import '../../domain/entities/maintenance_log.dart';
 import '../controllers/maintenance_controller.dart';
+import 'package:still_life/core/widgets/failure_feedback.dart';
+import '../../../recently_deleted/presentation/undo_providers.dart';
 
 class MaintenanceScreen extends ConsumerWidget {
   const MaintenanceScreen({super.key});
@@ -18,7 +20,9 @@ class MaintenanceScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Maintenance Log')),
-      body: logsAsync.when(
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: logsAsync.when(
         data: (logs) {
           if (logs.isEmpty) {
             return Center(
@@ -28,7 +32,7 @@ class MaintenanceScreen extends ConsumerWidget {
                   Icon(
                     Icons.build_outlined,
                     size: 64,
-                    color: theme.colorScheme.onSurface.withAlpha(80),
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -84,7 +88,7 @@ class MaintenanceScreen extends ConsumerWidget {
                       pathParameters: {'logId': log.id},
                       extra: log,
                     ),
-                    onDelete: () => _confirmDelete(context, ref, log),
+                    onDelete: () => _delete(ref, log),
                   ),
                 ),
                 const Divider(height: 1, indent: 16),
@@ -110,7 +114,7 @@ class MaintenanceScreen extends ConsumerWidget {
                       pathParameters: {'logId': log.id},
                       extra: log,
                     ),
-                    onDelete: () => _confirmDelete(context, ref, log),
+                    onDelete: () => _delete(ref, log),
                   ),
                 ),
               ],
@@ -118,7 +122,16 @@ class MaintenanceScreen extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, st) => loadFailure(
+          e,
+          st,
+          title: "Couldn’t load maintenance",
+          onRetry: () => ref.invalidate(maintenanceLogsProvider),
+        ),
+      ),
+      ),
+      bottomNavigationBar: OhUndoBar(
+        controller: ref.watch(screenUndoControllerProvider('maintenance')),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => context.pushNamed('addMaintenance'),
@@ -127,31 +140,18 @@ class MaintenanceScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _confirmDelete(
-    BuildContext context,
-    WidgetRef ref,
-    MaintenanceLog log,
-  ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Entry'),
-        content: Text('Remove "${log.title}"? This cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+  /// Deletes softly and offers Undo until the person leaves this screen.
+  /// The menu choice is deliberate and does not ask; the swipe asks first
+  /// (see [_MaintenanceTile]).
+  Future<void> _delete(WidgetRef ref, MaintenanceLog log) async {
+    final trash = ref.read(recentlyDeletedRepositoryProvider);
+    final undo = ref.read(screenUndoControllerProvider('maintenance'));
+    final ok = await ref.read(maintenanceControllerProvider.notifier).remove(log.id);
+    if (!ok) return;
+    undo.show(
+      message: 'Deleted “${log.title}”',
+      onUndo: () => trash.restoreMaintenanceLog(log.id),
     );
-    if (confirmed == true && context.mounted) {
-      await ref.read(maintenanceControllerProvider.notifier).remove(log.id);
-    }
   }
 }
 
@@ -189,26 +189,15 @@ class _MaintenanceTile extends StatelessWidget {
         padding: const EdgeInsets.only(right: 16),
         child: const Icon(Icons.delete, color: Colors.white),
       ),
-      confirmDismiss: (_) async {
-        final confirmed = await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text('Delete Entry'),
-            content: Text('Remove "${log.title}"? This cannot be undone.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Delete'),
-              ),
-            ],
-          ),
-        );
-        return confirmed ?? false;
-      },
+      // A swipe is easy to do by accident, so it asks first, naming the
+      // act (fleet delete ruling). The delete is soft and offers Undo.
+      confirmDismiss: (_) => showOhConfirm(
+        context,
+        title: 'Delete “${log.title}”?',
+        message: 'You can undo this until you leave the Maintenance Log.',
+        confirmLabel: 'Delete entry',
+        destructive: true,
+      ),
       onDismissed: (_) => onDelete(),
       child: ListTile(
         leading: CircleAvatar(
@@ -249,7 +238,7 @@ class _MaintenanceTile extends StatelessWidget {
               },
               itemBuilder: (_) => const [
                 PopupMenuItem(value: 'edit', child: Text('Edit')),
-                PopupMenuItem(value: 'delete', child: Text('Delete')),
+                PopupMenuItem(value: 'delete', child: Text('Delete entry')),
               ],
             ),
           ],

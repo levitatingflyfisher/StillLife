@@ -171,18 +171,18 @@ class _BarcodeScannerScreenState extends ConsumerState<BarcodeScannerScreen> {
       appBar: AppBar(
         title: const Text('Scan Barcode'),
         centerTitle: true,
-        actions: [
-          IconButton(
-            icon: Icon(
-              _controller.torchEnabled ? Icons.flash_on : Icons.flash_off,
-            ),
+        actions: [OhBarActions(children: [
+          OhBarAction(
+            icon: _controller.torchEnabled ? Icons.flash_on : Icons.flash_off,
+            label: 'Torch',
             onPressed: () => _controller.toggleTorch(),
           ),
-          IconButton(
-            icon: const Icon(Icons.cameraswitch),
+          OhBarAction(
+            icon: Icons.cameraswitch,
+            label: 'Flip',
             onPressed: () => _controller.switchCamera(),
           ),
-        ],
+        ])],
       ),
       body: MobileScanner(
         controller: _controller,
@@ -262,9 +262,11 @@ class BarcodeResultSheet extends StatelessWidget {
                   const SizedBox(height: OhSpacing.xs),
                   SelectableText(
                     barcode.rawValue ?? 'Unknown',
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      fontFamily: 'monospace',
-                    ),
+                    // A fresh code style: copyWith on a themed one keeps
+                    // the package prefix and names a missing family.
+                    style: OhTypography.code(
+                      color: colorScheme.onSurface,
+                    ).copyWith(fontSize: theme.textTheme.bodyLarge?.fontSize),
                   ),
                   if (existingItem != null) ...[
                     const SizedBox(height: 12),

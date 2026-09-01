@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/providers/repository_providers.dart';
 import '../../../../services/backup/webdav_backup_service.dart';
+import 'package:still_life/core/widgets/failure_feedback.dart';
 
 final _webDavServiceProvider = Provider<WebDavBackupService>((ref) {
   return WebDavBackupService();
@@ -57,7 +58,7 @@ class _WebDavSettingsScreenState extends ConsumerState<WebDavSettingsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'WebDAV URL must start with https:// — Basic Auth over HTTP '
+              'WebDAV URL must start with https://—Basic Auth over HTTP '
               'would leak your credentials.',
             ),
           ),
@@ -94,15 +95,23 @@ class _WebDavSettingsScreenState extends ConsumerState<WebDavSettingsScreen> {
             const SnackBar(content: Text('Backup uploaded successfully')),
           ),
           failure: (f) => ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Backup failed: ${f.message}')),
+            SnackBar(
+              content: Text(
+                failureSentence("Couldn’t back up to your server", f.message),
+              ),
+            ),
           ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Backup failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              failureSentence("Couldn’t back up to your server", e),
+            ),
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _isBusy = false);
@@ -140,7 +149,14 @@ class _WebDavSettingsScreenState extends ConsumerState<WebDavSettingsScreen> {
         failure: (f) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Restore failed: ${f.message}')),
+              SnackBar(
+                content: Text(
+                  failureSentence(
+                    "Couldn’t restore from your server",
+                    f.message,
+                  ),
+                ),
+              ),
             );
           }
           return null;
@@ -156,15 +172,23 @@ class _WebDavSettingsScreenState extends ConsumerState<WebDavSettingsScreen> {
             SnackBar(content: Text('Restored ${s.totalRecords} records')),
           ),
           failure: (f) => ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Restore failed: ${f.message}')),
+            SnackBar(
+              content: Text(
+                failureSentence("Couldn’t restore from your server", f.message),
+              ),
+            ),
           ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Restore failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              failureSentence("Couldn’t restore from your server", e),
+            ),
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _isBusy = false);
@@ -175,74 +199,77 @@ class _WebDavSettingsScreenState extends ConsumerState<WebDavSettingsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('WebDAV Backup')),
-      body: ListView(
-        padding: OhSpacing.insetMd,
-        children: [
-          const Text(
-            'Point Still Life at a WebDAV server (Nextcloud, Synology, etc.) '
-            'to back up and restore your inventory.',
-          ),
-          const SizedBox(height: 20),
-          TextFormField(
-            controller: _urlCtrl,
-            decoration: const InputDecoration(
-              labelText: 'WebDAV URL',
-              hintText:
-                  'https://cloud.example.com/remote.php/dav/files/alice/backup.json',
-              helperText: 'Must start with https://',
-              border: OutlineInputBorder(),
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: ListView(
+          padding: OhSpacing.insetMd,
+          children: [
+            const Text(
+              'Point Still Life at a WebDAV server (Nextcloud, Synology, etc.) '
+              'to back up and restore your inventory.',
             ),
-            keyboardType: TextInputType.url,
-            autocorrect: false,
-          ),
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: _userCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Username (optional)',
-              border: OutlineInputBorder(),
-            ),
-            autocorrect: false,
-          ),
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: _passCtrl,
-            obscureText: _obscurePass,
-            decoration: InputDecoration(
-              labelText: 'Password / App token (optional)',
-              border: const OutlineInputBorder(),
-              suffixIcon: IconButton(
-                icon: Icon(
-                  _obscurePass ? Icons.visibility : Icons.visibility_off,
-                ),
-                onPressed: () => setState(() => _obscurePass = !_obscurePass),
+            const SizedBox(height: 20),
+            TextFormField(
+              controller: _urlCtrl,
+              decoration: const InputDecoration(
+                labelText: 'WebDAV URL',
+                hintText:
+                    'https://cloud.example.com/remote.php/dav/files/alice/backup.json',
+                helperText: 'Must start with https://',
+                border: OutlineInputBorder(),
               ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          FilledButton(
-            onPressed: _isBusy ? null : _save,
-            child: const Text('Save Settings'),
-          ),
-          const SizedBox(height: OhSpacing.lg),
-          const Divider(),
-          const SizedBox(height: OhSpacing.md),
-          if (_isBusy)
-            const Center(child: CircularProgressIndicator())
-          else ...[
-            OutlinedButton.icon(
-              onPressed: _backup,
-              icon: const Icon(Icons.cloud_upload_outlined),
-              label: const Text('Back Up Now'),
+              keyboardType: TextInputType.url,
+              autocorrect: false,
             ),
             const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: _restore,
-              icon: const Icon(Icons.cloud_download_outlined),
-              label: const Text('Restore from WebDAV'),
+            TextFormField(
+              controller: _userCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Username (optional)',
+                border: OutlineInputBorder(),
+              ),
+              autocorrect: false,
             ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _passCtrl,
+              obscureText: _obscurePass,
+              decoration: InputDecoration(
+                labelText: 'Password / App token (optional)',
+                border: const OutlineInputBorder(),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscurePass ? Icons.visibility : Icons.visibility_off,
+                  ),
+                  onPressed: () => setState(() => _obscurePass = !_obscurePass),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            FilledButton(
+              onPressed: _isBusy ? null : _save,
+              child: const Text('Save Settings'),
+            ),
+            const SizedBox(height: OhSpacing.lg),
+            const Divider(),
+            const SizedBox(height: OhSpacing.md),
+            if (_isBusy)
+              const Center(child: CircularProgressIndicator())
+            else ...[
+              OutlinedButton.icon(
+                onPressed: _backup,
+                icon: const Icon(Icons.cloud_upload_outlined),
+                label: const Text('Back Up Now'),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: _restore,
+                icon: const Icon(Icons.cloud_download_outlined),
+                label: const Text('Restore from WebDAV'),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

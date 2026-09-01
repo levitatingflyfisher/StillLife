@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:openhearth_design/openhearth_design.dart';
 
 import '../../../maintenance/presentation/controllers/maintenance_controller.dart';
+import 'package:still_life/core/widgets/failure_feedback.dart';
 
 class UpcomingMaintenanceWidget extends ConsumerWidget {
   const UpcomingMaintenanceWidget({super.key});
@@ -107,7 +108,10 @@ class UpcomingMaintenanceWidget extends ConsumerWidget {
                 );
               },
               loading: () => const LinearProgressIndicator(),
-              error: (e, _) => Text('Error: $e'),
+              error: (e, _) => inlineLoadFailure(
+                e,
+                what: "Couldn’t load upcoming maintenance.",
+              ),
             ),
           ],
         ),

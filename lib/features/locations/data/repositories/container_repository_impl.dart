@@ -6,13 +6,18 @@ import '../../../../core/errors/result.dart';
 import '../../../../services/database/database.dart' as db;
 import '../../domain/entities/storage_container.dart';
 import '../../domain/repositories/container_repository.dart';
+import '../../../../core/sync/sync_stamp.dart';
 
 const _uuid = Uuid();
 
 class ContainerRepositoryImpl implements ContainerRepository {
   final db.AppDatabase _db;
 
-  ContainerRepositoryImpl(this._db);
+  ContainerRepositoryImpl(this._db, {SyncStamp stamp = SyncStamp.none})
+    : _stamp = stamp;
+
+  /// Gives every write its sync stamp (see [SyncStamp]).
+  final SyncStamp _stamp;
 
   @override
   Stream<List<StorageContainer>> watchContainers({required String roomId}) {
@@ -55,14 +60,17 @@ class ContainerRepositoryImpl implements ContainerRepository {
     try {
       final now = DateTime.now();
       final id = container.id.isEmpty ? _uuid.v4() : container.id;
-      await _db.containerDao.insert(
-        db.StorageContainersCompanion.insert(
-          id: id,
-          roomId: container.roomId,
-          name: container.name,
-          type: Value(container.type),
-          createdAt: now,
-          modifiedAt: now,
+      await _stamp.write(
+        (c) => _db.containerDao.insert(
+          db.StorageContainersCompanion.insert(
+            id: id,
+            roomId: container.roomId,
+            name: container.name,
+            type: Value(container.type),
+            createdAt: now,
+            modifiedAt: now,
+          ),
+          crdt: c,
         ),
       );
       final row = await _db.containerDao.getById(id);
@@ -78,7 +86,7 @@ class ContainerRepositoryImpl implements ContainerRepository {
   @override
   Future<Result<void>> deleteContainer(String id) async {
     try {
-      await _db.containerDao.softDelete(id);
+      await _stamp.write((c) => _db.containerDao.softDelete(id, crdt: c));
       return const Success(null);
     } catch (e) {
       return Err(DatabaseFailure('Failed to delete container: $e'));

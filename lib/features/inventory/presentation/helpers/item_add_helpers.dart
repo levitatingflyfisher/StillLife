@@ -55,7 +55,7 @@ Future<void> onVoiceAddItem(
                 const SizedBox(height: 16),
                 Text(
                   partialText.isEmpty
-                      ? 'Speak now — describe the item'
+                      ? 'Speak now—describe the item'
                       : partialText,
                   textAlign: TextAlign.center,
                 ),
@@ -126,10 +126,10 @@ Future<void> onVoiceAddItem(
 void _maybeExplainNoAi(BuildContext context, AnalysisOutcome outcome) {
   final message = switch (outcome) {
     NoAiConfigured() =>
-      'No AI provider configured — opening the manual form. '
+      'No AI provider configured—opening the manual form. '
           'Add one in Settings > AI Analysis.',
     AnalysisFailed(:final message) =>
-      'AI analysis failed — opening the manual form. ($message)',
+      'AI analysis failed—opening the manual form. ($message)',
     _ => null,
   };
   if (message == null) return;
@@ -266,7 +266,7 @@ Future<void> _shelfPhotoFlow(
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'No items identified in the photo — opening the manual form.',
+            'No items identified in the photo—opening the manual form.',
           ),
         ),
       );

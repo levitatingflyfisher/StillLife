@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:openhearth_design/openhearth_design.dart';
 import 'package:still_life/features/inventory/domain/entities/item.dart';
 import 'package:still_life/features/scanning/presentation/screens/barcode_scanner_screen.dart';
 
@@ -26,7 +27,9 @@ void main() {
     VoidCallback? onEditItem,
     VoidCallback? onMoveItem,
     VoidCallback? onLogMaintenance,
+    ThemeData? theme,
   }) => MaterialApp(
+    theme: theme,
     home: Scaffold(
       body: BarcodeResultSheet(
         barcode: fakeBarcode,
@@ -102,6 +105,19 @@ void main() {
     testWidgets('shows barcode value in card', (tester) async {
       await tester.pumpWidget(buildSheet());
       expect(find.text('012345678'), findsOneWidget);
+    });
+
+    testWidgets('barcode value draws in the real code face under OhTheme', (
+      tester,
+    ) async {
+      // copyWith(fontFamily: 'monospace') on an OhTheme style keeps the
+      // package prefix and asks for packages/openhearth_design/monospace,
+      // a family that does not exist: the digits fall back to proportional.
+      await tester.pumpWidget(buildSheet(theme: OhTheme.light()));
+      final text = tester.widget<SelectableText>(
+        find.widgetWithText(SelectableText, '012345678'),
+      );
+      expect(text.style?.fontFamily, OhTypography.code().fontFamily);
     });
 
     testWidgets('shows action row icons for existing item', (tester) async {

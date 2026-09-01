@@ -131,7 +131,7 @@ String? validateMoneyInput(String? text) {
   final t = text?.trim();
   if (t == null || t.isEmpty) return null;
   if (isAmbiguousMoneyInput(t)) {
-    return 'Ambiguous amount — use 1234 or 1,234.00';
+    return 'Ambiguous amount. Use 1234 or 1,234.00';
   }
   return parseMoneyInput(t) == null ? 'Enter a valid amount' : null;
 }

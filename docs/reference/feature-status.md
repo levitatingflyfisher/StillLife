@@ -17,11 +17,13 @@ relying on any row.*
 | Full-text search (FTS5) | Shipped | name/description/notes/serial/barcode. |
 | Natural-language search + saved searches | Shipped | Free-text query parsing. |
 | QR labels (`adj-adj-noun` IDs) | Shipped | Scan-to-find; deterministic from UUID. |
-| Bulk select / move / delete | Shipped | |
+| Bulk select / move / delete | Shipped | Delete acts at once with a lasting Undo. |
+| Undo + Recently deleted | Shipped | Soft delete; Recently deleted restores items with photos. No delete-forever (sync tombstones). |
+| Theme: follow phone / light / dark | Shipped | Stored; on every tab's top bar. |
 | Quantities & consumables (low-stock) | Shipped | Shopping-list export included. |
 | Loans (lend / due / overdue) | Shipped | With reminders. |
 | Maintenance logs + warranty reminders | Shipped | |
-| Profiles (shared household) | Partial | Attribution only; no auth, and outside the sync LWW filter. |
+| Profiles (shared household) | Partial | Attribution only; no auth. Synced under last-writer-wins. |
 
 ## Financial & reporting
 
@@ -39,11 +41,12 @@ relying on any row.*
 | Feature | Status | Notes |
 |---|---|---|
 | LAN sync (HLC last-writer-wins, tombstones) | Shipped | Rows only; see caveats below. |
-| mDNS peer discovery + shared-secret auth | Shipped | Port 8420; Bearer token ≥ 16 chars. |
+| mDNS peer discovery + shared-code pairing | Shipped | Port 8420; sync code ≥ 16 chars keys the encrypted wire. |
 | Media (photo/receipt files) sync | Roadmap | Sync moves metadata, not image files. |
 | Delta / incremental sync | Roadmap | Today it's a full-snapshot exchange. |
 | Per-field conflict merge | Roadmap | Today it's per-row last-writer-wins. |
-| Encrypted / beyond-LAN sync | Roadmap | LAN transport is plaintext. |
+| Encrypted LAN sync | Shipped | ChaCha20-Poly1305 frames, no plaintext fallback; not forward-secret. ADR-0007. |
+| Beyond-LAN sync | Roadmap | LAN only; no relay. |
 | WebDAV backup (HTTPS-enforced) | Shipped | To your own server. |
 | Cloud (off-site, encrypted) backup | Roadmap | |
 

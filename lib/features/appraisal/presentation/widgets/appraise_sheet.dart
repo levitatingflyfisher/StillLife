@@ -10,6 +10,7 @@ import '../../../inventory/domain/entities/item.dart';
 import '../../domain/entities/appraisal.dart';
 import '../../domain/entities/appraisal_source.dart';
 import '../controllers/appraisal_controller.dart';
+import 'package:still_life/core/widgets/failure_feedback.dart';
 
 /// Bottom sheet that runs an appraisal, shows sources, and allows refresh.
 class AppraiseSheet extends ConsumerStatefulWidget {
@@ -56,7 +57,7 @@ class _AppraiseSheetState extends ConsumerState<AppraiseSheet> {
               error: (e, _) => Padding(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 child: Text(
-                  'Could not fetch estimate: $e',
+                  failureSentence("Couldn’t fetch an estimate", e),
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
               ),
@@ -87,8 +88,8 @@ class _AppraiseSheetState extends ConsumerState<AppraiseSheet> {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 16),
         child: Text(
-          'Tap "Run estimate" to search current market prices for this '
-          'item.\nEstimates run on Anthropic (Claude) — via your Claude '
+          'Tap “Run estimate” to search current market prices for this '
+          'item.\nEstimates run on Anthropic (Claude)—via your Claude '
           'API key or a Pro account.',
           textAlign: TextAlign.center,
         ),
@@ -139,8 +140,8 @@ class _AppraiseSheetState extends ConsumerState<AppraiseSheet> {
         Expanded(
           child: Text(
             isResale
-                ? "Applies this estimate as the item's current value."
-                : "Applies this estimate as the item's replacement cost.",
+                ? "Applies this estimate as the item’s current value."
+                : "Applies this estimate as the item’s replacement cost.",
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),

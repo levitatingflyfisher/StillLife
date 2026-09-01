@@ -128,12 +128,32 @@ class LocationDao extends DatabaseAccessor<AppDatabase>
     await (update(rooms)..where((t) => t.id.equals(id))).write(entry);
   }
 
-  Future<void> reorderRooms(List<String> roomIdsInOrder) async {
+  /// Writes the new order. Each room gets its own stamp when [crdt] is
+  /// given: an unstamped reorder kept every room's old HLC, so a peer's copy
+  /// won the merge and the new order never reached the other device.
+  Future<void> reorderRooms(
+    List<String> roomIdsInOrder, {
+    CrdtManager? crdt,
+  }) async {
+    final now = DateTime.now();
+    final entries = <RoomsCompanion>[];
+    for (var i = 0; i < roomIdsInOrder.length; i++) {
+      var entry = RoomsCompanion(sortOrder: Value(i), modifiedAt: Value(now));
+      if (crdt != null) {
+        final nodeId = await crdt.getNodeId();
+        final hlc = await crdt.nextHlc();
+        entry = entry.copyWith(
+          nodeId: Value(nodeId),
+          hlc: Value(hlc.toString()),
+        );
+      }
+      entries.add(entry);
+    }
     await batch((batch) {
       for (var i = 0; i < roomIdsInOrder.length; i++) {
         batch.update(
           rooms,
-          RoomsCompanion(sortOrder: Value(i)),
+          entries[i],
           where: (t) => t.id.equals(roomIdsInOrder[i]),
         );
       }
@@ -145,8 +165,9 @@ class LocationDao extends DatabaseAccessor<AppDatabase>
     String propertyId,
     List<RoomsCompanion> defaults,
   ) async {
+    // Seeded ids are stable (seed_rows.dart), so seeding twice is a no-op.
     await batch((batch) {
-      batch.insertAll(rooms, defaults);
+      batch.insertAll(rooms, defaults, mode: InsertMode.insertOrIgnore);
     });
   }
 

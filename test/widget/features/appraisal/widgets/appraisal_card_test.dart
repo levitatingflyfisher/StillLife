@@ -105,4 +105,13 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     expect(find.textContaining('Resale estimate'), findsOneWidget);
   });
+
+  // A dash is not a value: "no estimate" is said in words.
+  testWidgets('a mode with no estimate says so in words', (tester) async {
+    await tester.pumpWidget(harness(_StubRepo(const {})));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(find.text('Resale: no estimate'), findsOneWidget);
+    expect(find.textContaining('—'), findsNothing);
+  });
 }

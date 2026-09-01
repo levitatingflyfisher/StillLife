@@ -84,6 +84,12 @@ class AppDatabase extends _$AppDatabase {
   @override
   MigrationStrategy get migration {
     return MigrationStrategy(
+      // SQLite enforces the declared references (items -> rooms, photos ->
+      // items, ...) only when asked, per connection. beforeOpen runs after
+      // any migration, so the table rebuilds above still run with it off.
+      beforeOpen: (details) async {
+        await customStatement('PRAGMA foreign_keys = ON');
+      },
       onCreate: (Migrator m) async {
         await m.createAll();
         // Create FTS5 virtual table for full-text search

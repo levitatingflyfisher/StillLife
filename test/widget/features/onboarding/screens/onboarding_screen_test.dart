@@ -46,8 +46,8 @@ void main() {
       await tester.tap(find.text('Get Started'));
       await tester.pumpAndSettle();
 
-      expect(find.text("Who's setting this up?"), findsOneWidget);
-      expect(find.text("That's me \u2192"), findsOneWidget);
+      expect(find.text('Who’s setting this up?'), findsOneWidget);
+      expect(find.text('That’s me \u2192'), findsOneWidget);
       expect(find.text('Skip \u2192'), findsOneWidget);
     });
 
@@ -64,7 +64,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Everything in one place'), findsOneWidget);
-      expect(find.text("Let's Go"), findsOneWidget);
+      expect(find.text('Let’s go'), findsOneWidget);
     });
 
     testWidgets('features page lists key capabilities', (tester) async {
@@ -139,7 +139,7 @@ void main() {
         );
 
         // Step 3: tap "That's me →"
-        await tester.tap(find.text("That's me \u2192"));
+        await tester.tap(find.text('That’s me \u2192'));
 
         // Step 4: pump to settle without pumpAndSettle (avoids animation timeout)
         // — first pump lets async futures (createProfile + setActive) resolve,

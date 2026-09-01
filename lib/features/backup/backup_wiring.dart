@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sanctuary_auth_core/sanctuary_auth_core.dart';
 import 'package:sanctuary_backup_ui/sanctuary_backup_ui.dart';
@@ -8,8 +9,8 @@ import '../dashboard/presentation/controllers/dashboard_controller.dart';
 
 /// Root-scope overrides that wire the generic `sanctuary_backup_ui` to
 /// StillLife (SANCTUARY-BRIEF §4.W3). Applied on the `ProviderContainer` in
-/// `main.dart`.
-List<Override> sanctuaryBackupOverrides() => [
+/// `main.dart`. [web] is for tests; it defaults to the real platform.
+List<Override> sanctuaryBackupOverrides({bool web = kIsWeb}) => [
   sanctuaryBackupConfigProvider.overrideWithValue(
     SanctuaryBackupConfig(
       appId: 'stilllife',
@@ -47,4 +48,8 @@ List<Override> sanctuaryBackupOverrides() => [
   // Isolate StillLife's key material from any other app sharing a household
   // seed (§2.1).
   sanctuaryAppDomainProvider.overrideWithValue('stilllife'),
+  // On the web every fleet PWA shares one origin's storage, so the recovery
+  // words get StillLife's own key names (sanctuary_backup_ui 0.3.0). Native
+  // keeps the per-app keychain unchanged.
+  appScopedKeyStoreOverride(web: web),
 ];

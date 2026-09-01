@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show InsertMode;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:still_life/features/loans/data/repositories/loan_repository_impl.dart';
 import 'package:still_life/features/loans/domain/entities/loan.dart';
@@ -19,6 +20,21 @@ void main() {
   tearDown(() async => database.close());
 
   Future<void> seedItem({String id = 'item-1', String name = 'Camera'}) async {
+    // Foreign keys are enforced: the item's room and category must exist.
+    final t = DateTime(2025);
+    await database.into(database.properties).insert(
+        db_pkg.PropertiesCompanion.insert(
+            id: 'prop-1', name: 'Home', createdAt: t, modifiedAt: t),
+        mode: InsertMode.insertOrIgnore);
+    await database.into(database.rooms).insert(
+        db_pkg.RoomsCompanion.insert(
+            id: 'room-1', propertyId: 'prop-1', name: 'Den',
+            createdAt: t, modifiedAt: t),
+        mode: InsertMode.insertOrIgnore);
+    await database.into(database.categories).insert(
+        db_pkg.CategoriesCompanion.insert(
+            id: 'cat-1', name: 'Things', createdAt: t, modifiedAt: t),
+        mode: InsertMode.insertOrIgnore);
     await database.itemDao.insertItem(
       db_pkg.ItemsCompanion.insert(
         id: id,

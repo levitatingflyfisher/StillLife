@@ -6,9 +6,13 @@ import '../../features/profiles/data/repositories/profile_repository_impl.dart';
 import '../../features/profiles/domain/entities/profile.dart';
 import '../../features/profiles/domain/repositories/profile_repository.dart';
 import 'database_provider.dart';
+import 'sync_providers.dart';
 
 final profileRepositoryProvider = Provider<ProfileRepository>(
-  (ref) => ProfileRepositoryImpl(ref.watch(databaseProvider)),
+  (ref) => ProfileRepositoryImpl(
+    ref.watch(databaseProvider),
+    stamp: ref.watch(syncStampProvider),
+  ),
 );
 
 final profilesProvider = StreamProvider<List<Profile>>(

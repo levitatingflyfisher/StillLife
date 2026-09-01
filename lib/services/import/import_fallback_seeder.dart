@@ -1,9 +1,7 @@
 import 'package:drift/drift.dart';
-import 'package:uuid/uuid.dart';
 
 import '../database/database.dart';
-
-const _uuid = Uuid();
+import '../../core/sync/seed_rows.dart';
 
 /// Ensures the "Imports" category and a default room exist in the database,
 /// creating them if necessary.
@@ -30,7 +28,7 @@ class ImportFallbackSeeder {
             .getSingleOrNull();
     if (existing != null) return existing.id;
 
-    final id = _uuid.v4();
+    final id = seedId('category', 'Imports');
     final now = DateTime.now();
     await _database
         .into(_database.categories)
@@ -40,7 +38,10 @@ class ImportFallbackSeeder {
             name: 'Imports',
             createdAt: now,
             modifiedAt: now,
+            nodeId: const Value(seedNodeId),
+            hlc: Value(seedHlc),
           ),
+          mode: InsertMode.insertOrIgnore,
         );
     return id;
   }
@@ -53,19 +54,8 @@ class ImportFallbackSeeder {
             .getSingleOrNull();
     if (existing != null) return existing.id;
 
-    final id = _uuid.v4();
-    final now = DateTime.now();
-    await _database
-        .into(_database.properties)
-        .insert(
-          PropertiesCompanion.insert(
-            id: id,
-            name: 'Home',
-            createdAt: now,
-            modifiedAt: now,
-          ),
-        );
-    return id;
+    // The same first home the app seeds on launch (seed_rows.dart).
+    return seedDefaultHome(_database);
   }
 
   Future<String> _ensureRoom(String propertyId) async {
@@ -79,7 +69,7 @@ class ImportFallbackSeeder {
             .getSingleOrNull();
     if (existing != null) return existing.id;
 
-    final id = _uuid.v4();
+    final id = seedId('room', '$propertyId/Home');
     final now = DateTime.now();
     await _database
         .into(_database.rooms)
@@ -90,7 +80,10 @@ class ImportFallbackSeeder {
             propertyId: propertyId,
             createdAt: now,
             modifiedAt: now,
+            nodeId: const Value(seedNodeId),
+            hlc: Value(seedHlc),
           ),
+          mode: InsertMode.insertOrIgnore,
         );
     return id;
   }

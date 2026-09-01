@@ -25,14 +25,8 @@ class StillLifeApp extends ConsumerWidget {
       darkTheme: OhTheme.hearthDark(),
       themeMode: themeMode,
       routerConfig: router,
-      builder: (context, child) {
-        final inner = child ?? const SizedBox.shrink();
-        if (MediaQuery.of(context).size.width <= 760) return inner;
-        return ColoredBox(
-          color: Theme.of(context).scaffoldBackgroundColor,
-          child: Center(child: SizedBox(width: 760, child: inner)),
-        );
-      },
+      // Width: every screen caps its own content with OhPage
+      // (test/core/page_width_test.dart), so there is no app-wide clamp.
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,

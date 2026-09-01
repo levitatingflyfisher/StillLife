@@ -6,13 +6,18 @@ import '../../../../core/errors/result.dart';
 import '../../../../services/database/database.dart' as db;
 import '../../domain/entities/property.dart';
 import '../../domain/repositories/property_repository.dart';
+import '../../../../core/sync/sync_stamp.dart';
 
 const _uuid = Uuid();
 
 class PropertyRepositoryImpl implements PropertyRepository {
   final db.AppDatabase _db;
 
-  PropertyRepositoryImpl(this._db);
+  PropertyRepositoryImpl(this._db, {SyncStamp stamp = SyncStamp.none})
+    : _stamp = stamp;
+
+  /// Gives every write its sync stamp (see [SyncStamp]).
+  final SyncStamp _stamp;
 
   @override
   Stream<List<Property>> watchProperties() {
@@ -47,7 +52,9 @@ class PropertyRepositoryImpl implements PropertyRepository {
         createdAt: now,
         modifiedAt: now,
       );
-      await _db.locationDao.insertProperty(companion);
+      await _stamp.write(
+        (c) => _db.locationDao.insertProperty(companion, crdt: c),
+      );
       return getProperty(id);
     } catch (e) {
       return Err(DatabaseFailure('Failed to create property: $e'));
@@ -64,7 +71,9 @@ class PropertyRepositoryImpl implements PropertyRepository {
         type: Value(property.type.label),
         modifiedAt: Value(DateTime.now()),
       );
-      await _db.locationDao.updateProperty(companion);
+      await _stamp.write(
+        (c) => _db.locationDao.updateProperty(companion, crdt: c),
+      );
       return getProperty(property.id);
     } catch (e) {
       return Err(DatabaseFailure('Failed to update property: $e'));
@@ -74,7 +83,7 @@ class PropertyRepositoryImpl implements PropertyRepository {
   @override
   Future<Result<void>> deleteProperty(String id) async {
     try {
-      await _db.locationDao.deleteProperty(id);
+      await _stamp.write((c) => _db.locationDao.deleteProperty(id, crdt: c));
       return const Success(null);
     } catch (e) {
       return Err(DatabaseFailure('Failed to delete property: $e'));

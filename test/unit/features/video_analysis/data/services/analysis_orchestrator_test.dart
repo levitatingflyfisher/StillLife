@@ -213,9 +213,11 @@ void main() {
       config: const AnalysisConfig(),
     ).toList();
 
+    // The message reaches the screen, so it is a plain sentence; the raw
+    // extractor error is logged, never shown.
     expect(
       events.whereType<VideoAnalysisFailed>().single.message,
-      contains('ffmpeg rc 1'),
+      isNot(contains('ffmpeg rc 1')),
     );
     expect(events.whereType<VideoAnalysisCompleted>(), isEmpty);
 

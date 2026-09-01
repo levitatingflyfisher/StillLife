@@ -21,7 +21,9 @@ class ProcessingScreen extends ConsumerWidget {
     if (session == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Processing')),
-        body: Center(
+        body: OhPage(
+        padding: EdgeInsets.zero,
+        child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -40,6 +42,7 @@ class ProcessingScreen extends ConsumerWidget {
             ],
           ),
         ),
+      ),
       );
     }
 
@@ -63,7 +66,9 @@ class ProcessingScreen extends ConsumerWidget {
         centerTitle: true,
         automaticallyImplyLeading: false,
       ),
-      body: Column(
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: Column(
         children: [
           // Stage indicator
           ProcessingStageIndicator(currentStatus: session.status),
@@ -190,7 +195,7 @@ class ProcessingScreen extends ConsumerWidget {
                                 ),
                                 const SizedBox(height: OhSpacing.sm),
                                 Text(
-                                  'Nothing was recognized — or the analysis '
+                                  'Nothing was recognized—or the analysis '
                                   'calls failed. Try panning slower, with '
                                   'more light, or check the AI settings.',
                                   style: theme.textTheme.bodyMedium?.copyWith(
@@ -216,6 +221,7 @@ class ProcessingScreen extends ConsumerWidget {
                   ),
           ),
         ],
+      ),
       ),
 
       // Bottom bar
@@ -276,7 +282,9 @@ class _NoAiConfiguredScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Analyzing Video'), centerTitle: true),
-      body: Center(
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: Center(
         child: Padding(
           padding: OhSpacing.insetLg,
           child: Column(
@@ -316,6 +324,7 @@ class _NoAiConfiguredScreen extends StatelessWidget {
           ),
         ),
       ),
+      ),
     );
   }
 }
@@ -336,7 +345,9 @@ class _FailedScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Analyzing Video'), centerTitle: true),
-      body: Center(
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: Center(
         child: Padding(
           padding: OhSpacing.insetLg,
           child: Column(
@@ -369,6 +380,7 @@ class _FailedScreen extends StatelessWidget {
             ],
           ),
         ),
+      ),
       ),
     );
   }

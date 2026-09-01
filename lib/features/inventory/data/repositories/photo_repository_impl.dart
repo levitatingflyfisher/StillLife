@@ -6,13 +6,18 @@ import '../../../../core/errors/result.dart';
 import '../../../../services/database/database.dart' as db;
 import '../../domain/entities/photo.dart';
 import '../../domain/repositories/photo_repository.dart';
+import '../../../../core/sync/sync_stamp.dart';
 
 const _uuid = Uuid();
 
 class PhotoRepositoryImpl implements PhotoRepository {
   final db.AppDatabase _db;
 
-  PhotoRepositoryImpl(this._db);
+  PhotoRepositoryImpl(this._db, {SyncStamp stamp = SyncStamp.none})
+    : _stamp = stamp;
+
+  /// Gives every write its sync stamp (see [SyncStamp]).
+  final SyncStamp _stamp;
 
   @override
   Stream<List<Photo>> watchItemPhotos(String itemId) {
@@ -38,7 +43,7 @@ class PhotoRepositoryImpl implements PhotoRepository {
         createdAt: now,
         modifiedAt: now,
       );
-      await _db.photoDao.insertPhoto(companion);
+      await _stamp.write((c) => _db.photoDao.insertPhoto(companion, crdt: c));
       final row = await _db.photoDao.getPhotoById(id);
       if (row == null) {
         return const Err(DatabaseFailure('Photo not found after insert'));
@@ -52,7 +57,7 @@ class PhotoRepositoryImpl implements PhotoRepository {
   @override
   Future<Result<void>> deletePhoto(String id) async {
     try {
-      await _db.photoDao.deletePhoto(id);
+      await _stamp.write((c) => _db.photoDao.deletePhoto(id, crdt: c));
       return const Success(null);
     } catch (e) {
       return Err(DatabaseFailure('Failed to delete photo: $e'));
@@ -62,7 +67,9 @@ class PhotoRepositoryImpl implements PhotoRepository {
   @override
   Future<Result<void>> setPrimaryPhoto(String itemId, String photoId) async {
     try {
-      await _db.photoDao.setPrimaryPhoto(itemId, photoId);
+      await _stamp.write(
+        (c) => _db.photoDao.setPrimaryPhoto(itemId, photoId, crdt: c),
+      );
       return const Success(null);
     } catch (e) {
       return Err(DatabaseFailure('Failed to set primary photo: $e'));

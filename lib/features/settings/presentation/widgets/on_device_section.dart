@@ -38,9 +38,9 @@ class OnDeviceSection extends ConsumerWidget {
       children: [
         const ListTile(
           leading: Icon(Icons.bolt_outlined),
-          title: Text('Instant labeler — Ready'),
+          title: Text('Instant labeler: Ready'),
           subtitle: Text(
-            'Bundled ~400-label recognizer. Coarse ("Chair", "Laptop") but '
+            'Bundled ~400-label recognizer. Coarse (“Chair”, “Laptop”) but '
             'instant, offline, and needs no download. Re-analyze later on a '
             'richer tier to add brand and value.',
           ),
@@ -50,7 +50,7 @@ class OnDeviceSection extends ConsumerWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
           child: Text(
-            'Everything in this section runs entirely on this phone — '
+            'Everything in this section runs entirely on this phone—'
             'photos analyzed on-device never leave it. Model downloads come '
             'from Hugging Face (ggml-org, Apache-2.0) and are verified '
             'against pinned checksums before use.',
@@ -72,12 +72,12 @@ class _NanoTile extends ConsumerWidget {
     final (subtitle, trailing) = switch (status) {
       null => ('Checking device support…', null),
       NanoStatus.unsupported => (
-        'Not supported on this device (needs AICore — Pixel 9/10-class).',
+        'Not supported on this device (needs AICore—Pixel 9/10-class).',
         null,
       ),
       NanoStatus.downloadable => (
         'Supported. Set up downloads the shared system model via Google '
-        'Play — nothing happens without this step.',
+        'Play—nothing happens without this step.',
         TextButton(
           onPressed: () async {
             final nano = ref.read(onDeviceSupportProvider).nano;
@@ -88,7 +88,7 @@ class _NanoTile extends ConsumerWidget {
             messenger.showSnackBar(
               const SnackBar(
                 content: Text(
-                  'Requested Gemini Nano provisioning — Android downloads '
+                  'Requested Gemini Nano provisioning—Android downloads '
                   'it in the background.',
                 ),
               ),
@@ -98,7 +98,7 @@ class _NanoTile extends ConsumerWidget {
         ),
       ),
       NanoStatus.downloading => ('Provisioning in the background…', null),
-      NanoStatus.available => ('Ready — free on-device analysis.', null),
+      NanoStatus.available => ('Ready: free on-device analysis.', null),
     };
 
     return ListTile(

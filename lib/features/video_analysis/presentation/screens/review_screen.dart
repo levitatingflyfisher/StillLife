@@ -15,6 +15,7 @@ import '../../../locations/domain/entities/storage_container.dart';
 import '../../../locations/presentation/controllers/location_controller.dart';
 import '../../domain/entities/detected_object.dart';
 import '../controllers/video_analysis_controller.dart';
+import 'package:still_life/core/widgets/failure_feedback.dart';
 
 /// Mutable per-item review state. Ephemeral — never persisted.
 class _ReviewEntry {
@@ -108,7 +109,7 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       if (mounted) {
         final saved = result.saved;
         final message = result.failed > 0
-            ? 'Added $saved of ${saved + result.failed} items — '
+            ? 'Added $saved of ${saved + result.failed} items—'
                   '${result.failed} failed'
             : 'Added $saved item${saved == 1 ? '' : 's'}';
         ScaffoldMessenger.of(
@@ -121,9 +122,11 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
       // Keep the session and the screen — the user can retry; silence
       // here would discard the walkthrough's findings.
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Save failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(failureSentence("Couldn’t save these items", e)),
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -138,23 +141,26 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
     if (_entries.isEmpty) {
       return Scaffold(
         appBar: AppBar(title: const Text('Review Items')),
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.inventory_2_outlined,
-                size: 48,
-                color: colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(height: OhSpacing.md),
-              Text('No items to review', style: theme.textTheme.titleMedium),
-              const SizedBox(height: OhSpacing.lg),
-              FilledButton.tonal(
-                onPressed: () => context.go('/video/capture'),
-                child: const Text('Scan a Room'),
-              ),
-            ],
+        body: OhPage(
+          padding: EdgeInsets.zero,
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.inventory_2_outlined,
+                  size: 48,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(height: OhSpacing.md),
+                Text('No items to review', style: theme.textTheme.titleMedium),
+                const SizedBox(height: OhSpacing.lg),
+                FilledButton.tonal(
+                  onPressed: () => context.go('/video/capture'),
+                  child: const Text('Scan a Room'),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -172,69 +178,72 @@ class _ReviewScreenState extends ConsumerState<ReviewScreen> {
         title: Text('Review Items (${_entries.length})'),
         centerTitle: true,
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: OhSpacing.insetSm,
-            child: Column(
-              children: [
-                if (rooms.isNotEmpty)
-                  DropdownButtonFormField<String>(
-                    initialValue: _roomId,
-                    hint: const Text('Room for all items'),
-                    items: [
-                      for (final r in rooms)
-                        DropdownMenuItem(value: r.id, child: Text(r.name)),
-                    ],
-                    onChanged: (v) => setState(() {
-                      _roomId = v;
-                      // Containers belong to a room; switching rooms
-                      // invalidates the previous pick.
-                      _containerId = null;
-                    }),
-                    decoration: const InputDecoration(
-                      labelText: 'Room (applies to all)',
-                      isDense: true,
-                    ),
-                  ),
-                if (containers.isNotEmpty)
-                  DropdownButtonFormField<String?>(
-                    initialValue: _containerId,
-                    items: [
-                      const DropdownMenuItem<String?>(
-                        value: null,
-                        child: Text('No container'),
-                      ),
-                      for (final c in containers)
-                        DropdownMenuItem<String?>(
-                          value: c.id,
-                          child: Text(c.name),
-                        ),
-                    ],
-                    onChanged: (v) => setState(() => _containerId = v),
-                    decoration: const InputDecoration(
-                      labelText: 'Container (applies to all)',
-                      isDense: true,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: ListView.separated(
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: Column(
+          children: [
+            Padding(
               padding: OhSpacing.insetSm,
-              itemCount: _entries.length,
-              separatorBuilder: (_, _) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final entry = _entries[index];
-                return _ReviewEntryTile(
-                  entry: entry,
-                  onChanged: () => setState(() {}),
-                );
-              },
+              child: Column(
+                children: [
+                  if (rooms.isNotEmpty)
+                    DropdownButtonFormField<String>(
+                      initialValue: _roomId,
+                      hint: const Text('Room for all items'),
+                      items: [
+                        for (final r in rooms)
+                          DropdownMenuItem(value: r.id, child: Text(r.name)),
+                      ],
+                      onChanged: (v) => setState(() {
+                        _roomId = v;
+                        // Containers belong to a room; switching rooms
+                        // invalidates the previous pick.
+                        _containerId = null;
+                      }),
+                      decoration: const InputDecoration(
+                        labelText: 'Room (applies to all)',
+                        isDense: true,
+                      ),
+                    ),
+                  if (containers.isNotEmpty)
+                    DropdownButtonFormField<String?>(
+                      initialValue: _containerId,
+                      items: [
+                        const DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text('No container'),
+                        ),
+                        for (final c in containers)
+                          DropdownMenuItem<String?>(
+                            value: c.id,
+                            child: Text(c.name),
+                          ),
+                      ],
+                      onChanged: (v) => setState(() => _containerId = v),
+                      decoration: const InputDecoration(
+                        labelText: 'Container (applies to all)',
+                        isDense: true,
+                      ),
+                    ),
+                ],
+              ),
             ),
-          ),
-        ],
+            Expanded(
+              child: ListView.separated(
+                padding: OhSpacing.insetSm,
+                itemCount: _entries.length,
+                separatorBuilder: (_, _) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  final entry = _entries[index];
+                  return _ReviewEntryTile(
+                    entry: entry,
+                    onChanged: () => setState(() {}),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(

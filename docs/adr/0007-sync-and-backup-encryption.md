@@ -102,6 +102,9 @@ existing pairing UX, and without a web-build regression.
   server-tracked single-use challenge is the only construction that earns the name, and
   replay is *not* idempotent here (unstamped/last-received-wins rows —
   `profiles`/`appraisals`/`item_tags` — can regress), so the ~30 extra lines are worth it.
+  *(2026-09: every synced table, `profiles`/`appraisals`/`item_tags` included, now merges
+  by stamped LWW and an unstamped row only fills a hole, so a replayed changeset no longer regresses
+  rows. The challenge stays as defence in depth.)*
 - **BIP39 pairing for sync (fleet-aligned).** Rejected for tonight: it breaks every
   existing pairing and needs new onboarding. The `v-next` option.
 - **Base64-in-JSON framing (smallest diff).** Rejected: +33 % blows the 20 MB cap; binary

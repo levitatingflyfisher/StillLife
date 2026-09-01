@@ -49,7 +49,7 @@ class RecentActivityWidget extends ConsumerWidget {
                     trailing: Text(
                       label,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withAlpha(120),
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
                     onTap: () => context.pushNamed(

@@ -9,6 +9,7 @@ import '../../../services/backup/photo_backup_container.dart';
 import '../../../services/backup/photo_restore_guard.dart';
 import '../../dashboard/presentation/controllers/dashboard_controller.dart';
 import '../photo_backup_providers.dart';
+import 'package:still_life/core/widgets/failure_feedback.dart';
 
 /// The photo-backup restore orchestration once the backup bytes are in hand:
 /// confirm → key resolution (device key, else recovery words) → guarded
@@ -95,18 +96,22 @@ class PhotoRestoreFlow {
         if (context.mounted) _snack(context, _damagedBackupMessage);
       } on CryptoException {
         if (context.mounted) {
-          _snack(context, "Those words didn't unlock this backup.");
+          _snack(context, "Those words didn’t unlock this backup.");
         }
       } on PhotoSnapshotException {
         if (context.mounted) await _snapshotFailedDialog(context);
       } catch (e) {
-        if (context.mounted) _snack(context, 'Restore failed: $e');
+        if (context.mounted) {
+          _snack(context, failureSentence("Couldn’t restore", e));
+        }
       }
     } on PhotoSnapshotException {
       // Fail-closed refusal (§2.B): nothing was restored — say so honestly.
       if (context.mounted) await _snapshotFailedDialog(context);
     } catch (e) {
-      if (context.mounted) _snack(context, 'Restore failed: $e');
+      if (context.mounted) {
+        _snack(context, failureSentence("Couldn’t restore", e));
+      }
     }
   }
 
@@ -137,11 +142,11 @@ class PhotoRestoreFlow {
         context: context,
         builder: (context) => AlertDialog(
           scrollable: true,
-          title: const Text("Couldn't save a safety snapshot"),
+          title: const Text("Couldn’t save a safety snapshot"),
           content: const Text(
             'Still Life could not save a verified snapshot of your current '
             'data, so the restore was not started. Nothing on this device '
-            'was changed. This can happen when storage is full — free some '
+            'was changed. This can happen when storage is full—free some '
             'space and try again.',
           ),
           actions: [
@@ -164,7 +169,7 @@ class PhotoRestoreFlow {
     final phrase = await PhraseEntryDialog.show(
       context,
       title: wrongKey
-          ? "Enter the backup's recovery words"
+          ? "Enter the backup’s recovery words"
           : 'Enter your recovery words',
       body: wrongKey
           ? 'This backup was made with a different set of words than this '
@@ -209,14 +214,14 @@ class PhotoRestoreFlow {
             photosIncluded
                 ? 'Restoring merges this backup into Still Life on this '
                     'device, overwriting records and photos that share an '
-                    'id. A snapshot of what is on this device now — photos '
-                    'included — is saved to "Previous photo backups" first, '
+                    'id. A snapshot of what is on this device now—photos '
+                    'included—is saved to “Previous photo backups” first, '
                     'so you can roll back.'
                 : 'Restoring merges this backup into Still Life on this '
-                    'device, overwriting records that share an id — photos '
-                    'on this device are kept. A snapshot of this device\'s '
-                    'records — without photos, since none can be '
-                    'overwritten — is saved first, so you can roll back.',
+                    'device, overwriting records that share an id—photos '
+                    'on this device are kept. A snapshot of this device’s '
+                    'records—without photos, since none can be '
+                    'overwritten—is saved first, so you can roll back.',
           ),
           actions: [
             TextButton(

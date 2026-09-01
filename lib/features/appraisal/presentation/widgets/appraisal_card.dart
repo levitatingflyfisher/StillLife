@@ -59,10 +59,10 @@ class _ModeChip extends ConsumerWidget {
     );
     final label = latest.when(
       data: (a) => a == null || !a.hasData
-          ? '${mode.label} —'
+          ? '${mode.label}: no estimate'
           : '${mode.label}  ${_fmt(a.valueCents / 100, a.currency)}',
       loading: () => '${mode.label}…',
-      error: (_, _) => '${mode.label} —',
+      error: (_, _) => '${mode.label}: no estimate',
     );
     return InputChip(label: Text(label), onPressed: () => _openSheet(context));
   }

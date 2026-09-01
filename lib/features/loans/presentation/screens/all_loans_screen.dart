@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 
 import '../../domain/entities/loan.dart';
 import '../controllers/loan_controller.dart';
+import 'package:still_life/core/widgets/failure_feedback.dart';
+import 'package:openhearth_design/openhearth_design.dart';
 
 class AllLoansScreen extends ConsumerWidget {
   const AllLoansScreen({super.key});
@@ -15,38 +17,46 @@ class AllLoansScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('On Loan')),
-      body: loansAsync.when(
-        data: (loans) {
-          if (loans.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.handshake_outlined,
-                    size: 64,
-                    color: theme.colorScheme.onSurface.withAlpha(80),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No items on loan',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      color: theme.colorScheme.onSurface.withAlpha(150),
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: loansAsync.when(
+          data: (loans) {
+            if (loans.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.handshake_outlined,
+                      size: 64,
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
-                  ),
-                ],
-              ),
-            );
-          }
+                    const SizedBox(height: 16),
+                    Text(
+                      'No items on loan',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        color: theme.colorScheme.onSurface.withAlpha(150),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
 
-          final widgets = _buildList(loans, context, ref);
-          return ListView(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            children: widgets,
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+            final widgets = _buildList(loans, context, ref);
+            return ListView(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              children: widgets,
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, st) => loadFailure(
+            e,
+            st,
+            title: "Couldn’t load loans",
+            onRetry: () => ref.invalidate(activeLoansProvider),
+          ),
+        ),
       ),
     );
   }

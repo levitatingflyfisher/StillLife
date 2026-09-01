@@ -29,6 +29,7 @@ import '../controllers/tag_controller.dart';
 import '../widgets/photo_gallery_widget.dart';
 import '../widgets/tag_selector_widget.dart';
 import 'package:collection/collection.dart';
+import 'package:still_life/core/widgets/failure_feedback.dart';
 
 const _uuid = Uuid();
 
@@ -124,6 +125,60 @@ class _ItemEditScreenState extends ConsumerState<ItemEditScreen> {
   // Re-entrancy guard for _save() — a quick double-tap on the Save
   // button must not fire two parallel CRUD operations.
   bool _saving = false;
+
+  // What the typed fields held once the form was ready (after prefill or
+  // loading the item). Back compares against it, so an untouched form
+  // leaves at once and typed work is never dropped silently (about-face-07).
+  String? _baseline;
+
+  List<TextEditingController> get _textFields => [
+    _nameController,
+    _descriptionController,
+    _purchasePriceController,
+    _currentValueController,
+    _replacementCostController,
+    _serialNumberController,
+    _brandController,
+    _modelController,
+    _barcodeController,
+    _storeUrlController,
+    _notesController,
+    _quantityController,
+    _quantityUnitController,
+    _lowStockThresholdController,
+  ];
+
+  String _snapshot() => _textFields.map((c) => c.text).join('\u0000');
+
+  /// A photo or voice add arrives with the form already filled (and maybe
+  /// a photo waiting to attach): that is unsaved work before a key is
+  /// pressed, so it counts from the start.
+  bool get _arrivedFilled =>
+      !widget.isEditing &&
+      (widget.initialSuggestion != null || _pendingPhotoBytes != null);
+
+  bool get _hasUnsavedWork =>
+      _arrivedFilled || (_baseline != null && _snapshot() != _baseline);
+
+  Future<void> _onBack() async {
+    if (!_hasUnsavedWork) {
+      Navigator.of(context).pop();
+      return;
+    }
+    final discard = await showOhConfirm(
+      context,
+      title: widget.isEditing ? 'Discard your changes?' : 'Discard this item?',
+      message: _pendingPhotoBytes != null
+          ? 'The photo and the details filled in here have not been saved.'
+          : _arrivedFilled
+          ? 'The details filled in here have not been saved.'
+          : 'What you typed here has not been saved.',
+      confirmLabel: widget.isEditing ? 'Discard changes' : 'Discard item',
+      cancelLabel: 'Keep editing',
+      destructive: true,
+    );
+    if (discard && mounted) Navigator.of(context).pop();
+  }
 
   /// Tapping the search icon: check cache first (free), then ask for consent
   /// before hitting the network.
@@ -309,14 +364,28 @@ class _ItemEditScreenState extends ConsumerState<ItemEditScreen> {
       if (itemAsync.isLoading) {
         return Scaffold(
           appBar: AppBar(),
-          body: const Center(child: CircularProgressIndicator()),
+          body: const OhPage(
+            padding: EdgeInsets.zero,
+            child: Center(child: CircularProgressIndicator()),
+          ),
         );
       }
       final item = itemAsync.value;
       if (item != null) _initFromItem(item);
     }
 
-    return Scaffold(
+    if (_baseline == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _baseline ??= _snapshot();
+      });
+    }
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _onBack();
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: Text(widget.isEditing ? 'Edit Item' : 'Add Item'),
         actions: [
@@ -326,7 +395,9 @@ class _ItemEditScreenState extends ConsumerState<ItemEditScreen> {
           ),
         ],
       ),
-      body: Column(
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: Column(
         children: [
           if (widget.showAiBanner && !_bannerDismissed)
             MaterialBanner(
@@ -516,7 +587,7 @@ class _ItemEditScreenState extends ConsumerState<ItemEditScreen> {
                       ],
                     ),
                     loading: () => const LinearProgressIndicator(),
-                    error: (e, _) => Text('Error loading rooms: $e'),
+                    error: (e, _) => inlineLoadFailure(e, what: "Couldn’t load rooms."),
                   ),
                   const SizedBox(height: OhSpacing.md),
 
@@ -547,7 +618,7 @@ class _ItemEditScreenState extends ConsumerState<ItemEditScreen> {
                           items: [
                             const DropdownMenuItem<String?>(
                               value: null,
-                              child: Text('— none —'),
+                              child: Text('None'),
                             ),
                             ...containers.map(
                               (c) => DropdownMenuItem<String?>(
@@ -829,6 +900,8 @@ class _ItemEditScreenState extends ConsumerState<ItemEditScreen> {
           ),
         ],
       ),
+      ),
+    ),
     );
   }
 
@@ -1213,14 +1286,20 @@ class _QuickCreateDialogState extends State<_QuickCreateDialog> {
         autofocus: true,
         textCapitalization: TextCapitalization.words,
         onSubmitted: _submit,
+        // Rebuild so Create turns on as soon as there is a name.
+        onChanged: (_) => setState(() {}),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
+        // Off while the name is blank: a live button that does nothing
+        // when pressed teaches people not to trust it (mind-in-mind-08).
         FilledButton(
-          onPressed: () => _submit(_controller.text),
+          onPressed: _controller.text.trim().isEmpty
+              ? null
+              : () => _submit(_controller.text),
           child: const Text('Create'),
         ),
       ],

@@ -6,13 +6,18 @@ import '../../../../core/errors/result.dart';
 import '../../../../services/database/database.dart' as db;
 import '../../domain/entities/tag.dart';
 import '../../domain/repositories/tag_repository.dart';
+import '../../../../core/sync/sync_stamp.dart';
 
 const _uuid = Uuid();
 
 class TagRepositoryImpl implements TagRepository {
   final db.AppDatabase _db;
 
-  TagRepositoryImpl(this._db);
+  TagRepositoryImpl(this._db, {SyncStamp stamp = SyncStamp.none})
+    : _stamp = stamp;
+
+  /// Gives every write its sync stamp (see [SyncStamp]).
+  final SyncStamp _stamp;
 
   @override
   Stream<List<Tag>> watchTags() {
@@ -46,7 +51,7 @@ class TagRepositoryImpl implements TagRepository {
         createdAt: now,
         modifiedAt: now,
       );
-      await _db.tagDao.insertTag(companion);
+      await _stamp.write((c) => _db.tagDao.insertTag(companion, crdt: c));
       return getTag(id);
     } catch (e) {
       return Err(DatabaseFailure('Failed to create tag: $e'));
@@ -62,7 +67,7 @@ class TagRepositoryImpl implements TagRepository {
         color: Value(tag.color),
         modifiedAt: Value(DateTime.now()),
       );
-      await _db.tagDao.updateTag(companion);
+      await _stamp.write((c) => _db.tagDao.updateTag(companion, crdt: c));
       return getTag(tag.id);
     } catch (e) {
       return Err(DatabaseFailure('Failed to update tag: $e'));
@@ -72,7 +77,7 @@ class TagRepositoryImpl implements TagRepository {
   @override
   Future<Result<void>> deleteTag(String id) async {
     try {
-      await _db.tagDao.deleteTag(id);
+      await _stamp.write((c) => _db.tagDao.deleteTag(id, crdt: c));
       return const Success(null);
     } catch (e) {
       return Err(DatabaseFailure('Failed to delete tag: $e'));
@@ -82,7 +87,9 @@ class TagRepositoryImpl implements TagRepository {
   @override
   Future<Result<void>> setItemTags(String itemId, List<String> tagIds) async {
     try {
-      await _db.tagDao.setItemTags(itemId, tagIds);
+      await _stamp.write(
+        (c) => _db.tagDao.setItemTags(itemId, tagIds, crdt: c),
+      );
       return const Success(null);
     } catch (e) {
       return Err(DatabaseFailure('Failed to set item tags: $e'));

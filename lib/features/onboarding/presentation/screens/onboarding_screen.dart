@@ -95,7 +95,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text("Couldn't save your profile"),
+        title: const Text("Couldn’t save your profile"),
         content: Text(
           'Your device reported:\n\n$message\n\n'
           'You can try again, or continue without a profile and add one later.',
@@ -162,16 +162,19 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: PageView(
-          controller: _pageController,
-          physics: const NeverScrollableScrollPhysics(),
-          onPageChanged: (p) => setState(() => _page = p),
-          children: [
-            _WelcomePage(onNext: _next),
-            _buildProfileSetupPage(),
-            _FeaturesPage(onFinish: _finish),
-          ],
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: SafeArea(
+          child: PageView(
+            controller: _pageController,
+            physics: const NeverScrollableScrollPhysics(),
+            onPageChanged: (p) => setState(() => _page = p),
+            children: [
+              _WelcomePage(onNext: _next),
+              _buildProfileSetupPage(),
+              _FeaturesPage(onFinish: _finish),
+            ],
+          ),
         ),
       ),
     );
@@ -188,7 +191,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         children: [
           const SizedBox(height: 48),
           Text(
-            "Who's setting this up?",
+            "Who’s setting this up?",
             style: tt.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
             textAlign: TextAlign.center,
           ),
@@ -260,7 +263,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             style: FilledButton.styleFrom(
               minimumSize: const Size.fromHeight(52),
             ),
-            child: const Text("That's me \u2192"),
+            child: const Text("That’s me \u2192"),
           ),
           const SizedBox(height: 12),
 
@@ -310,7 +313,7 @@ class _WelcomePage extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'Document what you own.\nKnow what it\'s worth.',
+            'Document what you own.\nKnow what it’s worth.',
             style: tt.titleMedium?.copyWith(color: cs.onSurfaceVariant),
             textAlign: TextAlign.center,
           ),
@@ -364,7 +367,7 @@ class _FeaturesPage extends StatelessWidget {
       (
         Icons.wifi_outlined,
         'LAN sync',
-        'Sync across devices on your home Wi-Fi — no cloud required',
+        'Sync across devices on your home Wi-Fi—no cloud required',
       ),
     ];
 
@@ -380,7 +383,7 @@ class _FeaturesPage extends StatelessWidget {
           ),
           const SizedBox(height: OhSpacing.sm),
           Text(
-            'Your data stays on your device — no account needed.',
+            'Your data stays on your device—no account needed.',
             style: tt.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
           ),
           const SizedBox(height: 28),
@@ -421,7 +424,7 @@ class _FeaturesPage extends StatelessWidget {
             style: FilledButton.styleFrom(
               minimumSize: const Size.fromHeight(52),
             ),
-            child: const Text('Let\'s Go'),
+            child: const Text('Let’s go'),
           ),
           const SizedBox(height: 32),
         ],

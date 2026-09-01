@@ -10,6 +10,7 @@ import '../../data/services/frame_extractor.dart';
 import '../../data/services/video_session_log.dart';
 import '../../domain/entities/analysis_session.dart';
 import '../../../../services/ml/analysis_provider.dart';
+import 'package:still_life/core/widgets/failure_feedback.dart';
 
 const _uuid = Uuid();
 
@@ -120,7 +121,7 @@ class VideoAnalysisController extends StateNotifier<AnalysisSession?> {
       if (mounted && state?.id == sessionId) {
         state = state!.copyWith(
           status: AnalysisStatus.failed,
-          failureMessage: '$e',
+          failureMessage: failureSentence("The walkthrough stopped", e),
           completedAt: DateTime.now(),
         );
       }

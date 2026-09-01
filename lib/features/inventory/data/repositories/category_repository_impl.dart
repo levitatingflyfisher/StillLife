@@ -7,13 +7,19 @@ import '../../../../core/errors/result.dart';
 import '../../../../services/database/database.dart' as db;
 import '../../domain/entities/category.dart';
 import '../../domain/repositories/category_repository.dart';
+import '../../../../core/sync/sync_stamp.dart';
+import '../../../../core/sync/seed_rows.dart';
 
 const _uuid = Uuid();
 
 class CategoryRepositoryImpl implements CategoryRepository {
   final db.AppDatabase _db;
 
-  CategoryRepositoryImpl(this._db);
+  CategoryRepositoryImpl(this._db, {SyncStamp stamp = SyncStamp.none})
+    : _stamp = stamp;
+
+  /// Gives every write its sync stamp (see [SyncStamp]).
+  final SyncStamp _stamp;
 
   @override
   Stream<List<Category>> watchCategories() {
@@ -48,7 +54,9 @@ class CategoryRepositoryImpl implements CategoryRepository {
         createdAt: now,
         modifiedAt: now,
       );
-      await _db.categoryDao.insertCategory(companion);
+      await _stamp.write(
+        (c) => _db.categoryDao.insertCategory(companion, crdt: c),
+      );
       return getCategory(id);
     } catch (e) {
       return Err(DatabaseFailure('Failed to create category: $e'));
@@ -65,7 +73,9 @@ class CategoryRepositoryImpl implements CategoryRepository {
         iconCodePoint: Value(category.iconCodePoint),
         modifiedAt: Value(DateTime.now()),
       );
-      await _db.categoryDao.updateCategory(companion);
+      await _stamp.write(
+        (c) => _db.categoryDao.updateCategory(companion, crdt: c),
+      );
       return getCategory(category.id);
     } catch (e) {
       return Err(DatabaseFailure('Failed to update category: $e'));
@@ -75,7 +85,7 @@ class CategoryRepositoryImpl implements CategoryRepository {
   @override
   Future<Result<void>> deleteCategory(String id) async {
     try {
-      await _db.categoryDao.deleteCategory(id);
+      await _stamp.write((c) => _db.categoryDao.deleteCategory(id, crdt: c));
       return const Success(null);
     } catch (e) {
       return Err(DatabaseFailure('Failed to delete category: $e'));
@@ -87,12 +97,15 @@ class CategoryRepositoryImpl implements CategoryRepository {
     try {
       final now = DateTime.now();
       final defaults = AppConstants.defaultCategories.map((name) {
+        // Seeded rows sync as the same row everywhere (see seed_rows.dart).
         return db.CategoriesCompanion.insert(
-          id: _uuid.v4(),
+          id: seedId('category', name),
           name: name,
           iconCodePoint: Value(AppConstants.categoryIcons[name]),
           createdAt: now,
           modifiedAt: now,
+          nodeId: const Value(seedNodeId),
+          hlc: Value(seedHlc),
         );
       }).toList();
       await _db.categoryDao.seedDefaults(defaults);

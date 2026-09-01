@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../../core/utils/label_id.dart';
 import '../../../locations/presentation/controllers/location_controller.dart';
+import 'package:still_life/core/widgets/failure_feedback.dart';
 
 class ContainerLabelScreen extends ConsumerStatefulWidget {
   final String containerId;
@@ -49,7 +50,7 @@ class _ContainerLabelScreenState extends ConsumerState<ContainerLabelScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Could not share label: $e')));
+        ).showSnackBar(SnackBar(content: Text(failureSentence("Couldn’t share the label", e))));
       }
     } finally {
       if (mounted) setState(() => _isSharing = false);
@@ -65,7 +66,7 @@ class _ContainerLabelScreenState extends ConsumerState<ContainerLabelScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Container Label'),
-        actions: [
+        actions: [OhBarActions(children: [
           if (_isSharing)
             const Padding(
               padding: EdgeInsets.all(14),
@@ -76,14 +77,17 @@ class _ContainerLabelScreenState extends ConsumerState<ContainerLabelScreen> {
               ),
             )
           else
-            IconButton(
-              icon: const Icon(Icons.share_outlined),
-              tooltip: 'Share label',
+            OhBarAction(
+              icon: Icons.share_outlined,
+              label: 'Share',
+              semanticLabel: 'Share label',
               onPressed: _shareLabel,
             ),
-        ],
+        ])],
       ),
-      body: containerAsync.when(
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: containerAsync.when(
         data: (container) {
           if (container == null) {
             return const Center(child: Text('Container not found'));
@@ -168,7 +172,13 @@ class _ContainerLabelScreenState extends ConsumerState<ContainerLabelScreen> {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, st) => loadFailure(
+          e,
+          st,
+          title: "Couldn’t load this container",
+          onRetry: () => ref.invalidate(containerDetailProvider(widget.containerId)),
+        ),
+      ),
       ),
     );
   }

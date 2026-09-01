@@ -154,14 +154,17 @@ class _SpeedDialFabState extends State<SpeedDialFab>
 
   @override
   Widget build(BuildContext context) {
-    return FloatingActionButton(
+    // Named in words, so the empty state can say "Choose Add item" and a
+    // screen reader has a name to read (writing-is-designing-03).
+    return FloatingActionButton.extended(
       heroTag: 'speedDialMain',
       onPressed: _toggle,
-      child: AnimatedRotation(
+      icon: AnimatedRotation(
         turns: _open ? 0.125 : 0,
         duration: OhMotion.standard,
         child: const Icon(Icons.add),
       ),
+      label: Text(_open ? 'Close' : 'Add item'),
     );
   }
 }

@@ -23,7 +23,7 @@ class RoomValueChart extends StatelessWidget {
         child: Text(
           'No room data',
           style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurface.withAlpha(120),
+            color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
       );

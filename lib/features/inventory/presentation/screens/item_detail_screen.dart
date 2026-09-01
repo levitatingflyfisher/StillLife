@@ -25,6 +25,8 @@ import '../../../appraisal/presentation/widgets/appraisal_card.dart';
 import '../../../loans/presentation/controllers/loan_controller.dart';
 import '../../../loans/presentation/widgets/loan_status_card.dart';
 import '../../../loans/presentation/widgets/add_loan_sheet.dart';
+import 'package:still_life/core/widgets/failure_feedback.dart';
+import '../../../recently_deleted/presentation/undo_providers.dart';
 
 class ItemDetailScreen extends ConsumerWidget {
   final String itemId;
@@ -38,15 +40,16 @@ class ItemDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
+        actions: [OhBarActions(children: [
+          OhBarAction(
+            icon: Icons.edit_outlined,
+            label: 'Edit',
             onPressed: () => context.pushNamed(
               'editItem',
               pathParameters: {'itemId': itemId},
             ),
           ),
-          PopupMenuButton<String>(
+          OhBarOverflow<String>(
             onSelected: (value) {
               if (value == 'label') {
                 context.pushNamed(
@@ -54,17 +57,19 @@ class ItemDetailScreen extends ConsumerWidget {
                   pathParameters: {'itemId': itemId},
                 );
               } else if (value == 'delete') {
-                _confirmDelete(context, ref);
+                _delete(context, ref, itemAsync.valueOrNull?.name);
               }
             },
             itemBuilder: (_) => const [
               PopupMenuItem(value: 'label', child: Text('Print QR Label')),
-              PopupMenuItem(value: 'delete', child: Text('Delete')),
+              PopupMenuItem(value: 'delete', child: Text('Delete item')),
             ],
           ),
-        ],
+        ])],
       ),
-      body: itemAsync.when(
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: itemAsync.when(
         data: (item) {
           if (item == null) {
             return const Center(child: Text('Item not found'));
@@ -120,7 +125,7 @@ class ItemDetailScreen extends ConsumerWidget {
               Text(
                 labelId(item.id),
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withAlpha(100),
+                  color: theme.colorScheme.onSurfaceVariant,
                   letterSpacing: 0.4,
                 ),
               ),
@@ -378,7 +383,13 @@ class ItemDetailScreen extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, st) => loadFailure(
+          e,
+          st,
+          title: "Couldn’t load this item",
+          onRetry: () => ref.invalidate(itemDetailProvider(itemId)),
+        ),
+      ),
       ),
     );
   }
@@ -449,7 +460,7 @@ class ItemDetailScreen extends ConsumerWidget {
                           ScaffoldMessenger.of(sheetContext).showSnackBar(
                             SnackBar(
                               content: Text(
-                                'Failed to update owner: ${f.message}',
+                                failureSentence("Couldn’t change the owner", f.message),
                               ),
                             ),
                           ),
@@ -480,7 +491,7 @@ class ItemDetailScreen extends ConsumerWidget {
                             ScaffoldMessenger.of(sheetContext).showSnackBar(
                               SnackBar(
                                 content: Text(
-                                  'Failed to update owner: ${f.message}',
+                                  failureSentence("Couldn’t change the owner", f.message),
                                 ),
                               ),
                             ),
@@ -564,38 +575,29 @@ class ItemDetailScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Item'),
-        content: const Text(
-          'Are you sure you want to delete this item? This action cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true && context.mounted) {
-      final success = await ref
-          .read(itemControllerProvider.notifier)
-          .deleteItem(itemId);
-      if (success && context.mounted) {
-        context.pop();
+  /// Delete from the menu is deliberate, so it does not ask: it deletes
+  /// (softly), closes the screen, and the shell offers an Undo with no
+  /// timer. Recently deleted in Settings keeps the way back after that.
+  Future<void> _delete(BuildContext context, WidgetRef ref, String? name) async {
+    final trash = ref.read(recentlyDeletedRepositoryProvider);
+    final undo = ref.read(shellUndoControllerProvider);
+    final deletion = await trash.snapshot([itemId]);
+    final success = await ref
+        .read(itemControllerProvider.notifier)
+        .deleteItem(itemId);
+    if (!success) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Couldn’t delete this item.")),
+        );
       }
+      return;
     }
+    undo.show(
+      message: name == null || name.isEmpty ? 'Deleted the item' : 'Deleted “$name”',
+      onUndo: () => trash.restoreItems(deletion),
+    );
+    if (context.mounted) context.pop();
   }
 }
 

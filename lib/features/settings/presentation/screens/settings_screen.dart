@@ -23,6 +23,9 @@ import 'package:still_life/features/backup/presentation/photo_backup_tile.dart';
 import '../../../../../core/providers/product_lookup_providers.dart';
 import '../../../../../core/providers/repository_providers.dart';
 import '../controllers/theme_controller.dart';
+import 'package:still_life/core/widgets/failure_feedback.dart';
+import 'package:still_life/core/widgets/old_file_import_warning.dart';
+import 'package:openhearth_design/openhearth_design.dart';
 
 /// Resolved at first read; package_info_plus loads platform metadata
 /// asynchronously. Returns the formatted "Version X.Y.Z (build N)" string.
@@ -48,20 +51,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final themeMode = ref.watch(themeModeProvider);
+    final themePref = ref.watch(themePreferenceProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
-      body: ListView(
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: ListView(
         children: [
           // Appearance
           const _SectionHeader(title: 'Appearance'),
           ListTile(
-            leading: const Icon(Icons.brightness_6_outlined),
+            leading: Icon(themePref.icon),
             title: const Text('Theme'),
-            subtitle: Text(_themeModeLabel(themeMode)),
+            subtitle: Text(themePref.label),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => _showThemeDialog(context, ref, themeMode),
+            onTap: () => _showThemeDialog(context, ref, themePref),
           ),
 
           const Divider(),
@@ -82,11 +87,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.pushNamed('tagManagement'),
           ),
+          ListTile(
+            leading: const Icon(Icons.restore_from_trash_outlined),
+            title: const Text('Recently deleted'),
+            subtitle: const Text('Bring back items you deleted'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.pushNamed('recentlyDeleted'),
+          ),
 
           // Encrypted backup: seed-phrase setup + .ohbk export/restore, plus
           // the photos-included .ohbkz container below. Replaces the old
           // disabled "Database Encryption" placeholder (SANCTUARY-BRIEF §4.W3).
-          // Renders its own "Encrypted Backup" header + leading Divider.
+          // Renders its own "Backup" header in every state.
           const BackupSettingsSection(),
           // The photos-included .ohbkz container (SANCTUARY-BRIEF §4.W3).
           const PhotoBackupTile(),
@@ -125,8 +137,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   )
                 : const Icon(Icons.file_download_outlined),
             title: const Text('Export Data'),
-            subtitle: const Text('Portable JSON — unencrypted (for an '
-                'encrypted copy, use Encrypted Backup above)'),
+            subtitle: const Text(
+              'Portable JSON, not encrypted. For an encrypted copy, '
+              'use Backup above.',
+            ),
             trailing: const Icon(Icons.chevron_right),
             onTap: _isExporting ? null : _handleExport,
           ),
@@ -262,6 +276,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
         ],
       ),
+      ),
     );
   }
 
@@ -288,7 +303,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Export failed: $e')));
+        ).showSnackBar(SnackBar(content: Text(failureSentence("Couldn’t export your data", e))));
       }
     } finally {
       if (mounted) setState(() => _isExporting = false);
@@ -316,7 +331,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('CSV export failed: $e')));
+        ).showSnackBar(SnackBar(content: Text(failureSentence("Couldn’t export the spreadsheet", e))));
       }
     } finally {
       if (mounted) setState(() => _isExportingCsv = false);
@@ -338,6 +353,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       if (bytes == null) return;
 
       final jsonString = utf8.decode(bytes);
+      if (!mounted || !await confirmOldFileImport(context, jsonString)) return;
       final importService = ref.read(importServiceProvider);
       final importResult = await importService.importFromJson(jsonString);
 
@@ -355,7 +371,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           failure: (failure) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Import failed: ${failure.message}'),
+                content: Text(failureSentence("Couldn’t import", failure.message)),
                 backgroundColor: Theme.of(context).colorScheme.error,
               ),
             );
@@ -366,7 +382,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Import failed: $e')));
+        ).showSnackBar(SnackBar(content: Text(failureSentence("Couldn’t import", e))));
       }
     } finally {
       if (mounted) setState(() => _isImporting = false);
@@ -466,7 +482,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'No items found on the receipt — try a clearer, closer photo.',
+              'No items found on the receipt—try a clearer, closer photo.',
             ),
           ),
         );
@@ -494,7 +510,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Import failed: $e')));
+        ).showSnackBar(SnackBar(content: Text(failureSentence("Couldn’t import", e))));
       }
     }
   }
@@ -516,7 +532,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             SizedBox(height: 12),
             Text('1. Amazon > Account > Privacy Central > Request My Data'),
-            Text('2. Select "Your Orders" and submit'),
+            Text('2. Select “Your Orders” and submit'),
             Text('3. The export arrives as a ZIP, usually within hours'),
             Text('4. Import the Retail.OrderHistory CSV from that ZIP'),
             SizedBox(height: 12),
@@ -563,7 +579,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'No orders found in that file — import the '
+              'No orders found in that file—import the '
               'Retail.OrderHistory CSV from your Amazon data request.',
             ),
           ),
@@ -578,7 +594,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Import failed: $e')));
+        ).showSnackBar(SnackBar(content: Text(failureSentence("Couldn’t import", e))));
       }
     }
   }
@@ -613,53 +629,44 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Import failed: $e')));
+        ).showSnackBar(SnackBar(content: Text(failureSentence("Couldn’t import", e))));
       }
     }
-  }
-
-  String _themeModeLabel(ThemeMode mode) {
-    return switch (mode) {
-      ThemeMode.system => 'System',
-      ThemeMode.light => 'Light',
-      ThemeMode.dark => 'Dark',
-    };
   }
 
   Future<void> _showThemeDialog(
     BuildContext context,
     WidgetRef ref,
-    ThemeMode current,
+    OhThemeModePreference current,
   ) async {
-    final selected = await showDialog<ThemeMode>(
+    final selected = await showDialog<OhThemeModePreference>(
       context: context,
       builder: (context) => SimpleDialog(
-        title: const Text('Choose Theme'),
-        children: ThemeMode.values
-            .map(
-              (mode) => SimpleDialogOption(
-                onPressed: () => Navigator.of(context).pop(mode),
-                child: Row(
-                  children: [
-                    Icon(
-                      mode == current
-                          ? Icons.radio_button_checked
-                          : Icons.radio_button_unchecked,
-                      color: mode == current
-                          ? Theme.of(context).colorScheme.primary
-                          : null,
-                    ),
-                    const SizedBox(width: 12),
-                    Text(_themeModeLabel(mode)),
-                  ],
-                ),
+        title: const Text('Theme'),
+        children: [
+          for (final pref in OhThemeModePreference.values)
+            SimpleDialogOption(
+              onPressed: () => Navigator.of(context).pop(pref),
+              child: Row(
+                children: [
+                  Icon(
+                    pref == current
+                        ? Icons.radio_button_checked
+                        : Icons.radio_button_unchecked,
+                    color: pref == current
+                        ? Theme.of(context).colorScheme.primary
+                        : null,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(pref.label),
+                ],
               ),
-            )
-            .toList(),
+            ),
+        ],
       ),
     );
     if (selected != null) {
-      ref.read(themeModeProvider.notifier).setThemeMode(selected);
+      await ref.read(themePreferenceProvider.notifier).set(selected);
     }
   }
 }

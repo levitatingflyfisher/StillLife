@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../services/ml/cloud_api_provider.dart' show CloudApiType;
+import 'package:still_life/core/widgets/failure_feedback.dart';
 
 /// Outcome of a settings-screen connectivity probe. [message] is meant
 /// to be shown to the user verbatim — it carries the *actual* result
@@ -57,7 +58,7 @@ class LlmConnectionTester {
         return const ConnectionTestResult(
           ok: true,
           message:
-              'Connected — no models installed yet (run: ollama pull llava)',
+              'Connected: no models installed yet (run: ollama pull llava)',
         );
       }
       final shown = models.take(3).join(', ');
@@ -66,7 +67,7 @@ class LlmConnectionTester {
         ok: true,
         models: models,
         message:
-            'Connected — ${models.length} '
+            'Connected: ${models.length} '
             '${models.length == 1 ? 'model' : 'models'}: $shown$suffix',
       );
     } on DioException catch (e) {
@@ -75,7 +76,7 @@ class LlmConnectionTester {
         message: 'Ollama unreachable: ${_describe(e)}',
       );
     } catch (e) {
-      return ConnectionTestResult(ok: false, message: 'Ollama check failed: $e');
+      return ConnectionTestResult(ok: false, message: failureSentence("Couldn’t check Ollama", e));
     }
   }
 
@@ -110,7 +111,7 @@ class LlmConnectionTester {
           );
           return const ConnectionTestResult(
             ok: true,
-            message: 'Connected — Anthropic accepted the API key',
+            message: 'Connected: Anthropic accepted the API key',
           );
         case CloudApiType.openai:
           if (openAiBaseUrl.isEmpty) {
@@ -135,7 +136,7 @@ class LlmConnectionTester {
           );
           return ConnectionTestResult(
             ok: true,
-            message: 'Connected — $base/models responded',
+            message: 'Connected: $base/models responded',
           );
       }
     } on DioException catch (e) {
@@ -144,7 +145,7 @@ class LlmConnectionTester {
         message: 'Connection failed: ${_describe(e)}',
       );
     } catch (e) {
-      return ConnectionTestResult(ok: false, message: 'Connection failed: $e');
+      return ConnectionTestResult(ok: false, message: failureSentence("Couldn’t connect", e));
     }
   }
 
@@ -177,7 +178,7 @@ class LlmConnectionTester {
     final code = e.response?.statusCode;
     if (code != null) {
       final detail = _errorDetail(e.response?.data);
-      return detail == null ? 'HTTP $code' : 'HTTP $code — $detail';
+      return detail == null ? 'HTTP $code' : 'HTTP $code: $detail';
     }
     if (e.message != null && e.message!.isNotEmpty) return e.message!;
     if (e.error != null) return e.error.toString();

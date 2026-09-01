@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
+import '../../../../core/extensions/currency_extensions.dart';
 import '../../../../services/database/database.dart';
 
 /// Generates a PDF inventory report from the database.
@@ -44,17 +45,18 @@ class PdfReportGenerator {
     final categoryMap = {for (final c in allCategories) c.id: c.name};
     final roomMap = {for (final r in rooms) r.id: r.name};
 
-    // Calculate totals
-    final totalCurrentValue = items.fold(
-      0.0,
+    // Calculate totals. Storage is integer cents; they stay cents until
+    // the one display crossing, centsToCurrency.
+    final totalCurrentValueCents = items.fold<int>(
+      0,
       (sum, i) => sum + (i.currentValueCents ?? 0),
     );
-    final totalReplacementCost = items.fold(
-      0.0,
+    final totalReplacementCostCents = items.fold<int>(
+      0,
       (sum, i) => sum + (i.replacementCostCents ?? 0),
     );
-    final totalAcquisitionCost = items.fold(
-      0.0,
+    final totalAcquisitionCostCents = items.fold<int>(
+      0,
       (sum, i) => sum + (i.purchasePriceCents ?? 0),
     );
 
@@ -65,14 +67,13 @@ class PdfReportGenerator {
     }
 
     // Group items by category for value breakdown
-    final valueByCategory = <String, double>{};
+    final valueCentsByCategory = <String, int>{};
     for (final item in items) {
       final catName = categoryMap[item.categoryId] ?? 'Uncategorized';
-      valueByCategory[catName] =
-          (valueByCategory[catName] ?? 0) + (item.currentValueCents ?? 0);
+      valueCentsByCategory[catName] =
+          (valueCentsByCategory[catName] ?? 0) + (item.currentValueCents ?? 0);
     }
 
-    final currencyFormat = NumberFormat.currency(symbol: '\$');
     final dateFormat = DateFormat('MMMM d, yyyy');
     final propertyName = filteredProperties.isNotEmpty
         ? filteredProperties.first.name
@@ -108,7 +109,7 @@ class PdfReportGenerator {
               ),
               pw.SizedBox(height: 24),
               pw.Text(
-                'Total Value: ${currencyFormat.format(totalCurrentValue)}',
+                'Total Value: ${totalCurrentValueCents.centsToCurrency()}',
                 style: pw.TextStyle(
                   fontSize: 18,
                   fontWeight: pw.FontWeight.bold,
@@ -134,10 +135,9 @@ class PdfReportGenerator {
             pw.SizedBox(height: 16),
             _buildSummaryTable(
               totalItems: items.length,
-              totalCurrentValue: totalCurrentValue,
-              totalReplacementCost: totalReplacementCost,
-              totalAcquisitionCost: totalAcquisitionCost,
-              currencyFormat: currencyFormat,
+              totalCurrentValueCents: totalCurrentValueCents,
+              totalReplacementCostCents: totalReplacementCostCents,
+              totalAcquisitionCostCents: totalAcquisitionCostCents,
             ),
             pw.SizedBox(height: 32),
             pw.Text(
@@ -145,7 +145,7 @@ class PdfReportGenerator {
               style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
             ),
             pw.SizedBox(height: 12),
-            _buildCategoryValueTable(valueByCategory, currencyFormat),
+            _buildCategoryValueTable(valueCentsByCategory),
           ],
         ),
       ),
@@ -155,8 +155,8 @@ class PdfReportGenerator {
     for (final entry in itemsByRoom.entries) {
       final roomName = roomMap[entry.key] ?? 'Unknown Room';
       final roomItems = entry.value;
-      final roomTotal = roomItems.fold(
-        0.0,
+      final roomTotalCents = roomItems.fold<int>(
+        0,
         (sum, i) => sum + (i.currentValueCents ?? 0),
       );
 
@@ -176,7 +176,7 @@ class PdfReportGenerator {
                   ),
                 ),
                 pw.Text(
-                  'Subtotal: ${currencyFormat.format(roomTotal)}',
+                  'Subtotal: ${roomTotalCents.centsToCurrency()}',
                   style: const pw.TextStyle(fontSize: 14),
                 ),
               ],
@@ -200,12 +200,8 @@ class PdfReportGenerator {
                 return [
                   item.name,
                   categoryMap[item.categoryId] ?? '-',
-                  item.currentValueCents != null
-                      ? currencyFormat.format(item.currentValueCents)
-                      : '-',
-                  item.replacementCostCents != null
-                      ? currencyFormat.format(item.replacementCostCents)
-                      : '-',
+                  item.currentValueCents?.centsToCurrency() ?? '-',
+                  item.replacementCostCents?.centsToCurrency() ?? '-',
                   item.condition ?? '-',
                 ];
               }).toList(),
@@ -220,10 +216,9 @@ class PdfReportGenerator {
 
   pw.Widget _buildSummaryTable({
     required int totalItems,
-    required double totalCurrentValue,
-    required double totalReplacementCost,
-    required double totalAcquisitionCost,
-    required NumberFormat currencyFormat,
+    required int totalCurrentValueCents,
+    required int totalReplacementCostCents,
+    required int totalAcquisitionCostCents,
   }) {
     return pw.TableHelper.fromTextArray(
       headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
@@ -232,18 +227,15 @@ class PdfReportGenerator {
       headers: ['Metric', 'Value'],
       data: [
         ['Total Items', totalItems.toString()],
-        ['Total Current Value', currencyFormat.format(totalCurrentValue)],
-        ['Total Replacement Cost', currencyFormat.format(totalReplacementCost)],
-        ['Total Acquisition Cost', currencyFormat.format(totalAcquisitionCost)],
+        ['Total Current Value', totalCurrentValueCents.centsToCurrency()],
+        ['Total Replacement Cost', totalReplacementCostCents.centsToCurrency()],
+        ['Total Acquisition Cost', totalAcquisitionCostCents.centsToCurrency()],
       ],
     );
   }
 
-  pw.Widget _buildCategoryValueTable(
-    Map<String, double> valueByCategory,
-    NumberFormat currencyFormat,
-  ) {
-    final sorted = valueByCategory.entries.toList()
+  pw.Widget _buildCategoryValueTable(Map<String, int> valueCentsByCategory) {
+    final sorted = valueCentsByCategory.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
     return pw.TableHelper.fromTextArray(
@@ -251,7 +243,7 @@ class PdfReportGenerator {
       headerDecoration: const pw.BoxDecoration(color: PdfColors.grey300),
       cellPadding: const pw.EdgeInsets.all(4),
       headers: ['Category', 'Total Value'],
-      data: sorted.map((e) => [e.key, currencyFormat.format(e.value)]).toList(),
+      data: sorted.map((e) => [e.key, e.value.centsToCurrency()]).toList(),
     );
   }
 }

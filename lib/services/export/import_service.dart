@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../../core/utils/money.dart';
 
+import 'package:crdt/crdt.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
@@ -19,8 +20,61 @@ class ImportService {
   /// Production code always leaves this `null`.
   final Future<String?> Function()? _photoRootResolver;
 
-  ImportService(this._db, {Future<String?> Function()? photoRootResolver})
-    : _photoRootResolver = photoRootResolver;
+  /// Wall clock for the future-stamp bound; tests pass a fixed one.
+  final DateTime Function() _clock;
+
+  ImportService(
+    this._db, {
+    Future<String?> Function()? photoRootResolver,
+    DateTime Function()? clock,
+  }) : _photoRootResolver = photoRootResolver,
+       _clock = clock ?? DateTime.now;
+
+  /// How far ahead of this device's clock an incoming row's stamp may be.
+  ///
+  /// A row stamped further ahead is held back on the sync path (not applied
+  /// this time): the peer sends a full snapshot every sync, so the row lands
+  /// once local time catches up, and a clock set a year ahead parks its own
+  /// rows instead of winning every later race. Ten minutes is the sync
+  /// kernel design's MAX_FUTURE_SKEW (§3.2): Willow's bound, which it calls
+  /// "more than enough for any clock drift that can be considered non-buggy".
+  static const maxFutureSkew = Duration(minutes: 10);
+
+  /// Parses an incoming stamp, or null when it is absent or unreadable. A
+  /// stamp that does not parse is no stamp: as a raw string, 'zzz' would sort
+  /// after every real HLC and win every race forever.
+  static Hlc? _parseStamp(Object? raw) {
+    if (raw is! String || raw.isEmpty) return null;
+    try {
+      return Hlc.parse(raw);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// How many rows in a JSON export carry no usable stamp. An explicit file
+  /// import applies them anyway (a pre-stamp file is still importable), so the
+  /// UI warns first when this is non-zero. Returns 0 for anything unreadable;
+  /// [importFromJson] reports that failure itself.
+  static int countUnstampedRows(String jsonString) {
+    try {
+      final data = json.decode(jsonString);
+      if (data is! Map) return 0;
+      final content = data['data'];
+      if (content is! Map) return 0;
+      var n = 0;
+      for (final key in _lwwTables.keys) {
+        final rows = content[key];
+        if (rows is! List) continue;
+        for (final row in rows) {
+          if (row is Map && _parseStamp(row['hlc']) == null) n++;
+        }
+      }
+      return n;
+    } catch (_) {
+      return 0;
+    }
+  }
 
   /// Resolves the app documents directory, returning `null` in environments
   /// where it is not available (e.g. unit tests without a
@@ -55,22 +109,33 @@ class ImportService {
     return false;
   }
 
-  /// content JSON key → SQL table name, for the CRDT tables that carry an `id`
-  /// primary key + `hlc`. itemTags (composite PK) is intentionally excluded.
-  static const _lwwTables = <String, String>{
-    'properties': 'properties',
-    'rooms': 'rooms',
-    'categories': 'categories',
-    'items': 'items',
-    'tags': 'tags',
-    'photos': 'photos',
-    'receipts': 'receipts',
-    'loans': 'loans',
-    'policies': 'policies',
-    'maintenanceLogs': 'maintenance_logs',
-    'priceHistory': 'price_history_entries',
-    'storageContainers': 'storage_containers',
+  /// content JSON key → (SQL table, JSON key → SQL key column) for every
+  /// table merged by stamped last-writer-wins. Every synced table is here:
+  /// appraisals and item tags joined once their local writes were stamped and
+  /// tag-link removals became tombstones (before, both were
+  /// last-received-wins, and a removed tag came back from any peer).
+  static const _lwwTables = <String, (String, Map<String, String>)>{
+    'properties': ('properties', _byId),
+    'rooms': ('rooms', _byId),
+    'categories': ('categories', _byId),
+    'items': ('items', _byId),
+    'tags': ('tags', _byId),
+    'photos': ('photos', _byId),
+    'receipts': ('receipts', _byId),
+    'loans': ('loans', _byId),
+    'policies': ('policies', _byId),
+    'maintenanceLogs': ('maintenance_logs', _byId),
+    'priceHistory': ('price_history_entries', _byId),
+    'storageContainers': ('storage_containers', _byId),
+    'profiles': ('profiles', _byId),
+    'appraisals': ('appraisals', _byId),
+    // A tag link is one row per (item, tag) pair with a stamp and a
+    // tombstone: an LWW-element-set, so a remove and a re-add are decided by
+    // time. Add-wins would need a unique id per add, which the pair key
+    // cannot hold.
+    'itemTags': ('item_tags', {'itemId': 'item_id', 'tagId': 'tag_id'}),
   };
+  static const _byId = {'id': 'id'};
 
   /// Returns [content] with every CRDT table's rows filtered to only those that
   /// win last-writer-wins against the current local row (see [_lwwShouldWrite]).
@@ -79,50 +144,134 @@ class ImportService {
     for (final entry in _lwwTables.entries) {
       final rows = content[entry.key];
       if (rows is! List) continue;
+      final (table, keys) = entry.value;
       final kept = <dynamic>[];
       for (final row in rows) {
         if (row is! Map) {
           kept.add(row);
           continue;
         }
-        final id = row['id'] as String?;
+        final key = <String, String>{};
+        for (final k in keys.entries) {
+          final v = row[k.key];
+          if (v is String) key[k.value] = v;
+        }
         final hlc = row['hlc'] as String? ?? '';
-        if (id == null || await _lwwShouldWrite(entry.value, id, hlc)) {
+        if (key.length != keys.length ||
+            await _lwwShouldWrite(table, key, hlc)) {
           kept.add(row);
         }
       }
       out[entry.key] = kept;
     }
+    await _holdBackOrphans(out);
     return out;
   }
 
-  /// True when the incoming record should be applied under HLC last-writer-wins:
-  /// no local row, no incoming HLC (legacy — preserve blind-apply), the local
-  /// row has no HLC, or the incoming HLC is strictly greater. HLC strings are
-  /// designed to sort lexicographically.
+  /// Parents before children: the order the upsert below writes in.
+  static const _parentsFirst = [
+    'properties', 'rooms', 'storageContainers', 'categories', 'tags',
+    'profiles', 'items', 'loans', 'itemTags', 'photos', 'receipts',
+    'priceHistory', 'policies', 'maintenanceLogs', 'appraisals',
+  ];
+
+  /// Drops (holds back) every incoming row whose parent is neither stored
+  /// locally nor arriving in this changeset. SQLite enforces the foreign
+  /// keys, so one such row would otherwise fail the whole sync; this way a
+  /// child waits with its held-back parent (or for a parent that has not
+  /// arrived yet) and lands on a later sync. Walking parents first makes it
+  /// transitive: a held-back room holds back its items and their photos.
+  ///
+  /// The references come from SQLite itself (PRAGMA foreign_key_list), so
+  /// this cannot drift from the schema. A tombstoned local parent counts as
+  /// present: the key checks existence, not liveness.
+  Future<void> _holdBackOrphans(Map<String, dynamic> out) async {
+    assert(_parentsFirst.toSet().containsAll(_lwwTables.keys));
+    final arriving = <String, Set<String>>{}; // SQL table -> kept ids
+    for (final jsonKey in _parentsFirst) {
+      final (table, _) = _lwwTables[jsonKey]!;
+      final rows = out[jsonKey];
+      if (rows is! List) continue;
+      final refs = await _db.customSelect('PRAGMA foreign_key_list($table)').get();
+      final kept = <dynamic>[];
+      for (final row in rows) {
+        if (row is! Map) {
+          kept.add(row);
+          continue;
+        }
+        var parentsPresent = true;
+        for (final ref in refs) {
+          final parent = ref.read<String>('table');
+          final value = row[_camel(ref.read<String>('from'))];
+          if (value is! String) continue; // a null reference points nowhere
+          if (arriving[parent]?.contains(value) ?? false) continue;
+          final to = ref.readNullable<String>('to') ?? 'id';
+          final local = await _db.customSelect(
+            'SELECT 1 FROM $parent WHERE $to = ? LIMIT 1',
+            variables: [Variable<String>(value)],
+          ).get();
+          if (local.isEmpty) {
+            parentsPresent = false;
+            break;
+          }
+        }
+        if (!parentsPresent) continue;
+        kept.add(row);
+        final id = row['id'];
+        if (id is String) (arriving[table] ??= {}).add(id);
+      }
+      out[jsonKey] = kept;
+    }
+  }
+
+  /// `creator_profile_id` -> `creatorProfileId`: SQL column to JSON key.
+  static String _camel(String snake) {
+    final parts = snake.split('_');
+    return parts.first +
+        parts.skip(1).map((w) => w[0].toUpperCase() + w.substring(1)).join();
+  }
+
+  /// True when the incoming record should be applied under HLC last-writer-wins
+  /// on the SYNC path (Peckish's `_wins`, operator decision 5):
+  /// - a stamp beyond [maxFutureSkew] is held back, even into a hole, or it
+  ///   would win every later edit of that row;
+  /// - no local row: apply (a row without a stamp can only fill a hole);
+  /// - incoming has no usable stamp: keep local, never overwrite;
+  /// - local has no usable stamp: apply the stamped row;
+  /// - otherwise apply only a strictly greater HLC (strings sort as stamps).
   Future<bool> _lwwShouldWrite(
     String table,
-    String id,
+    Map<String, String> key,
     String incomingHlc,
   ) async {
-    if (incomingHlc.isEmpty) return true;
+    final stamp = _parseStamp(incomingHlc);
+    if (stamp != null &&
+        stamp.dateTime.isAfter(_clock().toUtc().add(maxFutureSkew))) {
+      return false;
+    }
+    final where = key.keys.map((c) => '$c = ?').join(' AND ');
     final rows = await _db.customSelect(
-      'SELECT hlc FROM $table WHERE id = ? LIMIT 1',
-      variables: [Variable<String>(id)],
+      'SELECT hlc FROM $table WHERE $where LIMIT 1',
+      variables: [for (final v in key.values) Variable<String>(v)],
     ).get();
     if (rows.isEmpty) return true;
-    final localHlc = rows.first.read<String?>('hlc') ?? '';
-    if (localHlc.isEmpty) return true;
-    return incomingHlc.compareTo(localHlc) > 0;
+    if (stamp == null) return false;
+    // An unreadable LOCAL stamp is no stamp either, or a garbage stamp that
+    // once filled a hole would out-sort every real update and freeze the row.
+    final localHlc = rows.first.read<String?>('hlc');
+    if (_parseStamp(localHlc) == null) return true;
+    return incomingHlc.compareTo(localHlc!) > 0;
   }
 
   /// Import data from a JSON string. Inserts or replaces records.
-  /// [lww] enables per-record last-writer-wins by HLC: a row is applied only
-  /// when there is no local row, the row carries no HLC (legacy), or the
-  /// incoming HLC is strictly greater than the local one. Sync merges must pass
+  /// [lww] enables per-record last-writer-wins by HLC (see [_lwwShouldWrite]):
+  /// a row is applied only when there is no local row, or it carries a stamp
+  /// strictly newer than the local one; an unstamped row only fills a hole,
+  /// and a stamp beyond [maxFutureSkew] waits. Sync merges must pass
   /// `lww: true` so a stale peer can't overwrite a newer local edit or
-  /// resurrect a newer tombstone. Backup RESTORE keeps the default (false) —
-  /// a restore intentionally replaces local data wholesale.
+  /// resurrect a newer tombstone. Backup RESTORE and explicit file import keep
+  /// the default (false): they replace local rows wholesale, unstamped ones
+  /// included, so the UI warns first ([countUnstampedRows]).
   Future<Result<ImportSummary>> importFromJson(
     String jsonString, {
     bool lww = false,

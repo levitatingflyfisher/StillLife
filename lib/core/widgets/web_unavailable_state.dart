@@ -44,7 +44,7 @@ class WebUnavailableState extends StatelessWidget {
             ),
             const SizedBox(height: OhSpacing.lg),
             Text(
-              '$featureName isn\'t available on web',
+              '$featureName isn’t available on web',
               style: theme.textTheme.titleMedium,
               textAlign: TextAlign.center,
             ),

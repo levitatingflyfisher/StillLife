@@ -37,7 +37,8 @@ Most home inventory apps force you to choose between convenience and privacy —
 - Add items with photos, receipts, serial numbers, barcodes, purchase details, and notes
 - Scan a barcode to pre-fill product info (privacy-first: works offline, optional network lookup with your consent)
 - Scan receipts with OCR to auto-populate purchase date and price
-- Bulk-select items to move or delete in one tap
+- Bulk-select items to move or delete in one tap; every delete can be undone, and
+  Settings → Recently deleted brings items back with their photos
 - Full-text search across name, description, notes, serial number, and barcode
 
 ### Organisation
@@ -66,7 +67,7 @@ Most home inventory apps force you to choose between convenience and privacy —
 - Maintenance log with completion history
 
 ### Sync & Backup
-- **LAN sync** — sync across devices on the same Wi-Fi with automatic CRDT conflict resolution; secured with a shared sync code
+- **LAN sync** — sync across devices on the same Wi-Fi with automatic CRDT conflict resolution; encrypted end to end with a key derived from a shared sync code, and refused outright rather than sent in the clear if the other device can't encrypt
 - **WebDAV backup** — back up to Nextcloud, ownCloud, or any WebDAV server
 
 ---

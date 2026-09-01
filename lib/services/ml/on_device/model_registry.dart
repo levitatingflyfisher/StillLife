@@ -68,7 +68,7 @@ const List<OnDeviceModel> kOnDeviceModels = [
     displayName: 'SmolVLM2 2.2B (recommended)',
     license: 'Apache-2.0',
     sourceRepo: _repo22,
-    ramNote: '~2.5 GB RAM while analyzing — needs a 6 GB+ phone',
+    ramNote: '~2.5 GB RAM while analyzing—needs a 6 GB+ phone',
     files: [
       OnDeviceModelFile(
         filename: 'SmolVLM2-2.2B-Instruct-Q4_K_M.gguf',
@@ -93,7 +93,7 @@ const List<OnDeviceModel> kOnDeviceModels = [
     displayName: 'SmolVLM2 500M (lite)',
     license: 'Apache-2.0',
     sourceRepo: _repo05,
-    ramNote: '~1 GB RAM while analyzing — fits most phones',
+    ramNote: '~1 GB RAM while analyzing—fits most phones',
     files: [
       OnDeviceModelFile(
         filename: 'SmolVLM2-500M-Video-Instruct-Q8_0.gguf',

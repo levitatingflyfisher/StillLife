@@ -11,6 +11,8 @@ import '../../../locations/presentation/controllers/location_controller.dart';
 import '../../data/services/saved_search_service.dart';
 import '../../domain/services/nl_query_parser.dart';
 import '../controllers/search_controller.dart';
+import 'package:still_life/core/widgets/failure_feedback.dart';
+import 'package:openhearth_design/openhearth_design.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
@@ -55,18 +57,21 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           ),
           onChanged: (v) => setState(() => _query = v.trim()),
         ),
-        actions: [
+        actions: [OhBarActions(children: [
           if (_query.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.close),
+            OhBarAction(
+              icon: Icons.close,
+              label: 'Clear',
               onPressed: () {
                 _ctrl.clear();
                 setState(() => _query = '');
               },
             ),
-        ],
+        ])],
       ),
-      body: _query.isEmpty
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: _query.isEmpty
           ? _EmptyState(
               savedAsync: savedAsync,
               onChipTap: (q) {
@@ -80,6 +85,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               rooms: rooms,
               onSave: _saveSearch,
             ),
+      ),
     );
   }
 }
@@ -133,7 +139,7 @@ class _EmptyState extends StatelessWidget {
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: Theme.of(
                       context,
-                    ).colorScheme.onSurface.withAlpha(120),
+                    ).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -195,7 +201,8 @@ class _ResultsView extends ConsumerWidget {
         : asyncItems.when(
             data: (items) => _renderResults(context, items, isLoading: false),
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Center(child: Text('Error: $e')),
+            error: (e, st) =>
+                loadFailure(e, st, title: "Couldn’t search your items"),
           );
   }
 
@@ -211,7 +218,7 @@ class _ResultsView extends ConsumerWidget {
     if (items.isEmpty) {
       return Center(
         child: Text(
-          'No results for "$query"',
+          'No results for “$query”',
           style: Theme.of(context).textTheme.bodyLarge,
         ),
       );

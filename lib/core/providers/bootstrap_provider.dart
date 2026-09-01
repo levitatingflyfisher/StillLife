@@ -1,10 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/inventory/domain/repositories/category_repository.dart';
-import '../../features/locations/domain/entities/property.dart';
-import '../../features/locations/domain/repositories/property_repository.dart';
 import '../../features/locations/domain/repositories/room_repository.dart';
 import 'repository_providers.dart';
+import '../../services/database/database.dart';
+import '../sync/seed_rows.dart';
+import 'database_provider.dart';
 
 /// Runs once on app start. Seeds default categories and a default
 /// property with rooms when the database is empty.
@@ -12,7 +13,7 @@ final bootstrapProvider = FutureProvider<void>((ref) async {
   await Future.wait([
     _seedCategoriesIfEmpty(ref.read(categoryRepositoryProvider)),
     _seedPropertyIfEmpty(
-      ref.read(propertyRepositoryProvider),
+      ref.read(databaseProvider),
       ref.read(roomRepositoryProvider),
     ),
   ]);
@@ -27,23 +28,17 @@ Future<void> _seedCategoriesIfEmpty(CategoryRepository repo) async {
 }
 
 Future<void> _seedPropertyIfEmpty(
-  PropertyRepository propertyRepo,
+  AppDatabase db,
   RoomRepository roomRepo,
 ) async {
-  final properties = await propertyRepo.watchProperties().first;
-  if (properties.isEmpty) {
-    final now = DateTime.now();
-    final result = await propertyRepo.createProperty(
-      Property(
-        id: '',
-        name: 'My Home',
-        type: PropertyType.home,
-        createdAt: now,
-        modifiedAt: now,
-      ),
-    );
-    if (result.isSuccess) {
-      await roomRepo.seedDefaults(result.value.id);
-    }
+  final existing = await (db.select(
+    db.properties,
+  )..where((p) => p.isDeleted.equals(false))).get();
+  if (existing.isEmpty) {
+    // The first home and its rooms are seeded under stable ids and the
+    // seed stamp, so two devices that each start fresh merge into one home
+    // (core/sync/seed_rows.dart).
+    final propertyId = await seedDefaultHome(db);
+    await roomRepo.seedDefaults(propertyId);
   }
 }

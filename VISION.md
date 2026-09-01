@@ -80,12 +80,18 @@ the code, run the test) before you rely on it. As of schema v14:
 - The financial layer: dashboard totals, depreciation, per-item value history,
   insurance policies with coverage-gap detection, CSV export (RFC 4180, with
   formula-injection neutralised), JSON backup, and a PDF report.
-- **LAN sync**: HLC last-writer-wins merge, soft-delete tombstones, shared-secret
-  Bearer auth, mDNS discovery, a 20 MB body cap — real and tested. The
+- **LAN sync**: HLC last-writer-wins merge, soft-delete tombstones, an encrypted
+  wire (ChaCha20-Poly1305 frames keyed from the shared sync code, no plaintext
+  fallback — ADR-0007), mDNS discovery, a 20 MB body cap — real and tested. The
   [yellow paper](docs/spec/yellow-paper.md) specifies its semantics.
 - **Data safety**: import runs in one transaction behind a path-sandbox guard (a
   crafted backup can't point a file path at the database and delete it); boot survives
   a transient documents-directory failure instead of caching it forever.
+- **Deletes can be undone**: every delete is soft, so a deliberate delete acts at
+  once and offers an Undo with no timer, and Settings → Recently deleted restores any
+  deleted item with its photos (tags come back only through the immediate Undo).
+  There is no "delete forever", by design: hard-deleting a synced tombstone lets a
+  peer send the row back. See [limitations](docs/limitations.md#deleting).
 - QR labels (memorable `adjective-adjective-noun` IDs), barcode scan with cache-first
   opt-in product lookup, receipt OCR, loan tracking, maintenance/warranty reminders,
   WebDAV backup (HTTPS-enforced).
@@ -130,8 +136,9 @@ problems endure.
   what remains is device verification, latency/quality tuning, and extending it to
   multi-item shelf photos. Move sync from full-snapshot to delta so a large library
   doesn't re-ship on every merge.
-- **Far — trust beyond the LAN without becoming a cloud account.** Encrypt sync on the
-  wire; let two homes reconcile over the internet through a dumb, zero-knowledge relay
+- **Far — trust beyond the LAN without becoming a cloud account.** The LAN wire is
+  already encrypted (ADR-0007); what is missing is forward secrecy and a way to let two
+  homes reconcile over the internet through a dumb, zero-knowledge relay
   — never a server that can read the inventory. The hard, worth-naming problem: sharing
   a household catalogue across places while keeping the "nobody else can see it"
   guarantee intact.

@@ -3,6 +3,7 @@ import 'package:still_life/core/providers/repository_providers.dart';
 import 'package:still_life/services/ml/on_device/model_download_types.dart';
 import 'package:still_life/services/ml/on_device/model_registry.dart';
 import 'package:still_life/services/ml/on_device/nano_engine.dart';
+import 'package:still_life/core/widgets/failure_feedback.dart';
 
 /// UI-facing status of one downloadable on-device model.
 sealed class ModelStatus {
@@ -87,7 +88,9 @@ class OnDeviceModelsController
       _set(
         model.id,
         ModelDownloadFailed(
-          e is ModelDownloadException ? e.message : '$e',
+          e is ModelDownloadException
+              ? e.message
+              : failureSentence("The download stopped", e),
         ),
       );
     } finally {

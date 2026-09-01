@@ -21,6 +21,7 @@ import 'services/import/share_intent_handler.dart';
 import 'services/import/amazon_import_service.dart';
 import 'services/import/bank_statement_parser.dart';
 import 'services/import/import_receipt_ocr_service.dart';
+import 'features/settings/presentation/controllers/theme_controller.dart';
 
 ShareIntentHandler? _shareIntentHandler;
 AppLifecycleListener? _lifecycleListener;
@@ -71,12 +72,16 @@ void main() async {
   // launch) so the router's initial location is set with no redirect flash.
   const storage = FlutterSecureStorage();
   final initialLocation = await resolveInitialLocation(storage);
+  // Read the stored theme before the first frame so a dark choice never
+  // flashes light. Never throws; nothing stored follows the phone.
+  final initialTheme = await const ThemePreferenceStore(storage).read();
 
   final container = ProviderContainer(
     overrides: [
       routerProvider.overrideWithValue(
         buildAppRouter(initialLocation: initialLocation),
       ),
+      initialThemePreferenceProvider.overrideWithValue(initialTheme),
       // Wire the encrypted-backup UI to StillLife's data (SANCTUARY-BRIEF §4.W3).
       ...sanctuaryBackupOverrides(),
     ],

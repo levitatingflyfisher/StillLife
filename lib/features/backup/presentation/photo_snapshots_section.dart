@@ -63,7 +63,7 @@ class _PhotoSnapshotsSectionState extends State<PhotoSnapshotsSection> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
                 child: Text(
-                  'No photo snapshots yet — one is saved automatically '
+                  'No photo snapshots yet—one is saved automatically '
                   'before every photo restore.',
                   style: theme.textTheme.bodySmall,
                 ),

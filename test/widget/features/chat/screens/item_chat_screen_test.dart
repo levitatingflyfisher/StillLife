@@ -121,10 +121,11 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
-    // The error path replaces the assistant message with "Error: ..." —
+    // The error path replaces the assistant message with a plain
+    // "Couldn’t get an answer" sentence (never the exception) —
     // no interrupted chip appears in that case. The interrupted-chip
     // path is for clean onDone WITHOUT final sentinel, which is harder
     // to trigger from a synchronous test fake but is wired the same way.
-    expect(find.textContaining('Error: '), findsOneWidget);
+    expect(find.textContaining("Couldn’t get an answer"), findsOneWidget);
   });
 }

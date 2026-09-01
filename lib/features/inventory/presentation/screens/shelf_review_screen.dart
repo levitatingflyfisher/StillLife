@@ -16,6 +16,7 @@ import '../../domain/entities/item_suggestion.dart';
 import '../../domain/entities/photo.dart';
 import '../controllers/category_controller.dart';
 import '../controllers/photo_controller.dart';
+import 'package:still_life/core/widgets/failure_feedback.dart';
 
 /// Arguments for the shelf-review route: the per-item suggestions plus the
 /// FULL-frame shelf photo that attaches to every accepted item — no fake
@@ -120,7 +121,7 @@ class _ShelfReviewScreenState extends ConsumerState<ShelfReviewScreen> {
       if (mounted) {
         final saved = result.saved;
         final message = result.failed > 0
-            ? 'Added $saved of ${saved + result.failed} items — '
+            ? 'Added $saved of ${saved + result.failed} items—'
                   '${result.failed} failed'
             : 'Added $saved item${saved == 1 ? '' : 's'}';
         ScaffoldMessenger.of(
@@ -134,7 +135,7 @@ class _ShelfReviewScreenState extends ConsumerState<ShelfReviewScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Save failed: $e')));
+        ).showSnackBar(SnackBar(content: Text(failureSentence("Couldn’t save these items", e))));
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -201,7 +202,9 @@ class _ShelfReviewScreenState extends ConsumerState<ShelfReviewScreen> {
           ),
         ],
       ),
-      body: Column(
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: Column(
         children: [
           Padding(
             padding: OhSpacing.insetSm,
@@ -266,6 +269,7 @@ class _ShelfReviewScreenState extends ConsumerState<ShelfReviewScreen> {
             ),
           ),
         ],
+      ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _isSaving ? null : _saveAll,

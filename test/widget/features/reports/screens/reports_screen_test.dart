@@ -8,14 +8,17 @@ import 'package:still_life/features/reports/presentation/screens/reports_screen.
 
 void main() {
   group('ReportsScreen', () {
-    Widget buildSubject({DashboardSummary? summary}) {
+    Widget buildSubject({
+      DashboardSummary? summary,
+      List<Policy> policies = const [],
+    }) {
       return ProviderScope(
         overrides: [
           dashboardSummaryProvider.overrideWith(
             (ref) async => summary ?? const DashboardSummary(),
           ),
           policiesProvider.overrideWith(
-            (_) => Stream<List<Policy>>.value(const []),
+            (_) => Stream<List<Policy>>.value(policies),
           ),
         ],
         child: const MaterialApp(home: ReportsScreen()),
@@ -43,6 +46,28 @@ void main() {
 
       expect(find.text('Financial Overview'), findsOneWidget);
       expect(find.text('42'), findsOneWidget);
+    });
+
+    testWidgets('total coverage prints stored cents as dollars', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        buildSubject(
+          policies: [
+            Policy(
+              id: 'p1',
+              propertyId: 'prop1',
+              provider: 'Acme Mutual',
+              coverageAmountCents: 12345,
+              createdAt: DateTime(2025, 6, 1),
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text(r'$123.45'), findsOneWidget);
+      expect(find.text(r'$12,345.00'), findsNothing);
     });
 
     testWidgets('displays export options', (tester) async {

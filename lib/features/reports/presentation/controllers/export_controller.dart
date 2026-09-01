@@ -106,8 +106,11 @@ class ExportController extends StateNotifier<AsyncValue<void>> {
     }
   }
 
-  /// Import from a JSON file picked by the user.
-  Future<Result<ImportSummary>?> importJson() async {
+  /// Import from a JSON file picked by the user. [confirm] sees the file
+  /// before anything is written and can cancel (the old-file warning).
+  Future<Result<ImportSummary>?> importJson({
+    Future<bool> Function(String jsonString)? confirm,
+  }) async {
     state = const AsyncLoading();
     try {
       // withData: the picker hands back the file's bytes, which is the only
@@ -125,6 +128,10 @@ class ExportController extends StateNotifier<AsyncValue<void>> {
       }
 
       final jsonString = utf8.decode(bytes);
+      if (confirm != null && !await confirm(jsonString)) {
+        state = const AsyncData(null);
+        return null;
+      }
       final importResult = await importService.importFromJson(jsonString);
       state = const AsyncData(null);
       return importResult;

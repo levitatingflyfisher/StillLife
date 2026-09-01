@@ -57,22 +57,55 @@ class PhotoDao extends DatabaseAccessor<AppDatabase> with _$PhotoDaoMixin {
     await into(photos).insert(entry);
   }
 
-  Future<void> deletePhoto(String id) {
-    return (delete(photos)..where((t) => t.id.equals(id))).go();
+  /// Soft-deletes one photo. It was a hard delete, which left peers nothing
+  /// to merge: a device that still had the row would send it straight back.
+  /// A tombstone stamped through [crdt] propagates like any other edit.
+  /// The image bytes are dropped: a photo the household deleted on purpose
+  /// should not linger in the database, and a tombstone needs no picture.
+  Future<void> deletePhoto(String id, {CrdtManager? crdt}) async {
+    var entry = PhotosCompanion(
+      isDeleted: const Value(true),
+      bytes: const Value(null),
+      thumbBytes: const Value(null),
+      modifiedAt: Value(DateTime.now()),
+    );
+    if (crdt != null) {
+      final nodeId = await crdt.getNodeId();
+      final hlc = await crdt.nextHlc();
+      entry = entry.copyWith(nodeId: Value(nodeId), hlc: Value(hlc.toString()));
+    }
+    await (update(photos)..where((t) => t.id.equals(id))).write(entry);
   }
 
-  Future<void> setPrimaryPhoto(String itemId, String photoId) async {
-    // Clear existing primary
-    await (update(photos)..where((t) => t.itemId.equals(itemId))).write(
-      const PhotosCompanion(isPrimary: Value(false)),
-    );
-    // Set new primary
-    await (update(photos)..where((t) => t.id.equals(photoId))).write(
-      PhotosCompanion(
-        isPrimary: const Value(true),
-        modifiedAt: Value(DateTime.now()),
-      ),
-    );
+  /// Makes [photoId] the item's primary photo. Every photo whose flag
+  /// changes gets its own stamp when [crdt] is given, so the choice syncs
+  /// instead of losing to a peer's older copy.
+  Future<void> setPrimaryPhoto(
+    String itemId,
+    String photoId, {
+    CrdtManager? crdt,
+  }) async {
+    final now = DateTime.now();
+    final rows = await (select(
+      photos,
+    )..where((t) => t.itemId.equals(itemId))).get();
+    for (final row in rows) {
+      final want = row.id == photoId;
+      if (row.isPrimary == want) continue;
+      var entry = PhotosCompanion(
+        isPrimary: Value(want),
+        modifiedAt: Value(now),
+      );
+      if (crdt != null) {
+        final nodeId = await crdt.getNodeId();
+        final hlc = await crdt.nextHlc();
+        entry = entry.copyWith(
+          nodeId: Value(nodeId),
+          hlc: Value(hlc.toString()),
+        );
+      }
+      await (update(photos)..where((t) => t.id.equals(row.id))).write(entry);
+    }
   }
 
   Future<List<Photo>> getItemPhotos(String itemId) {

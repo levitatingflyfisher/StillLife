@@ -15,6 +15,8 @@ import 'package:still_life/features/profiles/domain/entities/profile.dart'
 import 'package:still_life/services/database/database.dart';
 
 import '../../../../test_setup.dart';
+import 'package:still_life/core/providers/sync_providers.dart';
+import 'package:still_life/core/sync/sync_stamp.dart';
 
 /// Shelf-review save-path tests: a real in-memory database behind the real
 /// repositories, so what the review screen claims to save is what lands
@@ -107,6 +109,8 @@ void main() {
       ProviderScope(
         overrides: [
           databaseProvider.overrideWithValue(db),
+          // No keystore in widget tests: writes go unstamped.
+          syncStampProvider.overrideWithValue(SyncStamp.none),
           activeProfileProvider.overrideWith(_FakeActiveProfileNotifier.new),
           ...extraOverrides,
         ],
@@ -324,7 +328,7 @@ void main() {
 
     await saveAndSettle(tester);
 
-    expect(find.textContaining('Save failed'), findsOneWidget);
+    expect(find.textContaining('Couldn’t save these items'), findsOneWidget);
     expect(find.text('Save'), findsOneWidget,
         reason: 'the screen must stay open for a retry');
 

@@ -56,6 +56,7 @@ import '../../services/import/import_fallback_seeder.dart';
 import '../../services/import/amazon_import_service.dart';
 import '../../services/import/import_receipt_ocr_service.dart';
 import 'database_provider.dart';
+import 'sync_providers.dart';
 
 final _photoStorageServiceProvider = Provider<PhotoStorageService>((ref) {
   return PhotoStorageService();
@@ -80,43 +81,71 @@ final itemRepositoryProvider = Provider<ItemRepository>((ref) {
   return ItemRepositoryImpl(
     ref.watch(databaseProvider),
     ref.watch(_photoStorageServiceProvider),
+    stamp: ref.watch(syncStampProvider),
   );
 });
 
 final categoryRepositoryProvider = Provider<CategoryRepository>((ref) {
-  return CategoryRepositoryImpl(ref.watch(databaseProvider));
+  return CategoryRepositoryImpl(
+    ref.watch(databaseProvider),
+    stamp: ref.watch(syncStampProvider),
+  );
 });
 
 final tagRepositoryProvider = Provider<TagRepository>((ref) {
-  return TagRepositoryImpl(ref.watch(databaseProvider));
+  return TagRepositoryImpl(
+    ref.watch(databaseProvider),
+    stamp: ref.watch(syncStampProvider),
+  );
 });
 
 final photoRepositoryProvider = Provider<PhotoRepository>((ref) {
-  return PhotoRepositoryImpl(ref.watch(databaseProvider));
+  return PhotoRepositoryImpl(
+    ref.watch(databaseProvider),
+    stamp: ref.watch(syncStampProvider),
+  );
 });
 
 final propertyRepositoryProvider = Provider<PropertyRepository>((ref) {
-  return PropertyRepositoryImpl(ref.watch(databaseProvider));
+  return PropertyRepositoryImpl(
+    ref.watch(databaseProvider),
+    stamp: ref.watch(syncStampProvider),
+  );
 });
 
 final roomRepositoryProvider = Provider<RoomRepository>((ref) {
-  return RoomRepositoryImpl(ref.watch(databaseProvider));
+  return RoomRepositoryImpl(
+    ref.watch(databaseProvider),
+    stamp: ref.watch(syncStampProvider),
+  );
 });
 
 final containerRepositoryProvider = Provider<ContainerRepository>((ref) {
-  return ContainerRepositoryImpl(ref.watch(databaseProvider));
+  return ContainerRepositoryImpl(
+    ref.watch(databaseProvider),
+    stamp: ref.watch(syncStampProvider),
+  );
 });
 
 final policyRepositoryProvider = Provider<PolicyRepository>((ref) {
-  return PolicyRepositoryImpl(ref.watch(databaseProvider));
+  return PolicyRepositoryImpl(
+    ref.watch(databaseProvider),
+    stamp: ref.watch(syncStampProvider),
+  );
 });
 
 final maintenanceRepositoryProvider = Provider<MaintenanceRepository>((ref) {
-  return MaintenanceRepositoryImpl(ref.watch(databaseProvider));
+  return MaintenanceRepositoryImpl(
+    ref.watch(databaseProvider),
+    stamp: ref.watch(syncStampProvider),
+  );
 });
 
 final loanRepositoryProvider = Provider<LoanRepository>(
-  (ref) => LoanRepositoryImpl(ref.watch(databaseProvider)),
+  (ref) => LoanRepositoryImpl(
+    ref.watch(databaseProvider),
+    stamp: ref.watch(syncStampProvider),
+  ),
 );
 
 final priceHistoryProvider =

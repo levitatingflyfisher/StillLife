@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../../core/utils/label_id.dart';
 import '../../../inventory/presentation/controllers/inventory_controller.dart';
+import 'package:still_life/core/widgets/failure_feedback.dart';
 
 class ItemLabelScreen extends ConsumerStatefulWidget {
   final String itemId;
@@ -47,7 +48,7 @@ class _ItemLabelScreenState extends ConsumerState<ItemLabelScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Could not share label: $e')));
+        ).showSnackBar(SnackBar(content: Text(failureSentence("Couldn’t share the label", e))));
       }
     } finally {
       if (mounted) setState(() => _isSharing = false);
@@ -61,7 +62,7 @@ class _ItemLabelScreenState extends ConsumerState<ItemLabelScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('QR Label'),
-        actions: [
+        actions: [OhBarActions(children: [
           if (_isSharing)
             const Padding(
               padding: EdgeInsets.all(14),
@@ -72,14 +73,17 @@ class _ItemLabelScreenState extends ConsumerState<ItemLabelScreen> {
               ),
             )
           else
-            IconButton(
-              icon: const Icon(Icons.share_outlined),
-              tooltip: 'Share label',
+            OhBarAction(
+              icon: Icons.share_outlined,
+              label: 'Share',
+              semanticLabel: 'Share label',
               onPressed: _shareLabel,
             ),
-        ],
+        ])],
       ),
-      body: itemAsync.when(
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: itemAsync.when(
         data: (item) {
           if (item == null) {
             return const Center(child: Text('Item not found'));
@@ -167,7 +171,13 @@ class _ItemLabelScreenState extends ConsumerState<ItemLabelScreen> {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, st) => loadFailure(
+          e,
+          st,
+          title: "Couldn’t load this item",
+          onRetry: () => ref.invalidate(itemDetailProvider(widget.itemId)),
+        ),
+      ),
       ),
     );
   }

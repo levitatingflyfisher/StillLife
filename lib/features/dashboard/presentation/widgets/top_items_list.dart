@@ -25,7 +25,7 @@ class TopItemsList extends StatelessWidget {
         child: Text(
           'No items',
           style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurface.withAlpha(120),
+            color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
       );

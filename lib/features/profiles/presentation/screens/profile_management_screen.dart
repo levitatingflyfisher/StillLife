@@ -6,6 +6,7 @@ import 'package:uuid/uuid.dart';
 import '../../../../core/providers/profile_providers.dart';
 import '../../domain/entities/profile.dart';
 import '../profile_ui_constants.dart';
+import 'package:still_life/core/widgets/failure_feedback.dart';
 
 const _uuid = Uuid();
 
@@ -18,58 +19,68 @@ class ProfileManagementScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Profiles')),
-      body: profilesAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
-        data: (profiles) {
-          if (profiles.isEmpty) {
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: profilesAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, st) => loadFailure(
+            e,
+            st,
+            title: "Couldn’t load profiles",
+            onRetry: () => ref.invalidate(profilesProvider),
+          ),
+          data: (profiles) {
+            if (profiles.isEmpty) {
+              return Column(
+                children: [
+                  const Expanded(
+                    child: Center(
+                      child: Text('No profiles yet. Add one below.'),
+                    ),
+                  ),
+                  _AddProfileTile(onTap: () => _showCreateSheet(context, ref)),
+                ],
+              );
+            }
             return Column(
               children: [
-                const Expanded(
-                  child: Center(child: Text('No profiles yet. Add one below.')),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: profiles.length,
+                    itemBuilder: (context, index) {
+                      final profile = profiles[index];
+                      return _ProfileTile(
+                        profile: profile,
+                        onTap: () => _showEditSheet(context, ref, profile),
+                        onDelete: () => _deleteProfile(context, ref, profile),
+                        onSetDefault: () async {
+                          final result = await ref
+                              .read(profileRepositoryProvider)
+                              .setDefault(profile.id);
+                          result.when(
+                            success: (_) {},
+                            failure: (f) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Failed to set default: ${f.message}',
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                          );
+                        },
+                      );
+                    },
+                  ),
                 ),
                 _AddProfileTile(onTap: () => _showCreateSheet(context, ref)),
               ],
             );
-          }
-          return Column(
-            children: [
-              Expanded(
-                child: ListView.builder(
-                  itemCount: profiles.length,
-                  itemBuilder: (context, index) {
-                    final profile = profiles[index];
-                    return _ProfileTile(
-                      profile: profile,
-                      onTap: () => _showEditSheet(context, ref, profile),
-                      onDelete: () => _deleteProfile(context, ref, profile),
-                      onSetDefault: () async {
-                        final result = await ref
-                            .read(profileRepositoryProvider)
-                            .setDefault(profile.id);
-                        result.when(
-                          success: (_) {},
-                          failure: (f) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Failed to set default: ${f.message}',
-                                  ),
-                                ),
-                              );
-                            }
-                          },
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
-              _AddProfileTile(onTap: () => _showCreateSheet(context, ref)),
-            ],
-          );
-        },
+          },
+        ),
       ),
     );
   }

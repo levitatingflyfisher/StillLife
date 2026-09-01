@@ -6,13 +6,18 @@ import '../../../../core/errors/result.dart';
 import '../../../../services/database/database.dart' as db_pkg;
 import '../../domain/entities/maintenance_log.dart';
 import '../../domain/repositories/maintenance_repository.dart';
+import '../../../../core/sync/sync_stamp.dart';
 
 const _uuid = Uuid();
 
 class MaintenanceRepositoryImpl implements MaintenanceRepository {
   final db_pkg.AppDatabase _db;
 
-  MaintenanceRepositoryImpl(this._db);
+  MaintenanceRepositoryImpl(this._db, {SyncStamp stamp = SyncStamp.none})
+    : _stamp = stamp;
+
+  /// Gives every write its sync stamp (see [SyncStamp]).
+  final SyncStamp _stamp;
 
   @override
   Stream<List<MaintenanceLog>> watchAll() {
@@ -43,19 +48,22 @@ class MaintenanceRepositoryImpl implements MaintenanceRepository {
     try {
       final now = DateTime.now();
       final id = log.id.isEmpty ? _uuid.v4() : log.id;
-      await _db.maintenanceDao.insertLog(
-        db_pkg.MaintenanceLogsCompanion.insert(
-          id: id,
-          itemId: Value(log.itemId),
-          propertyId: Value(log.propertyId),
-          title: log.title,
-          description: Value(log.description),
-          costCents: Value(log.costCents),
-          performedAt: log.performedAt,
-          nextDueAt: Value(log.nextDueAt),
-          servicedBy: Value(log.servicedBy),
-          createdAt: now,
-          modifiedAt: now,
+      await _stamp.write(
+        (c) => _db.maintenanceDao.insertLog(
+          db_pkg.MaintenanceLogsCompanion.insert(
+            id: id,
+            itemId: Value(log.itemId),
+            propertyId: Value(log.propertyId),
+            title: log.title,
+            description: Value(log.description),
+            costCents: Value(log.costCents),
+            performedAt: log.performedAt,
+            nextDueAt: Value(log.nextDueAt),
+            servicedBy: Value(log.servicedBy),
+            createdAt: now,
+            modifiedAt: now,
+          ),
+          crdt: c,
         ),
       );
       final created = await _db.maintenanceDao.getById(id);
@@ -69,18 +77,21 @@ class MaintenanceRepositoryImpl implements MaintenanceRepository {
   Future<Result<MaintenanceLog>> update(MaintenanceLog log) async {
     try {
       final now = DateTime.now();
-      final ok = await _db.maintenanceDao.updateLog(
-        db_pkg.MaintenanceLogsCompanion(
-          id: Value(log.id),
-          itemId: Value(log.itemId),
-          propertyId: Value(log.propertyId),
-          title: Value(log.title),
-          description: Value(log.description),
-          costCents: Value(log.costCents),
-          performedAt: Value(log.performedAt),
-          nextDueAt: Value(log.nextDueAt),
-          servicedBy: Value(log.servicedBy),
-          modifiedAt: Value(now),
+      final ok = await _stamp.write(
+        (c) => _db.maintenanceDao.updateLog(
+          db_pkg.MaintenanceLogsCompanion(
+            id: Value(log.id),
+            itemId: Value(log.itemId),
+            propertyId: Value(log.propertyId),
+            title: Value(log.title),
+            description: Value(log.description),
+            costCents: Value(log.costCents),
+            performedAt: Value(log.performedAt),
+            nextDueAt: Value(log.nextDueAt),
+            servicedBy: Value(log.servicedBy),
+            modifiedAt: Value(now),
+          ),
+          crdt: c,
         ),
       );
       if (!ok) return const Err(DatabaseFailure('Maintenance log not found'));
@@ -94,7 +105,7 @@ class MaintenanceRepositoryImpl implements MaintenanceRepository {
   @override
   Future<Result<void>> delete(String id) async {
     try {
-      await _db.maintenanceDao.deleteLog(id);
+      await _stamp.write((c) => _db.maintenanceDao.deleteLog(id, crdt: c));
       return const Success(null);
     } catch (e) {
       return Err(DatabaseFailure('Failed to delete maintenance log: $e'));

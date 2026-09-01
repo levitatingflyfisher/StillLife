@@ -29,7 +29,7 @@ class CostComparisonChart extends StatelessWidget {
         child: Text(
           'No data',
           style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurface.withAlpha(120),
+            color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
       );

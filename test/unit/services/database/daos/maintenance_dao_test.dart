@@ -14,6 +14,20 @@ void main() {
 
   setUp(() async {
     db = AppDatabase.memory();
+
+    // Foreign keys are enforced: the logs' items (and their parents) exist.
+    final t0 = DateTime(2025);
+    await db.into(db.properties).insert(PropertiesCompanion.insert(
+        id: 'p', name: 'Home', createdAt: t0, modifiedAt: t0));
+    await db.into(db.rooms).insert(RoomsCompanion.insert(
+        id: 'r', propertyId: 'p', name: 'Den', createdAt: t0, modifiedAt: t0));
+    await db.into(db.categories).insert(CategoriesCompanion.insert(
+        id: 'c', name: 'Things', createdAt: t0, modifiedAt: t0));
+    for (final id in ['item1', 'item2']) {
+      await db.into(db.items).insert(ItemsCompanion.insert(
+          id: id, name: id, categoryId: 'c', roomId: 'r',
+          createdAt: t0, modifiedAt: t0));
+    }
   });
 
   tearDown(() async {

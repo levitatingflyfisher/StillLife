@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import '../photo_backup_providers.dart';
 import 'photo_restore_flow.dart';
 import 'photo_snapshots_section.dart';
+import 'package:still_life/core/widgets/failure_feedback.dart';
 
 /// Settings tiles for the full, photos-included `.ohbkz` backup — a companion
 /// to the metadata-only `.ohbk` flow in `BackupSettingsSection`
@@ -122,7 +123,7 @@ class PhotoBackupTile extends ConsumerWidget {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Export failed: $e')));
+            .showSnackBar(SnackBar(content: Text(failureSentence("Couldn’t export the photo backup", e))));
       }
     }
   }

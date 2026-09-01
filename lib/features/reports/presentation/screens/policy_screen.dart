@@ -6,6 +6,9 @@ import 'package:intl/intl.dart';
 import '../../../../core/extensions/currency_extensions.dart';
 import '../../domain/entities/policy.dart';
 import '../controllers/policy_controller.dart';
+import 'package:still_life/core/widgets/failure_feedback.dart';
+import '../../../recently_deleted/presentation/undo_providers.dart';
+import 'package:openhearth_design/openhearth_design.dart';
 
 class PolicyScreen extends ConsumerWidget {
   const PolicyScreen({super.key});
@@ -17,99 +20,95 @@ class PolicyScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Insurance Policies')),
-      body: policiesAsync.when(
-        data: (policies) {
-          if (policies.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.policy_outlined,
-                    size: 64,
-                    color: theme.colorScheme.onSurface.withAlpha(80),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No policies yet',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      color: theme.colorScheme.onSurface.withAlpha(150),
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: policiesAsync.when(
+          data: (policies) {
+            if (policies.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.policy_outlined,
+                      size: 64,
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Add your insurance policy to track coverage gaps',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurface.withAlpha(120),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No policies yet',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        color: theme.colorScheme.onSurface.withAlpha(150),
+                      ),
                     ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-                  FilledButton.icon(
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Policy'),
-                    onPressed: () => context.pushNamed('addPolicy'),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return ListView.separated(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            itemCount: policies.length,
-            separatorBuilder: (_, _) => const Divider(height: 1, indent: 72),
-            itemBuilder: (context, index) {
-              final policy = policies[index];
-              return _PolicyTile(
-                policy: policy,
-                onEdit: () => context.pushNamed(
-                  'editPolicy',
-                  pathParameters: {'policyId': policy.id},
+                    const SizedBox(height: 8),
+                    Text(
+                      'Add your insurance policy to track coverage gaps',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    FilledButton.icon(
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add Policy'),
+                      onPressed: () => context.pushNamed('addPolicy'),
+                    ),
+                  ],
                 ),
-                onDelete: () async {
-                  final confirmed = await _confirmDelete(context, policy);
-                  if (confirmed && context.mounted) {
-                    await ref
+              );
+            }
+
+            return ListView.separated(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              itemCount: policies.length,
+              separatorBuilder: (_, _) => const Divider(height: 1, indent: 72),
+              itemBuilder: (context, index) {
+                final policy = policies[index];
+                return _PolicyTile(
+                  policy: policy,
+                  onEdit: () => context.pushNamed(
+                    'editPolicy',
+                    pathParameters: {'policyId': policy.id},
+                  ),
+                  // Deliberate (a menu choice), so no question: delete softly
+                  // and offer Undo until the person leaves this screen.
+                  onDelete: () async {
+                    final trash = ref.read(recentlyDeletedRepositoryProvider);
+                    final undo = ref.read(
+                      screenUndoControllerProvider('policies'),
+                    );
+                    final ok = await ref
                         .read(policyControllerProvider.notifier)
                         .remove(policy.id);
-                  }
-                },
-              );
-            },
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+                    if (!ok) return;
+                    undo.show(
+                      message: 'Deleted ${policy.provider} policy',
+                      onUndo: () => trash.restorePolicy(policy.id),
+                    );
+                  },
+                );
+              },
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, st) => loadFailure(
+            e,
+            st,
+            title: "Couldn’t load policies",
+            onRetry: () => ref.invalidate(policiesProvider),
+          ),
+        ),
+      ),
+      bottomNavigationBar: OhUndoBar(
+        controller: ref.watch(screenUndoControllerProvider('policies')),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => context.pushNamed('addPolicy'),
         child: const Icon(Icons.add),
       ),
     );
-  }
-
-  Future<bool> _confirmDelete(BuildContext context, Policy policy) async {
-    return await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text('Delete Policy'),
-            content: Text(
-              'Remove ${policy.provider} policy? This cannot be undone.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Delete'),
-              ),
-            ],
-          ),
-        ) ??
-        false;
   }
 }
 
@@ -174,7 +173,7 @@ class _PolicyTile extends StatelessWidget {
         },
         itemBuilder: (_) => const [
           PopupMenuItem(value: 'edit', child: Text('Edit')),
-          PopupMenuItem(value: 'delete', child: Text('Delete')),
+          PopupMenuItem(value: 'delete', child: Text('Delete policy')),
         ],
       ),
     );

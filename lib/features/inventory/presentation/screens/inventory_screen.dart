@@ -16,6 +16,10 @@ import '../controllers/quantity_controller.dart';
 import '../../../loans/presentation/controllers/loan_controller.dart';
 import '../../../profiles/presentation/widgets/profile_action_sheet.dart';
 import '../../../search/presentation/controllers/search_controller.dart';
+import 'package:still_life/core/widgets/failure_feedback.dart';
+import '../../../recently_deleted/presentation/undo_providers.dart';
+import 'package:openhearth_design/openhearth_design.dart';
+import '../../../settings/presentation/controllers/theme_controller.dart';
 
 class InventoryScreen extends ConsumerStatefulWidget {
   const InventoryScreen({super.key});
@@ -116,7 +120,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       failure: (f) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Move failed: ${f.message}'),
+            content: Text(failureSentence("Couldn’t move the items", f.message)),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -124,54 +128,46 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     );
   }
 
+  /// A deliberate delete (select, then Delete): it acts at once and offers
+  /// an Undo with no timer, per the fleet delete ruling. The delete is soft,
+  /// so the Undo is real; Recently deleted in Settings keeps the way back.
   Future<void> _bulkDelete() async {
-    final count = _selectedIds.length;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Items'),
-        content: Text(
-          'Delete $count item${count == 1 ? '' : 's'}? This cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(ctx).colorScheme.error,
-            ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted) return;
-    final result = await ref
-        .read(itemRepositoryProvider)
-        .deleteItems(_selectedIds.toList());
+    final ids = _selectedIds.toList();
+    final count = ids.length;
+    final trash = ref.read(recentlyDeletedRepositoryProvider);
+    final undo = ref.read(shellUndoControllerProvider);
+    final deletion = await trash.snapshot(ids);
+    final result = await ref.read(itemRepositoryProvider).deleteItems(ids);
     if (!mounted) return;
     result.when(
       success: (_) {
         _exitSelectionMode();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              count == 1 ? 'Deleted 1 item' : 'Deleted $count items',
-            ),
-          ),
+        undo.show(
+          message: count == 1 ? 'Deleted 1 item' : 'Deleted $count items',
+          onUndo: () => trash.restoreItems(deletion),
         );
       },
       failure: (f) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Delete failed: ${f.message}'),
+            content: Text(
+              failureSentence("Couldn’t delete the items", f.message),
+            ),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       },
+    );
+  }
+
+  void _sortBy(ItemSortField field) {
+    final current = ref.read(inventoryQueryProvider);
+    ref.read(inventoryQueryProvider.notifier).state = ItemQuery(
+      searchText: current.searchText,
+      roomId: current.roomId,
+      categoryId: current.categoryId,
+      sortBy: field,
+      ascending: field == current.sortBy ? !current.ascending : true,
     );
   }
 
@@ -196,18 +192,18 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                 onPressed: _exitSelectionMode,
               ),
               title: Text('${_selectedIds.length} selected'),
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.drive_file_move_outlined),
-                  tooltip: 'Move to room',
+              actions: [OhBarActions(children: [
+                OhBarAction(
+                  icon: Icons.drive_file_move_outlined,
+                  label: 'Move',
                   onPressed: _bulkMoveToRoom,
                 ),
-                IconButton(
-                  icon: const Icon(Icons.delete_outline),
-                  tooltip: 'Delete selected',
+                OhBarAction(
+                  icon: Icons.delete_outline,
+                  label: 'Delete',
                   onPressed: _bulkDelete,
                 ),
-              ],
+              ])],
             )
           : AppBar(
               title: _isSearching
@@ -262,9 +258,10 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                       },
                     )
                   : const Text('Inventory'),
-              actions: [
-                IconButton(
-                  icon: Icon(_isSearching ? Icons.close : Icons.search),
+              actions: [OhBarActions(children: [
+                OhBarAction(
+                  icon: _isSearching ? Icons.close : Icons.search,
+                  label: _isSearching ? 'Close' : 'Search',
                   onPressed: () {
                     setState(() {
                       _isSearching = !_isSearching;
@@ -279,76 +276,22 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                 Badge(
                   isLabelVisible: _currentFilter.isActive,
                   label: Text('${_currentFilter.activeFilterCount}'),
-                  child: IconButton(
-                    icon: Icon(
-                      _currentFilter.isActive
-                          ? Icons.filter_alt
-                          : Icons.filter_alt_outlined,
-                    ),
+                  child: OhBarAction(
+                    icon: _currentFilter.isActive
+                        ? Icons.filter_alt
+                        : Icons.filter_alt_outlined,
+                    label: 'Filter',
                     onPressed: () => _showFilterDialog(context),
                   ),
                 ),
-                // Profile chip
-                Consumer(
-                  builder: (context, ref, _) {
-                    final activeProfile = ref
-                        .watch(activeProfileProvider)
-                        .valueOrNull;
-                    if (activeProfile != null) {
-                      return ActionChip(
-                        avatar: Text(activeProfile.avatarEmoji),
-                        label: Text(activeProfile.name),
-                        onPressed: () => showModalBottomSheet(
-                          context: context,
-                          builder: (_) => const ProfileActionSheet(),
-                        ),
-                      );
-                    }
-                    return IconButton(
-                      icon: const Icon(Icons.person_outline),
-                      onPressed: () => showModalBottomSheet(
-                        context: context,
-                        builder: (_) => const ProfileActionSheet(),
-                      ),
-                    );
-                  },
-                ),
-                PopupMenuButton<ItemSortField>(
-                  icon: const Icon(Icons.sort),
-                  onSelected: (field) {
-                    final current = ref.read(inventoryQueryProvider);
-                    ref.read(inventoryQueryProvider.notifier).state = ItemQuery(
-                      searchText: current.searchText,
-                      roomId: current.roomId,
-                      categoryId: current.categoryId,
-                      sortBy: field,
-                      ascending: field == current.sortBy
-                          ? !current.ascending
-                          : true,
-                    );
-                  },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: ItemSortField.name,
-                      child: Text('Name'),
-                    ),
-                    const PopupMenuItem(
-                      value: ItemSortField.currentValueCents,
-                      child: Text('Value'),
-                    ),
-                    const PopupMenuItem(
-                      value: ItemSortField.createdAt,
-                      child: Text('Date Added'),
-                    ),
-                    const PopupMenuItem(
-                      value: ItemSortField.replacementCostCents,
-                      child: Text('Replacement Cost'),
-                    ),
-                  ],
-                ),
-              ],
+                // Rarer commands go in a worded menu (fleet ruling): sort,
+                // who is using the app, and the theme (still two taps).
+                _InventoryMoreMenu(onSort: _sortBy),
+              ])],
             ),
-      body: itemsAsync.when(
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: itemsAsync.when(
         data: (items) {
           if (items.isEmpty) {
             return Center(
@@ -358,7 +301,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                   Icon(
                     Icons.inventory_2_outlined,
                     size: 64,
-                    color: theme.colorScheme.onSurface.withAlpha(80),
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -369,9 +312,11 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Tap + to add your first item',
+                    'Choose Add item to start your catalogue. One room is '
+                    'enough for a first pass.',
+                    textAlign: TextAlign.center,
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurface.withAlpha(120),
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -388,8 +333,11 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                   vertical: 8,
                 ),
                 color: theme.colorScheme.surfaceContainerHighest.withAlpha(80),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                // Wrap, not Row: at large text the count and the total
+                // do not fit side by side on a narrow phone.
+                child: Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  spacing: 16,
                   children: [
                     Text(
                       '${items.length} items',
@@ -460,7 +408,13 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, st) => loadFailure(
+          e,
+          st,
+          title: "Couldn’t load your items",
+          onRetry: () => ref.invalidate(inventoryItemsProvider),
+        ),
+      ),
       ),
       floatingActionButton: _selectionMode
           ? null
@@ -472,6 +426,70 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                   : () => context.pushNamed('videoCapture'),
               onManual: () => context.pushNamed('addItem'),
             ),
+    );
+  }
+}
+
+enum _More { sortName, sortValue, sortAdded, sortReplacement, profile, themeSystem, themeLight, themeDark }
+
+/// Inventory's worded overflow: "More", then named choices.
+class _InventoryMoreMenu extends ConsumerWidget {
+  const _InventoryMoreMenu({required this.onSort});
+
+  final ValueChanged<ItemSortField> onSort;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profile = ref.watch(activeProfileProvider).valueOrNull;
+    final theme = ref.watch(themePreferenceProvider);
+    PopupMenuItem<_More> check(_More v, String label, bool on) =>
+        CheckedPopupMenuItem<_More>(value: v, checked: on, child: Text(label));
+    return OhBarOverflow<_More>(
+      onSelected: (v) {
+        switch (v) {
+          case _More.sortName:
+            onSort(ItemSortField.name);
+          case _More.sortValue:
+            onSort(ItemSortField.currentValueCents);
+          case _More.sortAdded:
+            onSort(ItemSortField.createdAt);
+          case _More.sortReplacement:
+            onSort(ItemSortField.replacementCostCents);
+          case _More.profile:
+            showModalBottomSheet<void>(
+              context: context,
+              builder: (_) => const ProfileActionSheet(),
+            );
+          case _More.themeSystem:
+            ref.read(themePreferenceProvider.notifier).set(OhThemeModePreference.system);
+          case _More.themeLight:
+            ref.read(themePreferenceProvider.notifier).set(OhThemeModePreference.light);
+          case _More.themeDark:
+            ref.read(themePreferenceProvider.notifier).set(OhThemeModePreference.dark);
+        }
+      },
+      itemBuilder: (_) => [
+        const PopupMenuItem(value: _More.sortName, child: Text('Sort by name')),
+        const PopupMenuItem(value: _More.sortValue, child: Text('Sort by value')),
+        const PopupMenuItem(value: _More.sortAdded, child: Text('Sort by date added')),
+        const PopupMenuItem(
+          value: _More.sortReplacement,
+          child: Text('Sort by replacement cost'),
+        ),
+        const PopupMenuDivider(),
+        PopupMenuItem(
+          value: _More.profile,
+          child: Text(
+            profile == null
+                ? 'Who is using the app'
+                : 'Using as ${profile.avatarEmoji} ${profile.name}',
+          ),
+        ),
+        const PopupMenuDivider(),
+        check(_More.themeSystem, 'Theme: follow phone', theme == OhThemeModePreference.system),
+        check(_More.themeLight, 'Theme: light', theme == OhThemeModePreference.light),
+        check(_More.themeDark, 'Theme: dark', theme == OhThemeModePreference.dark),
+      ],
     );
   }
 }

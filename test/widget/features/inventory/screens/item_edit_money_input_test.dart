@@ -11,6 +11,8 @@ import 'package:still_life/features/profiles/domain/entities/profile.dart'
 import 'package:still_life/services/database/database.dart';
 
 import '../../../../test_setup.dart';
+import 'package:still_life/core/providers/sync_providers.dart';
+import 'package:still_life/core/sync/sync_stamp.dart';
 
 /// Money-input behavior on the edit form: comma-decimal input must not be
 /// silently dropped, and garbage must surface a field error instead of
@@ -69,6 +71,8 @@ void main() {
       ProviderScope(
         overrides: [
           databaseProvider.overrideWithValue(db),
+          // No keystore in widget tests: writes go unstamped.
+          syncStampProvider.overrideWithValue(SyncStamp.none),
           activeProfileProvider.overrideWith(_FakeActiveProfileNotifier.new),
         ],
         child: MaterialApp.router(routerConfig: router),
@@ -199,7 +203,7 @@ void main() {
     );
     await saveAndSettle(tester);
 
-    expect(find.text('Ambiguous amount — use 1234 or 1,234.00'), findsOneWidget,
+    expect(find.text('Ambiguous amount. Use 1234 or 1,234.00'), findsOneWidget,
         reason: 'the US-thousands reading must be refused, not saved as 1.23');
     final rows = await db.select(db.items).get();
     expect(rows, isEmpty,
@@ -250,6 +254,8 @@ void main() {
       ProviderScope(
         overrides: [
           databaseProvider.overrideWithValue(db),
+          // No keystore in widget tests: writes go unstamped.
+          syncStampProvider.overrideWithValue(SyncStamp.none),
           activeProfileProvider.overrideWith(_FakeActiveProfileNotifier.new),
         ],
         child: MaterialApp.router(routerConfig: router),

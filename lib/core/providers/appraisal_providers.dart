@@ -19,10 +19,14 @@ import '../../services/ml/cloud_api_provider.dart';
 import '../../services/ml/hosted_messages_client.dart';
 import 'billing_providers.dart' show kHostedBaseUrl;
 import 'database_provider.dart';
+import 'sync_providers.dart';
 
 /// Drift-backed [AppraisalRepository] singleton.
 final appraisalRepositoryProvider = Provider<AppraisalRepository>((ref) {
-  return AppraisalRepositoryImpl(ref.watch(databaseProvider));
+  return AppraisalRepositoryImpl(
+    ref.watch(databaseProvider),
+    stamp: ref.watch(syncStampProvider),
+  );
 });
 
 /// Infers the device country from the platform locale (e.g. "en_US" → "US").

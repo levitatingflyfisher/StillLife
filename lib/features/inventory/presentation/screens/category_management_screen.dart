@@ -4,6 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../domain/entities/category.dart';
 import '../controllers/category_controller.dart';
+import 'package:still_life/core/widgets/failure_feedback.dart';
+import '../../../recently_deleted/presentation/undo_providers.dart';
+import 'package:openhearth_design/openhearth_design.dart';
 
 class CategoryManagementScreen extends ConsumerWidget {
   const CategoryManagementScreen({super.key});
@@ -16,8 +19,8 @@ class CategoryManagementScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Categories'),
-        actions: [
-          PopupMenuButton(
+        actions: [OhBarActions(children: [
+          OhBarOverflow<String>(
             itemBuilder: (context) => [
               const PopupMenuItem(
                 value: 'seed',
@@ -30,78 +33,92 @@ class CategoryManagementScreen extends ConsumerWidget {
               }
             },
           ),
-        ],
+        ])],
       ),
-      body: categoriesAsync.when(
-        data: (categories) {
-          if (categories.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.category_outlined,
-                    size: 64,
-                    color: theme.colorScheme.onSurface.withAlpha(80),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No categories yet',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      color: theme.colorScheme.onSurface.withAlpha(150),
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: categoriesAsync.when(
+          data: (categories) {
+            if (categories.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.category_outlined,
+                      size: 64,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No categories yet',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        color: theme.colorScheme.onSurface.withAlpha(150),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton.tonal(
+                      onPressed: () => ref
+                          .read(categoryControllerProvider.notifier)
+                          .seedDefaults(),
+                      child: const Text('Load default categories'),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            return ListView.builder(
+              itemCount: categories.length,
+              itemBuilder: (context, index) {
+                final category = categories[index];
+
+                return ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: theme.colorScheme.primaryContainer,
+                    child: Icon(
+                      AppConstants.iconFromCodePoint(category.iconCodePoint),
+                      color: theme.colorScheme.onPrimaryContainer,
+                      size: 20,
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  FilledButton.tonal(
-                    onPressed: () => ref
-                        .read(categoryControllerProvider.notifier)
-                        .seedDefaults(),
-                    child: const Text('Load default categories'),
+                  title: Text(category.name),
+                  subtitle: category.itemCount > 0
+                      ? Text('${category.itemCount} items')
+                      : null,
+                  trailing: PopupMenuButton(
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Text('Delete category'),
+                      ),
+                    ],
+                    onSelected: (action) {
+                      if (action == 'edit') {
+                        _showCategoryDialog(context, ref, category: category);
+                      } else if (action == 'delete') {
+                        _delete(ref, category);
+                      }
+                    },
                   ),
-                ],
-              ),
+                  onTap: () =>
+                      _showCategoryDialog(context, ref, category: category),
+                );
+              },
             );
-          }
-
-          return ListView.builder(
-            itemCount: categories.length,
-            itemBuilder: (context, index) {
-              final category = categories[index];
-
-              return ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: theme.colorScheme.primaryContainer,
-                  child: Icon(
-                    AppConstants.iconFromCodePoint(category.iconCodePoint),
-                    color: theme.colorScheme.onPrimaryContainer,
-                    size: 20,
-                  ),
-                ),
-                title: Text(category.name),
-                subtitle: category.itemCount > 0
-                    ? Text('${category.itemCount} items')
-                    : null,
-                trailing: PopupMenuButton(
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                    const PopupMenuItem(value: 'delete', child: Text('Delete')),
-                  ],
-                  onSelected: (action) {
-                    if (action == 'edit') {
-                      _showCategoryDialog(context, ref, category: category);
-                    } else if (action == 'delete') {
-                      _confirmDelete(context, ref, category);
-                    }
-                  },
-                ),
-                onTap: () =>
-                    _showCategoryDialog(context, ref, category: category),
-              );
-            },
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, st) => loadFailure(
+            e,
+            st,
+            title: "Couldn’t load categories",
+            onRetry: () => ref.invalidate(categoriesProvider),
+          ),
+        ),
+      ),
+      bottomNavigationBar: OhUndoBar(
+        controller: ref.watch(screenUndoControllerProvider('categories')),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showCategoryDialog(context, ref),
@@ -136,41 +153,19 @@ class CategoryManagementScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _confirmDelete(
-    BuildContext context,
-    WidgetRef ref,
-    Category category,
-  ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Category'),
-        content: Text(
-          category.itemCount > 0
-              ? 'Delete "${category.name}"? ${category.itemCount} items use this category and will need to be reassigned.'
-              : 'Delete "${category.name}"?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+  /// A menu choice is deliberate: delete softly, no question, and offer
+  /// Undo until the person leaves this screen.
+  Future<void> _delete(WidgetRef ref, Category category) async {
+    final trash = ref.read(recentlyDeletedRepositoryProvider);
+    final undo = ref.read(screenUndoControllerProvider('categories'));
+    final ok = await ref
+        .read(categoryControllerProvider.notifier)
+        .deleteCategory(category.id);
+    if (!ok) return;
+    undo.show(
+      message: 'Deleted category “${category.name}”',
+      onUndo: () => trash.restoreCategory(category.id),
     );
-
-    if (confirmed == true) {
-      await ref
-          .read(categoryControllerProvider.notifier)
-          .deleteCategory(category.id);
-    }
   }
 
   Future<void> _confirmSeedDefaults(BuildContext context, WidgetRef ref) async {

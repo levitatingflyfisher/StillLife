@@ -67,7 +67,7 @@ class _TagSelectorWidgetState extends ConsumerState<TagSelectorWidget> {
                 child: Text(
                   'No tags assigned',
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurface.withAlpha(120),
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
               );

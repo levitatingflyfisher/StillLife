@@ -11,6 +11,7 @@ import '../../../inventory/presentation/widgets/item_list_tile.dart';
 import '../../../inventory/presentation/widgets/speed_dial_fab.dart';
 import '../../../loans/presentation/controllers/loan_controller.dart';
 import '../controllers/location_controller.dart';
+import 'package:openhearth_design/openhearth_design.dart';
 
 class ContainerDetailScreen extends ConsumerWidget {
   final String containerId;
@@ -37,18 +38,20 @@ class ContainerDetailScreen extends ConsumerWidget {
           loading: () => const Text('Container'),
           error: (_, _) => const Text('Container'),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.qr_code_outlined),
-            tooltip: 'QR Label',
+        actions: [OhBarActions(children: [
+          OhBarAction(
+            icon: Icons.qr_code_outlined,
+            label: 'QR label',
             onPressed: () => context.pushNamed(
               'containerLabel',
               pathParameters: {'containerId': containerId},
             ),
           ),
-        ],
+        ])],
       ),
-      body: StreamBuilder(
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: StreamBuilder(
         stream: ref
             .watch(itemRepositoryProvider)
             .watchItems(ItemQuery(containerId: containerId)),
@@ -68,7 +71,7 @@ class ContainerDetailScreen extends ConsumerWidget {
                   Icon(
                     Icons.inventory_2_outlined,
                     size: 48,
-                    color: theme.colorScheme.onSurface.withAlpha(80),
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                   const SizedBox(height: 12),
                   Text(
@@ -105,6 +108,7 @@ class ContainerDetailScreen extends ConsumerWidget {
             },
           );
         },
+      ),
       ),
       floatingActionButton: containerAsync.when(
         data: (container) => SpeedDialFab(

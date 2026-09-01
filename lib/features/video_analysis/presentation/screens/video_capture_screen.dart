@@ -265,7 +265,7 @@ class _VideoCaptureScreenState extends ConsumerState<VideoCaptureScreen>
                             border: Border.all(
                               color: _cameraReady
                                   ? colorScheme.onSurface
-                                  : colorScheme.onSurface.withAlpha(80),
+                                  : colorScheme.onSurfaceVariant,
                               width: 4,
                             ),
                           ),

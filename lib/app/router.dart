@@ -30,10 +30,8 @@ import '../features/settings/presentation/screens/webdav_settings_screen.dart';
 import '../features/labels/presentation/screens/item_label_screen.dart';
 import '../features/labels/presentation/screens/container_label_screen.dart';
 import '../features/locations/presentation/screens/container_detail_screen.dart';
-import '../features/inventory/presentation/screens/photo_viewer_screen.dart';
 import '../features/inventory/presentation/screens/shelf_review_screen.dart';
 import '../features/inventory/domain/entities/item_suggestion.dart';
-import '../features/inventory/domain/entities/photo.dart';
 import '../features/loans/presentation/screens/all_loans_screen.dart';
 import '../features/inventory/presentation/screens/low_stock_screen.dart';
 import '../features/import/presentation/screens/import_review_screen.dart';
@@ -45,6 +43,7 @@ import '../features/chat/presentation/screens/item_chat_screen.dart';
 import '../features/insurance/presentation/screens/what_should_i_insure_screen.dart';
 import '../services/import/bank_statement_parser.dart';
 import 'shell_screen.dart';
+import '../features/recently_deleted/presentation/recently_deleted_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -253,6 +252,12 @@ GoRouter buildAppRouter({String initialLocation = '/dashboard'}) => GoRouter(
       builder: (context, state) => const SettingsScreen(),
       routes: [
         GoRoute(
+          path: 'recently-deleted',
+          name: 'recentlyDeleted',
+          parentNavigatorKey: _rootNavigatorKey,
+          builder: (context, state) => const RecentlyDeletedScreen(),
+        ),
+        GoRoute(
           path: 'tags',
           name: 'tagManagement',
           parentNavigatorKey: _rootNavigatorKey,
@@ -361,17 +366,6 @@ GoRouter buildAppRouter({String initialLocation = '/dashboard'}) => GoRouter(
       name: 'videoReview',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const ReviewScreen(),
-    ),
-    GoRoute(
-      path: '/photo/view',
-      name: 'photoViewer',
-      parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) {
-        final extra = state.extra as Map<String, dynamic>?;
-        final photos = (extra?['photos'] as List?)?.cast<Photo>() ?? [];
-        final initialIndex = extra?['initialIndex'] as int? ?? 0;
-        return PhotoViewerScreen(photos: photos, initialIndex: initialIndex);
-      },
     ),
     GoRoute(
       path: '/maintenance',

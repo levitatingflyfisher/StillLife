@@ -14,6 +14,8 @@ import 'package:still_life/features/profiles/domain/entities/profile.dart'
 import 'package:still_life/services/database/database.dart';
 
 import '../../../../test_setup.dart';
+import 'package:still_life/core/providers/sync_providers.dart';
+import 'package:still_life/core/sync/sync_stamp.dart';
 
 /// End-to-end save-path tests: a real in-memory database behind the real
 /// repositories, so what the form claims to save is what lands in columns.
@@ -71,6 +73,8 @@ void main() {
       ProviderScope(
         overrides: [
           databaseProvider.overrideWithValue(db),
+          // No keystore in widget tests: writes go unstamped.
+          syncStampProvider.overrideWithValue(SyncStamp.none),
           activeProfileProvider.overrideWith(_FakeActiveProfileNotifier.new),
         ],
         child: MaterialApp.router(routerConfig: router),

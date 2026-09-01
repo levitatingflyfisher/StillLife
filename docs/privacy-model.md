@@ -40,7 +40,7 @@ deliberate in-app choice) to activate.
 |---|---|---|---|
 | **Barcode product lookup** | Only the **barcode number** | Open Food Facts, then UPCitemdb (fallback) | Cache-first: a barcode is fetched at most once, then stored locally. `allowNetwork` is `false` until you opt in. No item data, no photos — just the UPC. |
 | **WebDAV backup** | The full **JSON export** (all your catalogue *metadata*; **no image files**) | **Your own** WebDAV server (Nextcloud, ownCloud, …) | You supply the URL + credentials. **HTTPS is enforced** — a non-`https://` URL is refused before any request, so Basic-Auth credentials can't leak. |
-| **LAN sync** | The full database **state** (metadata; **no image files**) | **Another of your devices on the same Wi-Fi** | mDNS discovery + HTTP on port 8420. Authenticated by a shared secret Bearer token (≥ 16 chars) you copy between devices. **Never the internet — no cloud relay.** Plaintext on the LAN (not TLS). |
+| **LAN sync** | The full database **state** (metadata; **no image files**) | **Another of your devices on the same Wi-Fi** | mDNS discovery + HTTP on port 8420. Bodies are encrypted (ChaCha20-Poly1305) under a key derived from the sync code (≥ 16 chars) you copy between devices; a device that cannot encrypt is refused, with no plaintext fallback ([ADR-0007](adr/0007-sync-and-backup-encryption.md)). Only a small status probe (device id + clock) travels in the clear. **Never the internet — no cloud relay.** |
 | **AI — Tier 1, on-device (Android)** | **Nothing at analysis time.** The optional VLM model download (only after you tap Download and confirm) fetches the chosen SmolVLM2 files | huggingface.co — first-party ggml-org repos, commit-pinned URLs, download only | Photos analyzed on-device never leave the phone. Downloads are sha256-verified fail-closed; the bundled labeler needs no download at all. Gemini Nano provisioning goes through Google Play's AICore system service, and only after an explicit Set-up tap. |
 | **AI — Tier 2, local LLM** | The **images / text** each flow sends (exact map below) | **Your own machine** running Ollama on the LAN (host and port you set) | Stays on your network, as plaintext HTTP. **Explicit opt-in, off by default** — the app never probes an unconfigured localhost port with your photos. |
 | **AI — Tier 3, cloud API (your key)** | The same **images / text + prompts** | **Anthropic, or any OpenAI-compatible endpoint you configure** (a major provider, or your own llamafile / LM Studio / vLLM server), using **your own API key** | You bring the key and the relationship; Still Life is just the client. Keyless self-hosted endpoints work. |
@@ -90,7 +90,7 @@ paths are hardened:
   edit or resurrect a deleted item — last-writer-wins by HLC only ever accepts strictly
   newer rows. See the [yellow paper](spec/yellow-paper.md).
 - **The sync server never logs secrets.** Its request logger (debug builds only) records
-  method + path, never headers (which carry the Bearer secret) or bodies.
+  method + path, never headers (which carry the single-use replay challenge) or bodies.
 - **Exports are safe to open elsewhere.** CSV export neutralises spreadsheet formula
   injection (a leading `=`/`+`/`-`/`@` is escaped) so opening your inventory in Excel or
   Sheets can't execute a payload.
@@ -116,7 +116,10 @@ paths are hardened:
 
 ## What this model does *not* claim
 
-- It does **not** encrypt sync on the wire — LAN sync trusts your local network.
+- It does **not** give LAN sync forward secrecy. The wire is encrypted under a static key
+  derived from your sync code, so anyone who later learns the code can read sync traffic
+  they recorded earlier. Treat the sync code like a password. The cleartext status probe
+  also reveals a device id and clock to anyone on your Wi-Fi.
 - It does **not** hide metadata from a WebDAV server *you* configure — your server sees
   your backup (that's the point; you chose it).
 - Tiers 3 and 4 send data to third parties **you** enable; their handling is governed by

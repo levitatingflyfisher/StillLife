@@ -11,6 +11,7 @@ import '../../../../../services/network/lan_discovery.dart';
 import '../../../../../services/sync/lan_sync_server.dart';
 import '../controllers/sync_controller.dart';
 import '../../domain/entities/sync_peer.dart';
+import 'package:still_life/core/widgets/failure_feedback.dart';
 
 class SyncScreen extends ConsumerStatefulWidget {
   const SyncScreen({super.key});
@@ -56,7 +57,9 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
     if (kIsWeb) {
       return Scaffold(
         appBar: AppBar(title: const Text('Sync & Backup'), centerTitle: true),
-        body: const WebUnavailableState(
+        body: const OhPage(
+        padding: EdgeInsets.zero,
+        child: WebUnavailableState(
           icon: Icons.wifi_tethering_off_outlined,
           featureName: 'Wi-Fi sync',
           explanation:
@@ -64,6 +67,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
               'app. You can still back up from web: Settings > Export '
               'creates a JSON file this or any other device can import.',
         ),
+      ),
       );
     }
 
@@ -85,14 +89,21 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
             ),
         ],
       ),
-      body: Column(
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: Column(
         children: [
           // Sync code card — always visible at the top.
           _SyncCodeCard(secretAsync: secretAsync),
           Expanded(
             child: asyncState.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('Error: $e')),
+              error: (e, st) => loadFailure(
+                e,
+                st,
+                title: "Couldn’t start sync",
+                onRetry: () => ref.invalidate(syncControllerProvider),
+              ),
               data: (syncState) => RefreshIndicator(
                 onRefresh: () =>
                     ref.read(syncControllerProvider.notifier).startDiscovery(),
@@ -101,6 +112,7 @@ class _SyncScreenState extends ConsumerState<SyncScreen> {
             ),
           ),
         ],
+      ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showManualIpDialog(context),
@@ -250,7 +262,11 @@ class _SyncCodeCard extends ConsumerWidget {
             Text('Your Sync Code', style: theme.textTheme.titleSmall),
             const SizedBox(height: OhSpacing.xs),
             Text(
-              'All devices sharing inventory must use the same sync code.',
+              // ADR-0007: the code is the static key that seals every
+              // sync body. Say so before the code and its Copy button.
+              'This code is the key to your catalogue. Devices that share '
+              'it can read everything you sync; devices that don’t get '
+              'nothing. Treat it like a password.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -264,8 +280,13 @@ class _SyncCodeCard extends ConsumerWidget {
                   Expanded(
                     child: Text(
                       secret,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontFamily: 'monospace',
+                      // A fresh code style, not copyWith on a themed
+                      // one: that keeps the package prefix and asks for a
+                      // family that does not exist.
+                      style: OhTypography.code(
+                        color: theme.colorScheme.onSurface,
+                      ).copyWith(
+                        fontSize: theme.textTheme.bodyMedium?.fontSize,
                         letterSpacing: 0.5,
                       ),
                     ),

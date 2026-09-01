@@ -7,6 +7,8 @@ import 'package:share_plus/share_plus.dart';
 
 import '../controllers/quantity_controller.dart';
 import '../../../../core/providers/repository_providers.dart';
+import 'package:still_life/core/widgets/failure_feedback.dart';
+import 'package:openhearth_design/openhearth_design.dart';
 
 class LowStockScreen extends ConsumerWidget {
   const LowStockScreen({super.key});
@@ -44,60 +46,68 @@ class LowStockScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: itemsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
-        data: (items) {
-          if (items.isEmpty) {
-            return const Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.check_circle_outline, size: 48),
-                  SizedBox(height: 8),
-                  Text('No items are running low'),
-                ],
-              ),
-            );
-          }
-          return ListView.builder(
-            itemCount: items.length,
-            itemBuilder: (context, i) {
-              final item = items[i];
-              final qty = item.quantity!;
-              final qtyStr = qty % 1 == 0
-                  ? qty.toInt().toString()
-                  : qty.toStringAsFixed(1);
-              final unit = item.quantityUnit != null
-                  ? ' ${item.quantityUnit}'
-                  : '';
-              return ListTile(
-                title: Text(item.name),
-                subtitle: item.categoryName != null
-                    ? Text(item.categoryName!)
-                    : null,
-                trailing: Row(
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: itemsAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, st) => loadFailure(
+            e,
+            st,
+            title: "Couldn’t load low-stock items",
+            onRetry: () => ref.invalidate(lowStockItemsProvider),
+          ),
+          data: (items) {
+            if (items.isEmpty) {
+              return const Center(
+                child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      '$qtyStr$unit',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    IconButton(
-                      icon: const Icon(Icons.remove_circle_outline),
-                      onPressed: () => ctrl.decrement(item.id),
-                      tooltip: '−1',
-                    ),
+                    Icon(Icons.check_circle_outline, size: 48),
+                    SizedBox(height: 8),
+                    Text('No items are running low'),
                   ],
                 ),
               );
-            },
-          );
-        },
+            }
+            return ListView.builder(
+              itemCount: items.length,
+              itemBuilder: (context, i) {
+                final item = items[i];
+                final qty = item.quantity!;
+                final qtyStr = qty % 1 == 0
+                    ? qty.toInt().toString()
+                    : qty.toStringAsFixed(1);
+                final unit = item.quantityUnit != null
+                    ? ' ${item.quantityUnit}'
+                    : '';
+                return ListTile(
+                  title: Text(item.name),
+                  subtitle: item.categoryName != null
+                      ? Text(item.categoryName!)
+                      : null,
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '$qtyStr$unit',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      IconButton(
+                        icon: const Icon(Icons.remove_circle_outline),
+                        onPressed: () => ctrl.decrement(item.id),
+                        tooltip: '−1',
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }

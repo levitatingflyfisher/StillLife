@@ -50,7 +50,7 @@ Future<void> _enterNameAndSubmit(WidgetTester tester) async {
     ),
     'Dana',
   );
-  await tester.tap(find.text("That's me →"));
+  await tester.tap(find.text('That’s me →'));
   await tester.pump(); // resolve the createProfile future
   await tester.pumpAndSettle(); // surface the failure dialog
 }

@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 import '../../../../core/providers/database_provider.dart';
 import '../../../../services/insurance/insurance_gap_service.dart';
 import '../../../inventory/domain/entities/item.dart';
+import 'package:still_life/core/widgets/failure_feedback.dart';
+import 'package:openhearth_design/openhearth_design.dart';
 
 final _insuranceGapServiceProvider = Provider<InsuranceGapService>(
   (ref) => InsuranceGapService(ref.watch(databaseProvider)),
@@ -27,74 +29,82 @@ class WhatShouldIInsureScreen extends ConsumerWidget {
     final asyncItems = ref.watch(_uncoveredItemsProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('What should I insure?')),
-      body: asyncItems.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
-        data: (items) {
-          if (items.isEmpty) {
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(32),
-                child: Text(
-                  'All your high-value items are marked as insured. Nice.',
-                  textAlign: TextAlign.center,
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: asyncItems.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, st) => loadFailure(
+            e,
+            st,
+            title: "Couldn’t check your coverage",
+            onRetry: () => ref.invalidate(_uncoveredItemsProvider),
+          ),
+          data: (items) {
+            if (items.isEmpty) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32),
+                  child: Text(
+                    'All your high-value items are marked as insured. Nice.',
+                    textAlign: TextAlign.center,
+                  ),
                 ),
-              ),
+              );
+            }
+            final fmt = NumberFormat.simpleCurrency(name: 'USD');
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.surfaceContainerHighest.withAlpha(120),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        size: 18,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'This list reflects items flagged “Not insured”. '
+                          'Items covered by a blanket policy may need to be '
+                          'manually marked as insured.',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: items.length,
+                    separatorBuilder: (_, _) => const Divider(height: 1),
+                    itemBuilder: (_, i) {
+                      final item = items[i];
+                      return ListTile(
+                        title: Text(item.name),
+                        subtitle: Text(
+                          item.currentValueCents == null
+                              ? 'No value'
+                              : fmt.format(item.currentValueCents),
+                        ),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => context.pushNamed(
+                          'itemDetail',
+                          pathParameters: {'itemId': item.id},
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             );
-          }
-          final fmt = NumberFormat.simpleCurrency(name: 'USD');
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                color: Theme.of(
-                  context,
-                ).colorScheme.surfaceContainerHighest.withAlpha(120),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.info_outline,
-                      size: 18,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'This list reflects items flagged "Not insured". '
-                        'Items covered by a blanket policy may need to be '
-                        'manually marked as insured.',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: ListView.separated(
-                  itemCount: items.length,
-                  separatorBuilder: (_, _) => const Divider(height: 1),
-                  itemBuilder: (_, i) {
-                    final item = items[i];
-                    return ListTile(
-                      title: Text(item.name),
-                      subtitle: Text(
-                        item.currentValueCents == null
-                            ? 'No value'
-                            : fmt.format(item.currentValueCents),
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => context.pushNamed(
-                        'itemDetail',
-                        pathParameters: {'itemId': item.id},
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          );
-        },
+          },
+        ),
       ),
     );
   }

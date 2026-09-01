@@ -3,6 +3,7 @@ import 'package:still_life/services/database/database.dart' as db_pkg;
 import 'package:still_life/services/import/import_fallback_seeder.dart';
 
 import '../../../test_setup.dart';
+import 'package:still_life/core/sync/seed_rows.dart';
 
 void main() {
   ensureSqlite3();
@@ -27,7 +28,9 @@ void main() {
       expect(categories.any((c) => c.name == 'Imports'), isTrue);
 
       final properties = await database.select(database.properties).get();
-      expect(properties.any((p) => p.name == 'Home'), isTrue);
+      // The one default home the app seeds on launch (seed_rows.dart), so an
+      // import and a first launch never make two homes.
+      expect(properties.any((p) => p.name == defaultHomeName), isTrue);
 
       final rooms = await database.select(database.rooms).get();
       expect(rooms.any((r) => r.name == 'Home'), isTrue);
@@ -38,7 +41,7 @@ void main() {
     final (_, roomId) = await seeder.ensureDefaults();
     final properties = await database.select(database.properties).get();
     expect(properties.length, 1);
-    expect(properties.first.name, 'Home');
+    expect(properties.first.name, defaultHomeName);
     expect(roomId, isNotEmpty);
   });
 

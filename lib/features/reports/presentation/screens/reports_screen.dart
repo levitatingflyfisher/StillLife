@@ -7,6 +7,9 @@ import '../../../dashboard/presentation/controllers/dashboard_controller.dart';
 import '../../../../core/extensions/currency_extensions.dart';
 import '../controllers/export_controller.dart';
 import '../controllers/policy_controller.dart';
+import 'package:still_life/core/widgets/failure_feedback.dart';
+import 'package:still_life/core/widgets/old_file_import_warning.dart';
+import '../../../settings/presentation/widgets/theme_toggle_action.dart';
 
 class ReportsScreen extends ConsumerWidget {
   const ReportsScreen({super.key});
@@ -17,8 +20,13 @@ class ReportsScreen extends ConsumerWidget {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Reports')),
-      body: summaryAsync.when(
+      appBar: AppBar(
+        title: const Text('Reports'),
+        actions: const [OhBarActions(children: [ThemeToggleAction()])],
+      ),
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: summaryAsync.when(
         data: (summary) {
           final policiesAsync = ref.watch(policiesProvider);
           return ListView(
@@ -68,8 +76,9 @@ class ReportsScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           Text(
                             'Insurance Policies',
@@ -94,7 +103,7 @@ class ReportsScreen extends ConsumerWidget {
                               ),
                             );
                           }
-                          final total = policies.fold<double>(
+                          final totalCents = policies.fold<int>(
                             0,
                             (s, p) => s + (p.coverageAmountCents ?? 0),
                           );
@@ -107,7 +116,7 @@ class ReportsScreen extends ConsumerWidget {
                               ),
                               _SummaryRow(
                                 label: 'Total coverage',
-                                value: total.toCurrency(),
+                                value: totalCents.centsToCurrency(),
                                 isHighlighted: true,
                               ),
                               if (policies.any((p) => p.isExpired))
@@ -210,7 +219,13 @@ class ReportsScreen extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, st) => loadFailure(
+          e,
+          st,
+          title: "Couldn’t load your reports",
+          onRetry: () => ref.invalidate(dashboardSummaryProvider),
+        ),
+      ),
       ),
     );
   }
@@ -269,7 +284,10 @@ class ReportsScreen extends ConsumerWidget {
   Future<void> _importJson(BuildContext context, WidgetRef ref) async {
     final result = await ref
         .read(exportControllerProvider.notifier)
-        .importJson();
+        .importJson(
+          confirm: (json) async =>
+              context.mounted && await confirmOldFileImport(context, json),
+        );
     if (result == null || !context.mounted) return;
 
     result.when(
@@ -289,7 +307,7 @@ class ReportsScreen extends ConsumerWidget {
       failure: (f) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Import failed: ${f.message}')));
+        ).showSnackBar(SnackBar(content: Text(failureSentence("Couldn’t import", f.message))));
       },
     );
   }
@@ -312,8 +330,11 @@ class _SummaryRow extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      // Wrap, not Row: at large text a label and its figure do not fit side
+      // by side; the figure drops under the label instead of overflowing.
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        spacing: 16,
         children: [
           Text(
             label,

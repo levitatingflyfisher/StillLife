@@ -63,57 +63,67 @@ class ItemListTile extends StatelessWidget {
     final double? effectiveQuantity = quantity ?? item.quantity;
     if (!hasValue && !isOnLoan && effectiveQuantity == null) return null;
 
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        if (hasValue)
-          Text(
-            item.currentValueCents!.centsToCurrency(),
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w600,
+    // ListTile caps trailing at the row's height; at large text sizes the
+    // value (plus loan chip or quantity) is taller than that and overflowed.
+    // Scale the block down whole instead of clipping the figure.
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerRight,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (hasValue)
+            Text(
+              item.currentValueCents!.centsToCurrency(),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
-        if (isOnLoan)
-          Chip(
-            label: const Text('On Loan'),
-            labelStyle: theme.textTheme.labelSmall,
-            padding: EdgeInsets.zero,
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            backgroundColor: theme.colorScheme.secondaryContainer,
-          ),
-        if (effectiveQuantity != null)
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: isLowStock
-                      ? theme.colorScheme.errorContainer
-                      : theme.colorScheme.surfaceContainerHighest,
-                  borderRadius: OhRadii.lg,
-                ),
-                child: Text(
-                  effectiveQuantity % 1 == 0
-                      ? effectiveQuantity.toInt().toString()
-                      : effectiveQuantity.toStringAsFixed(1),
-                  style: theme.textTheme.labelSmall?.copyWith(
+          if (isOnLoan)
+            Chip(
+              label: const Text('On Loan'),
+              labelStyle: theme.textTheme.labelSmall,
+              padding: EdgeInsets.zero,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              backgroundColor: theme.colorScheme.secondaryContainer,
+            ),
+          if (effectiveQuantity != null)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
                     color: isLowStock
-                        ? theme.colorScheme.onErrorContainer
-                        : theme.colorScheme.onSurfaceVariant,
+                        ? theme.colorScheme.errorContainer
+                        : theme.colorScheme.surfaceContainerHighest,
+                    borderRadius: OhRadii.lg,
+                  ),
+                  child: Text(
+                    effectiveQuantity % 1 == 0
+                        ? effectiveQuantity.toInt().toString()
+                        : effectiveQuantity.toStringAsFixed(1),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: isLowStock
+                          ? theme.colorScheme.onErrorContainer
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.remove_circle_outline, size: 20),
-                onPressed: onDecrement,
-                tooltip: '−1',
-              ),
-            ],
-          ),
-      ],
+                IconButton(
+                  icon: const Icon(Icons.remove_circle_outline, size: 20),
+                  onPressed: onDecrement,
+                  tooltip: '−1',
+                ),
+              ],
+            ),
+        ],
+      ),
     );
   }
 

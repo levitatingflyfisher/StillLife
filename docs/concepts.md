@@ -66,7 +66,9 @@ Every table that participates in sync carries three extra columns:
   lexicographically, which is what makes last-writer-wins deterministic.
 - **`isDeleted`** — a soft-delete tombstone. Deleting an item flips this flag rather
   than removing the row, so the *deletion* can propagate across devices and win like any
-  other edit. All read queries filter tombstones out.
+  other edit. All read queries filter tombstones out. Because the row stays, a delete
+  can be undone: Undo and Settings → Recently deleted flip the flag back and stamp a
+  fresh HLC, so the restore wins over the tombstone on the next sync.
 
 Together these turn an ordinary row into a syncable one: two devices can reconcile by
 keeping, per row, the version with the greater HLC. See

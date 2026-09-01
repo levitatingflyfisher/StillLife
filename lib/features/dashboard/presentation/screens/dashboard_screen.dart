@@ -3,20 +3,22 @@ import 'package:openhearth_design/openhearth_design.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/extensions/currency_extensions.dart';
 import '../../../inventory/presentation/controllers/quantity_controller.dart';
 import '../../../loans/presentation/controllers/loan_controller.dart';
 import '../controllers/dashboard_controller.dart';
 import '../widgets/coverage_gap_widget.dart';
 import '../widgets/depreciation_summary_card.dart';
 import '../widgets/room_value_chart.dart';
-import '../widgets/stat_card.dart';
+import '../widgets/stat_grid.dart';
 import '../widgets/top_items_list.dart';
 import '../widgets/value_breakdown_chart.dart';
 import '../widgets/warranty_expiry_widget.dart';
 import '../widgets/upcoming_maintenance_widget.dart';
 import '../widgets/recent_activity_widget.dart';
 import '../widgets/items_by_month_chart.dart';
+import 'package:still_life/core/widgets/failure_feedback.dart';
+import '../../../settings/presentation/widgets/theme_toggle_action.dart';
+import 'package:sanctuary_backup_ui/sanctuary_backup_ui.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -29,19 +31,23 @@ class DashboardScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Still Life'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            tooltip: 'Search items',
+        actions: [OhBarActions(children: [
+          const ThemeToggleAction(),
+          OhBarAction(
+            icon: Icons.search,
+            label: 'Search',
             onPressed: () => context.pushNamed('search'),
           ),
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
+          OhBarAction(
+            icon: Icons.settings_outlined,
+            label: 'Settings',
             onPressed: () => context.pushNamed('settings'),
           ),
-        ],
+        ])],
       ),
-      body: RefreshIndicator(
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(dashboardSummaryProvider);
         },
@@ -49,50 +55,12 @@ class DashboardScreen extends ConsumerWidget {
           data: (summary) => ListView(
             padding: OhSpacing.insetMd,
             children: [
+              // Unfinished backup setup (recovery words not saved or not
+              // checked) gets a persistent, dismissable line: a catalogue
+              // on one phone is the step most dangerous to skip.
+              const BackupSetupReminder(),
               // Quick stats
-              Row(
-                children: [
-                  Expanded(
-                    child: StatCard(
-                      title: 'Total Items',
-                      value: summary.totalItems.toString(),
-                      icon: Icons.inventory_2_outlined,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: StatCard(
-                      title: 'Total Value',
-                      value: summary.totalCurrentValueCents.centsToCurrency(),
-                      icon: Icons.account_balance_wallet_outlined,
-                      color: theme.colorScheme.tertiary,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: StatCard(
-                      title: 'Replacement Cost',
-                      value: summary.totalReplacementCostCents.centsToCurrency(),
-                      icon: Icons.price_change_outlined,
-                      color: theme.colorScheme.secondary,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: StatCard(
-                      title: 'Acquisition Cost',
-                      value: summary.totalAcquisitionCostCents.centsToCurrency(),
-                      icon: Icons.shopping_cart_outlined,
-                      color: theme.colorScheme.error,
-                    ),
-                  ),
-                ],
-              ),
+              StatGrid(summary: summary),
               const SizedBox(height: OhSpacing.lg),
 
               // Items on Loan
@@ -249,7 +217,7 @@ class DashboardScreen extends ConsumerWidget {
                       Icon(
                         Icons.inventory_2_outlined,
                         size: 64,
-                        color: theme.colorScheme.onSurface.withAlpha(80),
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                       const SizedBox(height: OhSpacing.md),
                       Text(
@@ -263,7 +231,7 @@ class DashboardScreen extends ConsumerWidget {
                         'Add items manually or record a video\nwalkthrough to get started.',
                         textAlign: TextAlign.center,
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurface.withAlpha(120),
+                          color: theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
                       const SizedBox(height: OhSpacing.lg),
@@ -279,8 +247,14 @@ class DashboardScreen extends ConsumerWidget {
             ],
           ),
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('Error: $e')),
+          error: (e, st) => loadFailure(
+            e,
+            st,
+            title: "Couldn’t load your dashboard",
+            onRetry: () => ref.invalidate(dashboardSummaryProvider),
+          ),
         ),
+      ),
       ),
     );
   }

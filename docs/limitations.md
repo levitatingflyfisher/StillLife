@@ -46,6 +46,27 @@ current implementation, which you should verify against the tests before relying
   default to empty, the hosted toggle is pinned off, and the code refuses without
   attempting a request. This is a future paid tier, not a shipped product.
 
+## Deleting
+
+- **Deletes are soft, and there is no "delete forever".** Deleting an item, room,
+  policy, maintenance entry, category or tag marks the row deleted (the sync
+  tombstone) and nothing else. Photos live in the database (schema v12+), so a
+  deleted item's photos stay with it and come back on restore; only photo files
+  from installs older than v12 are on disk, and those are no longer erased on
+  delete either. Hard-deleting a tombstone would let a device you sync with send
+  the row back, so the app does not offer it: a deleted item and its photos stay
+  in the database until you restore it or remove the app's data. Backups
+  (`.ohbk`/`.ohbkz`) leave deleted photos out.
+- **How long Undo lasts.** A deliberate delete (a menu choice or a Delete button)
+  does not ask; it offers Undo with no timer. For an item, a bulk delete or a room,
+  the Undo sits above the tab bar until you tap it, dismiss it, or delete something
+  else. For policies, maintenance entries, categories and tags it lasts until you
+  leave that screen. A swipe that deletes a maintenance entry asks first.
+- **Recently deleted covers items only.** Settings → Recently deleted lists every
+  deleted item with Restore. A restored item gets its photos back, but not its tags:
+  the delete removes tag links, and only the Undo right after the delete puts them
+  back. Rooms, policies, entries, categories and tags have no lasting list yet.
+
 ## Sync
 
 - **Sync moves rows, not media.** LAN sync transfers database records; the actual photo
@@ -66,6 +87,11 @@ current implementation, which you should verify against the tests before relying
   fields of the same item while apart, the row with the newer HLC wins *wholesale* — the
   older device's field edit is lost, not merged. Last-writer-wins is deterministic and
   safe against clobbering newer data, but it is not a three-way field merge.
+
+- **Default categories and rooms from older installs can appear twice after a
+  sync.** Since this release, seeded defaults use the same id on every device and
+  merge into one. Defaults created by an earlier version have random ids, so two
+  devices that both started before this change keep both sets; delete the extras.
 
 ## Backup
 

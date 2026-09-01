@@ -15,6 +15,8 @@ import 'package:still_life/features/video_analysis/presentation/screens/review_s
 import 'package:still_life/services/database/database.dart';
 
 import '../../../test_setup.dart';
+import 'package:still_life/core/providers/sync_providers.dart';
+import 'package:still_life/core/sync/sync_stamp.dart';
 
 /// Review-save tests: a real in-memory database behind the real
 /// repositories, so what the review screen claims to save is what lands in
@@ -116,6 +118,8 @@ void main() {
       ProviderScope(
         overrides: [
           databaseProvider.overrideWithValue(db),
+          // No keystore in widget tests: writes go unstamped.
+          syncStampProvider.overrideWithValue(SyncStamp.none),
           activeProfileProvider.overrideWith(_FakeActiveProfileNotifier.new),
           videoAnalysisControllerProvider.overrideWith(
             (ref) => _StubVideoController(ref, session),

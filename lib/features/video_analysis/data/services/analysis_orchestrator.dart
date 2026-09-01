@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'dart:typed_data';
 
 import 'package:still_life/features/video_analysis/domain/entities/analysis_session.dart';
@@ -9,6 +10,7 @@ import 'package:still_life/services/ml/provider_manager.dart';
 import 'frame_quality_gate.dart';
 import 'suggestion_merger.dart';
 import 'video_session_log.dart';
+import 'package:openhearth_design/openhearth_design.dart';
 
 /// The extraction seam: native builds plug in the ffmpeg extractor, tests
 /// plug in a canned stream, web gets the honest unsupported error.
@@ -165,7 +167,8 @@ class AnalysisOrchestrator {
         frameCount: frames.length,
         itemsDetected: 0,
       );
-      yield VideoAnalysisFailed('$e');
+      debugPrint('Still Life: walkthrough analysis failed: $e');
+      yield VideoAnalysisFailed(ohFriendlyErrorMessage(e));
       return;
     }
 

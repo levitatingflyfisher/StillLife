@@ -54,6 +54,7 @@ insurance PDF in 10 minutes" tutorial. If you write one, put it in `docs/tutoria
 - **[Vision](../VISION.md)** — the one idea, the invariants, the honest scorecard.
 - **[Architecture overview](architecture/OVERVIEW.md)** — the layers + data-flow diagrams.
 - **[Architecture Decision Records](adr/)** — why each load-bearing choice was made.
+- **[Personas](explanation/personas.md)**: who agents play when they test the UI, with scenarios.
 - **[Concepts](concepts.md)** — the domain model, the CRDT stamp, value & depreciation,
   QR labels, the AI tiers.
 - **[Privacy model](privacy-model.md)** — exactly what can leave the device, and how to

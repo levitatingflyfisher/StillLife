@@ -1,11 +1,10 @@
 import 'package:drift/drift.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:uuid/uuid.dart';
 
 import '../database/database.dart';
+import '../../core/sync/seed_rows.dart';
 
 const _kSeededKey = 'consumables_seeded_v1';
-const _uuid = Uuid();
 
 /// Seeds a "Consumables" category and five starter items exactly once.
 ///
@@ -26,7 +25,8 @@ class ConsumableSeeder {
     if (alreadySeeded != null) return;
 
     final now = DateTime.now();
-    final categoryId = _uuid.v4();
+    // Seeded rows sync as the same row everywhere (core/sync/seed_rows.dart).
+    final categoryId = seedId('category', 'Consumables');
 
     // Create the "Consumables" category (ignore if name already exists).
     await _database
@@ -37,6 +37,8 @@ class ConsumableSeeder {
             name: 'Consumables',
             createdAt: now,
             modifiedAt: now,
+            nodeId: const Value(seedNodeId),
+            hlc: Value(seedHlc),
           ),
           mode: InsertMode.insertOrIgnore,
         );
@@ -46,19 +48,24 @@ class ConsumableSeeder {
     if (rooms.isNotEmpty) {
       final roomId = rooms.first.id;
       for (final t in _kTemplates) {
-        await _database.itemDao.insertItem(
-          ItemsCompanion.insert(
-            id: _uuid.v4(),
-            name: t.name,
-            categoryId: categoryId,
-            roomId: roomId,
-            quantity: Value(t.quantity),
-            quantityUnit: Value(t.unit),
-            lowStockThreshold: Value(t.threshold),
-            createdAt: now,
-            modifiedAt: now,
-          ),
-        );
+        await _database
+            .into(_database.items)
+            .insert(
+              ItemsCompanion.insert(
+                id: seedId('consumable', t.name),
+                name: t.name,
+                categoryId: categoryId,
+                roomId: roomId,
+                quantity: Value(t.quantity),
+                quantityUnit: Value(t.unit),
+                lowStockThreshold: Value(t.threshold),
+                createdAt: now,
+                modifiedAt: now,
+                nodeId: const Value(seedNodeId),
+                hlc: Value(seedHlc),
+              ),
+              mode: InsertMode.insertOrIgnore,
+            );
       }
     }
 

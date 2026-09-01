@@ -18,6 +18,20 @@ void main() {
 
   setUp(() async {
     database = db_pkg.AppDatabase(NativeDatabase.memory());
+
+    // Foreign keys are enforced: the logs' items (and their parents) exist.
+    final t0 = DateTime(2025);
+    await database.into(database.properties).insert(db_pkg.PropertiesCompanion.insert(
+        id: 'p', name: 'Home', createdAt: t0, modifiedAt: t0));
+    await database.into(database.rooms).insert(db_pkg.RoomsCompanion.insert(
+        id: 'r', propertyId: 'p', name: 'Den', createdAt: t0, modifiedAt: t0));
+    await database.into(database.categories).insert(db_pkg.CategoriesCompanion.insert(
+        id: 'c', name: 'Things', createdAt: t0, modifiedAt: t0));
+    for (final id in ['item1', 'item2']) {
+      await database.into(database.items).insert(db_pkg.ItemsCompanion.insert(
+          id: id, name: id, categoryId: 'c', roomId: 'r',
+          createdAt: t0, modifiedAt: t0));
+    }
     repo = MaintenanceRepositoryImpl(database);
   });
 

@@ -120,7 +120,9 @@ class _PolicyAddEditScreenState extends ConsumerState<PolicyAddEditScreen> {
 
     return Scaffold(
       appBar: AppBar(title: Text(_isEdit ? 'Edit Policy' : 'Add Policy')),
-      body: Form(
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: Form(
         key: _formKey,
         child: ListView(
           padding: OhSpacing.insetMd,
@@ -248,6 +250,7 @@ class _PolicyAddEditScreenState extends ConsumerState<PolicyAddEditScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

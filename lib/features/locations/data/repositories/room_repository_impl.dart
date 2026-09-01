@@ -7,13 +7,19 @@ import '../../../../core/errors/result.dart';
 import '../../../../services/database/database.dart' as db;
 import '../../domain/entities/room.dart';
 import '../../domain/repositories/room_repository.dart';
+import '../../../../core/sync/sync_stamp.dart';
+import '../../../../core/sync/seed_rows.dart';
 
 const _uuid = Uuid();
 
 class RoomRepositoryImpl implements RoomRepository {
   final db.AppDatabase _db;
 
-  RoomRepositoryImpl(this._db);
+  RoomRepositoryImpl(this._db, {SyncStamp stamp = SyncStamp.none})
+    : _stamp = stamp;
+
+  /// Gives every write its sync stamp (see [SyncStamp]).
+  final SyncStamp _stamp;
 
   @override
   Stream<List<Room>> watchRooms({String? propertyId}) {
@@ -69,7 +75,7 @@ class RoomRepositoryImpl implements RoomRepository {
         createdAt: now,
         modifiedAt: now,
       );
-      await _db.locationDao.insertRoom(companion);
+      await _stamp.write((c) => _db.locationDao.insertRoom(companion, crdt: c));
       return getRoom(id);
     } catch (e) {
       return Err(DatabaseFailure('Failed to create room: $e'));
@@ -89,7 +95,7 @@ class RoomRepositoryImpl implements RoomRepository {
         photoPath: Value(room.photoPath),
         modifiedAt: Value(DateTime.now()),
       );
-      await _db.locationDao.updateRoom(companion);
+      await _stamp.write((c) => _db.locationDao.updateRoom(companion, crdt: c));
       return getRoom(room.id);
     } catch (e) {
       return Err(DatabaseFailure('Failed to update room: $e'));
@@ -99,7 +105,7 @@ class RoomRepositoryImpl implements RoomRepository {
   @override
   Future<Result<void>> deleteRoom(String id) async {
     try {
-      await _db.locationDao.deleteRoom(id);
+      await _stamp.write((c) => _db.locationDao.deleteRoom(id, crdt: c));
       return const Success(null);
     } catch (e) {
       return Err(DatabaseFailure('Failed to delete room: $e'));
@@ -109,7 +115,9 @@ class RoomRepositoryImpl implements RoomRepository {
   @override
   Future<Result<void>> reorderRooms(List<String> roomIdsInOrder) async {
     try {
-      await _db.locationDao.reorderRooms(roomIdsInOrder);
+      await _stamp.write(
+        (c) => _db.locationDao.reorderRooms(roomIdsInOrder, crdt: c),
+      );
       return const Success(null);
     } catch (e) {
       return Err(DatabaseFailure('Failed to reorder rooms: $e'));
@@ -127,13 +135,16 @@ class RoomRepositoryImpl implements RoomRepository {
         AppConstants.storageUnit,
       ];
       final companions = defaultRooms.asMap().entries.map((entry) {
+        // Seeded rows sync as the same row everywhere (see seed_rows.dart).
         return db.RoomsCompanion.insert(
-          id: _uuid.v4(),
+          id: seedId('room', '$propertyId/${entry.value}'),
           propertyId: propertyId,
           name: entry.value,
           sortOrder: Value(entry.key),
           createdAt: now,
           modifiedAt: now,
+          nodeId: const Value(seedNodeId),
+          hlc: Value(seedHlc),
         );
       }).toList();
       await _db.locationDao.seedDefaultRooms(propertyId, companions);

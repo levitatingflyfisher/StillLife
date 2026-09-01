@@ -17,6 +17,8 @@ import '../../../../features/locations/presentation/controllers/location_control
 import '../../domain/import_review_args.dart';
 import '../../domain/import_review_item.dart';
 import '../../../../core/utils/money.dart';
+import 'package:still_life/core/widgets/failure_feedback.dart';
+import '../../../../core/providers/sync_providers.dart';
 
 const _uuid = Uuid();
 
@@ -90,7 +92,7 @@ class _ImportReviewScreenState extends ConsumerState<ImportReviewScreen> {
 
       if (mounted) {
         final message = failed > 0
-            ? 'Imported $imported of ${imported + failed} items — '
+            ? 'Imported $imported of ${imported + failed} items—'
                   '$failed failed'
             : 'Imported $imported item${imported == 1 ? '' : 's'}';
         ScaffoldMessenger.of(
@@ -104,7 +106,7 @@ class _ImportReviewScreenState extends ConsumerState<ImportReviewScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Import failed: $e')));
+        ).showSnackBar(SnackBar(content: Text(failureSentence("Couldn’t import these items", e))));
       }
     } finally {
       if (mounted) setState(() => _isImporting = false);
@@ -122,7 +124,10 @@ class _ImportReviewScreenState extends ConsumerState<ImportReviewScreen> {
     if (!_items.any((i) => i.accepted)) return null;
 
     final receiptId = _uuid.v4();
-    await ref.read(databaseProvider).receiptDao.insertReceipt(
+    // Stamped like every local write, so the receipt syncs under LWW.
+    final db = ref.read(databaseProvider);
+    await ref.read(syncStampProvider).write(
+      (crdt) => db.receiptDao.insertReceipt(
           ReceiptsCompanion.insert(
             id: receiptId,
             photoPath: '',
@@ -133,7 +138,9 @@ class _ImportReviewScreenState extends ConsumerState<ImportReviewScreen> {
             ocrText: Value(receipt.ocrText),
             createdAt: DateTime.now(),
           ),
-        );
+          crdt: crdt,
+        ),
+    );
     return receiptId;
   }
 
@@ -188,7 +195,9 @@ class _ImportReviewScreenState extends ConsumerState<ImportReviewScreen> {
           ),
         ],
       ),
-      body: Column(
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: Column(
         children: [
           if (widget.receipt != null)
             Padding(
@@ -231,6 +240,7 @@ class _ImportReviewScreenState extends ConsumerState<ImportReviewScreen> {
             ),
           ),
         ],
+      ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _isImporting ? null : _importAll,

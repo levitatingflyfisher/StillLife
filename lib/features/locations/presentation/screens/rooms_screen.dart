@@ -5,6 +5,9 @@ import 'package:go_router/go_router.dart';
 import '../../domain/entities/property.dart';
 import '../../domain/entities/room.dart';
 import '../controllers/location_controller.dart';
+import 'package:still_life/core/widgets/failure_feedback.dart';
+import 'package:openhearth_design/openhearth_design.dart';
+import '../../../settings/presentation/widgets/theme_toggle_action.dart';
 
 class RoomsScreen extends ConsumerWidget {
   const RoomsScreen({super.key});
@@ -18,80 +21,98 @@ class RoomsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Rooms'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
+        actions: [OhBarActions(children: [
+          const ThemeToggleAction(),
+          OhBarAction(
+            icon: Icons.settings_outlined,
+            label: 'Settings',
             onPressed: () => context.pushNamed('settings'),
           ),
-        ],
+        ])],
       ),
-      body: roomsAsync.when(
-        data: (rooms) {
-          if (rooms.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.room_preferences_outlined,
-                    size: 64,
-                    color: theme.colorScheme.onSurface.withAlpha(80),
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: roomsAsync.when(
+          data: (rooms) {
+            if (rooms.isEmpty) {
+              // Scrolls, so the empty state survives large text.
+              return Center(
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.room_preferences_outlined,
+                        size: 64,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No rooms yet',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          color: theme.colorScheme.onSurface.withAlpha(150),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Add a property first, then create rooms.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      propertiesAsync.when(
+                        data: (properties) {
+                          if (properties.isEmpty) {
+                            return FilledButton.icon(
+                              onPressed: () =>
+                                  _showAddPropertyDialog(context, ref),
+                              icon: const Icon(Icons.add),
+                              label: const Text('Add Property'),
+                            );
+                          }
+                          return FilledButton.icon(
+                            onPressed: () => _showAddRoomDialog(context, ref),
+                            icon: const Icon(Icons.add),
+                            label: const Text('Add Room'),
+                          );
+                        },
+                        loading: () => const CircularProgressIndicator(),
+                        error: (e, _) => inlineLoadFailure(
+                          e,
+                          what: "Couldn’t load your home.",
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No rooms yet',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      color: theme.colorScheme.onSurface.withAlpha(150),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Add a property first, then create rooms.',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurface.withAlpha(120),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  propertiesAsync.when(
-                    data: (properties) {
-                      if (properties.isEmpty) {
-                        return FilledButton.icon(
-                          onPressed: () => _showAddPropertyDialog(context, ref),
-                          icon: const Icon(Icons.add),
-                          label: const Text('Add Property'),
-                        );
-                      }
-                      return FilledButton.icon(
-                        onPressed: () => _showAddRoomDialog(context, ref),
-                        icon: const Icon(Icons.add),
-                        label: const Text('Add Room'),
-                      );
-                    },
-                    loading: () => const CircularProgressIndicator(),
-                    error: (e, _) => Text('Error: $e'),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return ListView.builder(
-            padding: const EdgeInsets.only(top: 8),
-            itemCount: rooms.length,
-            itemBuilder: (context, index) {
-              final room = rooms[index];
-              return _RoomTile(
-                room: room,
-                onTap: () => context.pushNamed(
-                  'roomDetail',
-                  pathParameters: {'roomId': room.id},
                 ),
               );
-            },
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+            }
+
+            return ListView.builder(
+              padding: const EdgeInsets.only(top: 8),
+              itemCount: rooms.length,
+              itemBuilder: (context, index) {
+                final room = rooms[index];
+                return _RoomTile(
+                  room: room,
+                  onTap: () => context.pushNamed(
+                    'roomDetail',
+                    pathParameters: {'roomId': room.id},
+                  ),
+                );
+              },
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, st) => loadFailure(
+            e,
+            st,
+            title: "Couldn’t load rooms",
+            onRetry: () => ref.invalidate(roomsProvider),
+          ),
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {

@@ -18,7 +18,7 @@ void main() {
       ),
     );
 
-    expect(find.text("Wi-Fi sync isn't available on web"), findsOneWidget);
+    expect(find.text("Wi-Fi sync isn’t available on web"), findsOneWidget);
     expect(find.text('Use the Android app to pair devices.'), findsOneWidget);
     expect(find.byIcon(Icons.wifi_tethering_off_outlined), findsOneWidget);
   });

@@ -5,10 +5,15 @@ import '../../../../core/errors/result.dart';
 import '../../../../services/database/database.dart' as db_pkg;
 import '../../domain/entities/profile.dart';
 import '../../domain/repositories/profile_repository.dart';
+import '../../../../core/sync/sync_stamp.dart';
 
 class ProfileRepositoryImpl implements ProfileRepository {
   final db_pkg.AppDatabase _db;
-  ProfileRepositoryImpl(this._db);
+  ProfileRepositoryImpl(this._db, {SyncStamp stamp = SyncStamp.none})
+    : _stamp = stamp;
+
+  /// Gives every write its sync stamp (see [SyncStamp]).
+  final SyncStamp _stamp;
 
   @override
   Stream<List<Profile>> watchProfiles() => _db.profileDao.watchProfiles().map(
@@ -32,15 +37,18 @@ class ProfileRepositoryImpl implements ProfileRepository {
   Future<Result<Profile>> createProfile(Profile profile) async {
     try {
       final now = DateTime.now();
-      await _db.profileDao.insertProfile(
-        db_pkg.ProfilesCompanion.insert(
-          id: profile.id,
-          name: profile.name,
-          colorHex: Value(profile.colorHex),
-          avatarEmoji: Value(profile.avatarEmoji),
-          isDefault: Value(profile.isDefault),
-          createdAt: now,
-          modifiedAt: now,
+      await _stamp.write(
+        (c) => _db.profileDao.insertProfile(
+          db_pkg.ProfilesCompanion.insert(
+            id: profile.id,
+            name: profile.name,
+            colorHex: Value(profile.colorHex),
+            avatarEmoji: Value(profile.avatarEmoji),
+            isDefault: Value(profile.isDefault),
+            createdAt: now,
+            modifiedAt: now,
+          ),
+          crdt: c,
         ),
       );
       final row = await _db.profileDao.getProfile(profile.id);
@@ -56,13 +64,16 @@ class ProfileRepositoryImpl implements ProfileRepository {
   @override
   Future<Result<Profile>> updateProfile(Profile profile) async {
     try {
-      await _db.profileDao.updateProfile(
-        db_pkg.ProfilesCompanion(
-          id: Value(profile.id),
-          name: Value(profile.name),
-          colorHex: Value(profile.colorHex),
-          avatarEmoji: Value(profile.avatarEmoji),
-          isDefault: Value(profile.isDefault),
+      await _stamp.write(
+        (c) => _db.profileDao.updateProfile(
+          db_pkg.ProfilesCompanion(
+            id: Value(profile.id),
+            name: Value(profile.name),
+            colorHex: Value(profile.colorHex),
+            avatarEmoji: Value(profile.avatarEmoji),
+            isDefault: Value(profile.isDefault),
+          ),
+          crdt: c,
         ),
       );
       final row = await _db.profileDao.getProfile(profile.id);
@@ -85,7 +96,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
       if (row.isDefault) {
         return const Err(DatabaseFailure('Cannot delete the default profile'));
       }
-      await _db.profileDao.softDeleteProfile(id);
+      await _stamp.write((c) => _db.profileDao.softDeleteProfile(id, crdt: c));
       return const Success(null);
     } catch (e) {
       return Err(DatabaseFailure('Failed to delete profile: $e'));
@@ -99,7 +110,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
       if (row == null) {
         return const Err(DatabaseFailure('Profile not found'));
       }
-      await _db.profileDao.setDefault(id);
+      await _stamp.write((c) => _db.profileDao.setDefault(id, crdt: c));
       return const Success(null);
     } catch (e) {
       return Err(DatabaseFailure('Failed to set default profile: $e'));

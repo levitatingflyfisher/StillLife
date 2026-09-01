@@ -6,6 +6,7 @@ import '../../../../core/providers/billing_providers.dart';
 import '../../domain/account.dart';
 import '../widgets/upgrade_cta.dart';
 import '../widgets/usage_meter.dart';
+import 'package:still_life/core/widgets/failure_feedback.dart';
 
 /// Pro & Billing status screen.
 ///
@@ -22,107 +23,119 @@ class ProStatusScreen extends ConsumerWidget {
     final svc = ref.watch(billingServiceProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Pro & Billing')),
-      body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
-        data: (acc) {
-          if (acc == null) {
-            // No checkout URL compiled in → there is nothing safe to
-            // launch; say so instead of rendering a live Upgrade button
-            // pointed at an unowned placeholder domain.
-            final checkoutUrl = svc.buildCheckoutUrl();
-            if (checkoutUrl.toString().isEmpty) {
-              return const Padding(
-                padding: OhSpacing.insetMd,
-                child: ListTile(
-                  leading: Icon(Icons.cloud_off_outlined),
-                  title: Text('Pro is not available in this build'),
-                  subtitle: Text(
-                    'No checkout backend is configured. Operators can '
-                    'enable one with --dart-define=CHECKOUT_URL=https://...',
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: async.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, st) => loadFailure(
+            e,
+            st,
+            title: "Couldn’t load your plan",
+            onRetry: () => ref.invalidate(accountProvider),
+          ),
+          data: (acc) {
+            if (acc == null) {
+              // No checkout URL compiled in → there is nothing safe to
+              // launch; say so instead of rendering a live Upgrade button
+              // pointed at an unowned placeholder domain.
+              final checkoutUrl = svc.buildCheckoutUrl();
+              if (checkoutUrl.toString().isEmpty) {
+                return const Padding(
+                  padding: OhSpacing.insetMd,
+                  child: ListTile(
+                    leading: Icon(Icons.cloud_off_outlined),
+                    title: Text('Pro is not available in this build'),
+                    subtitle: Text(
+                      'No checkout backend is configured. Operators can '
+                      'enable one with --dart-define=CHECKOUT_URL=https://...',
+                    ),
                   ),
-                ),
+                );
+              }
+              return Padding(
+                padding: OhSpacing.insetMd,
+                child: UpgradeCta(checkoutUrl: checkoutUrl),
               );
             }
-            return Padding(
+            return ListView(
               padding: OhSpacing.insetMd,
-              child: UpgradeCta(checkoutUrl: checkoutUrl),
-            );
-          }
-          return ListView(
-            padding: OhSpacing.insetMd,
-            children: [
-              _StatusChip(status: acc.status),
-              const SizedBox(height: OhSpacing.lg),
-              UsageMeter(account: acc),
-              const SizedBox(height: OhSpacing.lg),
-              OutlinedButton(
-                onPressed: () async {
-                  final r = await svc.rotateBearer();
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        r.when(
-                          success: (_) => 'New bearer issued',
-                          failure: (f) => 'Failed: ${f.message}',
-                        ),
-                      ),
-                    ),
-                  );
-                  // ignore: unawaited_futures
-                  ref.read(accountProvider.notifier).refresh();
-                },
-                child: const Text('Rotate bearer'),
-              ),
-              TextButton(
-                onPressed: () async {
-                  final confirmed =
-                      await showDialog<bool>(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: const Text('Delete Pro account?'),
-                          content: const Text(
-                            'This cancels your subscription and erases our '
-                            'record of you.',
+              children: [
+                _StatusChip(status: acc.status),
+                const SizedBox(height: OhSpacing.lg),
+                UsageMeter(account: acc),
+                const SizedBox(height: OhSpacing.lg),
+                OutlinedButton(
+                  onPressed: () async {
+                    final r = await svc.rotateBearer();
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          r.when(
+                            success: (_) => 'New bearer issued',
+                            failure: (f) =>
+                                failureSentence("That didn’t work", f.message),
                           ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx, false),
-                              child: const Text('Cancel'),
-                            ),
-                            FilledButton(
-                              onPressed: () => Navigator.pop(ctx, true),
-                              child: const Text('Delete'),
-                            ),
-                          ],
-                        ),
-                      ) ??
-                      false;
-                  if (!confirmed) return;
-                  final r = await svc.deleteAccount();
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        r.when(
-                          success: (_) => 'Account deleted',
-                          failure: (f) => 'Failed: ${f.message}',
                         ),
                       ),
-                    ),
-                  );
-                  // ignore: unawaited_futures
-                  ref.read(accountProvider.notifier).refresh();
-                },
-                child: Text(
-                  'Delete Pro account',
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                    );
+                    // ignore: unawaited_futures
+                    ref.read(accountProvider.notifier).refresh();
+                  },
+                  child: const Text('Rotate bearer'),
                 ),
-              ),
-            ],
-          );
-        },
+                TextButton(
+                  onPressed: () async {
+                    final confirmed =
+                        await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Delete Pro account?'),
+                            content: const Text(
+                              'This cancels your subscription and erases our '
+                              'record of you.',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, false),
+                                child: const Text('Cancel'),
+                              ),
+                              FilledButton(
+                                onPressed: () => Navigator.pop(ctx, true),
+                                child: const Text('Delete'),
+                              ),
+                            ],
+                          ),
+                        ) ??
+                        false;
+                    if (!confirmed) return;
+                    final r = await svc.deleteAccount();
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          r.when(
+                            success: (_) => 'Account deleted',
+                            failure: (f) =>
+                                failureSentence("That didn’t work", f.message),
+                          ),
+                        ),
+                      ),
+                    );
+                    // ignore: unawaited_futures
+                    ref.read(accountProvider.notifier).refresh();
+                  },
+                  child: Text(
+                    'Delete Pro account',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -138,13 +151,13 @@ class _StatusChip extends StatelessWidget {
     final Color color;
     switch (status) {
       case SubscriptionStatus.active:
-        label = 'Pro — active';
+        label = 'Pro: active';
         color = OhColors.sage600;
       case SubscriptionStatus.pastDue:
-        label = 'Pro — past due';
+        label = 'Pro: past due';
         color = OhColors.amber400;
       case SubscriptionStatus.canceled:
-        label = 'Pro — canceled';
+        label = 'Pro: canceled';
         color = OhColors.slate500;
       case SubscriptionStatus.none:
         label = 'Free';

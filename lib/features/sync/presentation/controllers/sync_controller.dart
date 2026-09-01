@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/providers/sync_providers.dart';
 import '../../../../services/sync/lan_sync_client.dart';
 import '../../domain/entities/sync_peer.dart';
+import 'package:still_life/core/widgets/failure_feedback.dart';
 
 class SyncState {
   final List<SyncPeer> peers;
@@ -52,8 +53,12 @@ class SyncController extends AsyncNotifier<SyncState> {
       }
     } catch (e) {
       state = AsyncValue.data(
-        state.value?.copyWith(lastError: e.toString()) ??
-            SyncState(lastError: e.toString()),
+        state.value?.copyWith(
+              lastError: failureSentence("Couldn’t look for devices", e),
+            ) ??
+            SyncState(
+              lastError: failureSentence("Couldn’t look for devices", e),
+            ),
       );
     }
   }
@@ -81,7 +86,10 @@ class SyncController extends AsyncNotifier<SyncState> {
       );
     } catch (e) {
       state = AsyncValue.data(
-        current.copyWith(isSyncing: false, lastError: e.toString()),
+        current.copyWith(
+          isSyncing: false,
+          lastError: failureSentence("Couldn’t sync", e),
+        ),
       );
     }
   }
@@ -120,7 +128,9 @@ class SyncController extends AsyncNotifier<SyncState> {
     } catch (e) {
       final current = state.value ?? const SyncState();
       state = AsyncValue.data(
-        current.copyWith(lastError: 'Could not reach $host:$port — $e'),
+        current.copyWith(
+          lastError: failureSentence("Couldn’t reach $host:$port", e),
+        ),
       );
     }
   }

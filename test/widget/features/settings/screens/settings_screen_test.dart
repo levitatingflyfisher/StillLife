@@ -3,14 +3,32 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:still_life/features/settings/presentation/screens/settings_screen.dart';
 
+import '../../../../mocks/fake_secure_storage_channel.dart';
+
 void main() {
   group('SettingsScreen', () {
+    // sanctuary_backup_ui 0.3.0 draws its section in every state; with no
+    // keystore answering, it would sit on "Checking backup status…" and
+    // its spinner never lets pumpAndSettle settle.
+    final storage = FakeSecureStorageChannel();
+    setUp(storage.install);
+    tearDown(storage.uninstall);
+
     Widget buildSubject() {
       return const ProviderScope(child: MaterialApp(home: SettingsScreen()));
     }
 
-    testWidgets('displays top section headers', (tester) async {
+    // A tall phone, so the top sections are laid out without scrolling as
+    // the list grows (Recently deleted added a row under Inventory).
+    Future<void> pumpSubject(WidgetTester tester) async {
+      tester.view.physicalSize = const Size(412, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
       await tester.pumpWidget(buildSubject());
+    }
+
+    testWidgets('displays top section headers', (tester) async {
+      await pumpSubject(tester);
 
       expect(find.text('Appearance'), findsOneWidget);
       expect(find.text('Inventory'), findsOneWidget);
@@ -19,14 +37,14 @@ void main() {
     });
 
     testWidgets('displays theme setting', (tester) async {
-      await tester.pumpWidget(buildSubject());
+      await pumpSubject(tester);
 
       expect(find.text('Theme'), findsOneWidget);
-      expect(find.text('System'), findsOneWidget); // default theme mode
+      expect(find.text('Follow phone'), findsOneWidget); // default theme mode
     });
 
     testWidgets('displays about section after scrolling', (tester) async {
-      await tester.pumpWidget(buildSubject());
+      await pumpSubject(tester);
 
       await tester.scrollUntilVisible(
         find.text('MIT'),
@@ -42,7 +60,7 @@ void main() {
     });
 
     testWidgets('displays privacy statement after scrolling', (tester) async {
-      await tester.pumpWidget(buildSubject());
+      await pumpSubject(tester);
 
       await tester.scrollUntilVisible(
         find.text('No telemetry. No ads. Your data stays on your device.'),
@@ -59,7 +77,7 @@ void main() {
     testWidgets('import options offer receipt camera alongside gallery', (
       tester,
     ) async {
-      await tester.pumpWidget(buildSubject());
+      await pumpSubject(tester);
 
       await tester.scrollUntilVisible(
         find.text('Import items'),
@@ -78,7 +96,7 @@ void main() {
     testWidgets('Amazon import help explains the Privacy Central path', (
       tester,
     ) async {
-      await tester.pumpWidget(buildSubject());
+      await pumpSubject(tester);
 
       await tester.scrollUntilVisible(
         find.text('Import items'),
@@ -105,18 +123,18 @@ void main() {
     });
 
     testWidgets('opens theme dialog on tap', (tester) async {
-      await tester.pumpWidget(buildSubject());
+      await pumpSubject(tester);
 
       await tester.tap(find.text('Theme'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Choose Theme'), findsOneWidget);
+      expect(find.text('Follow phone'), findsNWidgets(2));
       expect(find.text('Light'), findsOneWidget);
       expect(find.text('Dark'), findsOneWidget);
     });
 
     testWidgets('selecting a theme mode updates the setting', (tester) async {
-      await tester.pumpWidget(buildSubject());
+      await pumpSubject(tester);
 
       // Open dialog
       await tester.tap(find.text('Theme'));

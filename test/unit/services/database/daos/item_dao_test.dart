@@ -208,7 +208,9 @@ void main() {
       expect(now.year, 2025);
     });
 
-    test('hard-deletes itemTag junction rows', () async {
+    // Tombstoned, not removed: a missing link would be refilled on the next
+    // sync by any peer that still holds it live.
+    test('tombstones itemTag junction rows', () async {
       final now = DateTime(2025, 1, 1);
       await db.into(db.items).insert(item('i1', 'TV'));
       await db
@@ -236,7 +238,9 @@ void main() {
       final tags = await (db.select(
         db.itemTags,
       )..where((t) => t.itemId.equals('i1'))).get();
-      expect(tags, isEmpty);
+      expect(tags, hasLength(1));
+      expect(tags.single.isDeleted, isTrue);
+      expect(await db.tagDao.getItemTagIds('i1'), isEmpty);
     });
   });
 

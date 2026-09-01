@@ -13,6 +13,7 @@ import '../../../../services/ml/analysis_provider.dart';
 import '../../../../services/ml/cloud_api_provider.dart' show CloudApiType;
 import '../../data/llm_connection_tester.dart';
 import '../widgets/on_device_section.dart';
+import 'package:openhearth_design/openhearth_design.dart';
 
 // FlutterSecureStorage keys for persisted LLM settings.
 const _kTierPriorityKey = 'llm_tier_priority_v1';
@@ -460,7 +461,9 @@ class _LlmSettingsScreenState extends ConsumerState<LlmSettingsScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('AI Analysis')),
-      body: ListView(
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: ListView(
         padding: const EdgeInsets.symmetric(vertical: 8),
         children: [
           // Tier Priority
@@ -545,7 +548,7 @@ class _LlmSettingsScreenState extends ConsumerState<LlmSettingsScreen> {
           const Divider(height: 32),
 
           // Tier 2: Ollama
-          _SectionHeader(title: 'Local LLM — Ollama (Tier 2)', theme: theme),
+          _SectionHeader(title: 'Local LLM: Ollama (Tier 2)', theme: theme),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
@@ -557,7 +560,7 @@ class _LlmSettingsScreenState extends ConsumerState<LlmSettingsScreen> {
                     decoration: const InputDecoration(
                       labelText: 'Host',
                       helperText:
-                          'Local network only (192.168.x, 10.x, name.local) — '
+                          'Local network only (192.168.x, 10.x, name.local)—'
                           'plain-HTTP Ollama never leaves your LAN',
                       helperMaxLines: 2,
                     ),
@@ -785,6 +788,7 @@ class _LlmSettingsScreenState extends ConsumerState<LlmSettingsScreen> {
           const SizedBox(height: 32),
         ],
       ),
+      ),
     );
   }
 
@@ -866,11 +870,11 @@ class _LlmSettingsScreenState extends ConsumerState<LlmSettingsScreen> {
           children: [
             Text('Photo analysis needs a vision-capable model:'),
             SizedBox(height: 12),
-            Text('llava — solid general-purpose vision'),
-            Text('llama3.2-vision — fast, good accuracy'),
-            Text('qwen2.5vl — strong at labels and text in photos'),
+            Text('llava: solid general-purpose vision'),
+            Text('llama3.2-vision: fast, good accuracy'),
+            Text('qwen2.5vl: strong at labels and text in photos'),
             SizedBox(height: 12),
-            Text('Voice add only needs text — llama3.1 works well.'),
+            Text('Voice add only needs text—llama3.1 works well.'),
             SizedBox(height: 12),
             Text('Install via: ollama pull <model-name>'),
           ],

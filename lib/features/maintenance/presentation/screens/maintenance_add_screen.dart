@@ -130,106 +130,113 @@ class _MaintenanceAddScreenState extends ConsumerState<MaintenanceAddScreen> {
 
     return Scaffold(
       appBar: AppBar(title: Text(_isEdit ? 'Edit Entry' : 'Log Maintenance')),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: OhSpacing.insetMd,
-          children: [
-            // Title
-            TextFormField(
-              controller: _titleCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Title',
-                hintText: 'e.g. AC filter replacement',
-                border: OutlineInputBorder(),
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            padding: OhSpacing.insetMd,
+            children: [
+              // Title
+              TextFormField(
+                controller: _titleCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Title',
+                  hintText: 'e.g. AC filter replacement',
+                  border: OutlineInputBorder(),
+                ),
+                textCapitalization: TextCapitalization.sentences,
+                validator: (v) =>
+                    v == null || v.trim().isEmpty ? 'Title is required' : null,
               ),
-              textCapitalization: TextCapitalization.sentences,
-              validator: (v) =>
-                  v == null || v.trim().isEmpty ? 'Title is required' : null,
-            ),
-            const SizedBox(height: OhSpacing.md),
+              const SizedBox(height: OhSpacing.md),
 
-            // Description
-            TextFormField(
-              controller: _descriptionCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Description (optional)',
-                border: OutlineInputBorder(),
+              // Description
+              TextFormField(
+                controller: _descriptionCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Description (optional)',
+                  border: OutlineInputBorder(),
+                ),
+                textCapitalization: TextCapitalization.sentences,
+                maxLines: 3,
               ),
-              textCapitalization: TextCapitalization.sentences,
-              maxLines: 3,
-            ),
-            const SizedBox(height: OhSpacing.md),
+              const SizedBox(height: OhSpacing.md),
 
-            // Performed date
-            ListTile(
-              title: const Text('Performed date'),
-              subtitle: Text(fmt.format(_performedAt)),
-              trailing: const Icon(Icons.calendar_today),
-              shape: RoundedRectangleBorder(
-                borderRadius: OhRadii.lg,
-                side: BorderSide(color: Theme.of(context).colorScheme.outline),
+              // Performed date
+              ListTile(
+                title: const Text('Performed date'),
+                subtitle: Text(fmt.format(_performedAt)),
+                trailing: const Icon(Icons.calendar_today),
+                shape: RoundedRectangleBorder(
+                  borderRadius: OhRadii.lg,
+                  side: BorderSide(
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
+                ),
+                onTap: _pickPerformed,
               ),
-              onTap: _pickPerformed,
-            ),
-            const SizedBox(height: OhSpacing.md),
+              const SizedBox(height: OhSpacing.md),
 
-            // Next due date
-            ListTile(
-              title: const Text('Schedule next maintenance (optional)'),
-              subtitle: Text(
-                _nextDueAt != null ? fmt.format(_nextDueAt!) : 'Not set',
+              // Next due date
+              ListTile(
+                title: const Text('Schedule next maintenance (optional)'),
+                subtitle: Text(
+                  _nextDueAt != null ? fmt.format(_nextDueAt!) : 'Not set',
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_nextDueAt != null)
+                      IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () => setState(() => _nextDueAt = null),
+                      ),
+                    const Icon(Icons.calendar_today),
+                  ],
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: OhRadii.lg,
+                  side: BorderSide(
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
+                ),
+                onTap: _pickNextDue,
               ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (_nextDueAt != null)
-                    IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: () => setState(() => _nextDueAt = null),
-                    ),
-                  const Icon(Icons.calendar_today),
-                ],
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: OhRadii.lg,
-                side: BorderSide(color: Theme.of(context).colorScheme.outline),
-              ),
-              onTap: _pickNextDue,
-            ),
-            const SizedBox(height: OhSpacing.md),
+              const SizedBox(height: OhSpacing.md),
 
-            // Cost
-            TextFormField(
-              controller: _costCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Cost (optional)',
-                prefixText: '\$',
-                border: OutlineInputBorder(),
+              // Cost
+              TextFormField(
+                controller: _costCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Cost (optional)',
+                  prefixText: '\$',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
               ),
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-            ),
-            const SizedBox(height: OhSpacing.md),
+              const SizedBox(height: OhSpacing.md),
 
-            // Serviced by
-            TextFormField(
-              controller: _servicedByCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Serviced by (optional)',
-                hintText: 'e.g. ABC HVAC Services',
-                border: OutlineInputBorder(),
+              // Serviced by
+              TextFormField(
+                controller: _servicedByCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Serviced by (optional)',
+                  hintText: 'e.g. ABC HVAC Services',
+                  border: OutlineInputBorder(),
+                ),
+                textCapitalization: TextCapitalization.words,
               ),
-              textCapitalization: TextCapitalization.words,
-            ),
-            const SizedBox(height: OhSpacing.lg),
+              const SizedBox(height: OhSpacing.lg),
 
-            FilledButton(
-              onPressed: _save,
-              child: Text(_isEdit ? 'Save Changes' : 'Log Maintenance'),
-            ),
-          ],
+              FilledButton(
+                onPressed: _save,
+                child: Text(_isEdit ? 'Save Changes' : 'Log Maintenance'),
+              ),
+            ],
+          ),
         ),
       ),
     );

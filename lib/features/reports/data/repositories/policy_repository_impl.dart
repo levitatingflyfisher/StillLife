@@ -6,13 +6,18 @@ import '../../../../core/errors/result.dart';
 import '../../../../services/database/database.dart' as db;
 import '../../domain/entities/policy.dart';
 import '../../domain/repositories/policy_repository.dart';
+import '../../../../core/sync/sync_stamp.dart';
 
 const _uuid = Uuid();
 
 class PolicyRepositoryImpl implements PolicyRepository {
   final db.AppDatabase _db;
 
-  PolicyRepositoryImpl(this._db);
+  PolicyRepositoryImpl(this._db, {SyncStamp stamp = SyncStamp.none})
+    : _stamp = stamp;
+
+  /// Gives every write its sync stamp (see [SyncStamp]).
+  final SyncStamp _stamp;
 
   @override
   Stream<List<Policy>> watchAll() {
@@ -34,18 +39,21 @@ class PolicyRepositoryImpl implements PolicyRepository {
     try {
       final now = DateTime.now();
       final id = policy.id.isEmpty ? _uuid.v4() : policy.id;
-      await _db.policyDao.insertPolicy(
-        db.PoliciesCompanion.insert(
-          id: id,
-          propertyId: policy.propertyId,
-          provider: policy.provider,
-          policyNumber: Value(policy.policyNumber),
-          coverageAmountCents: Value(policy.coverageAmountCents),
-          deductibleCents: Value(policy.deductibleCents),
-          premiumCents: Value(policy.premiumCents),
-          expiryDate: Value(policy.expiryDate),
-          createdAt: now,
-          modifiedAt: now,
+      await _stamp.write(
+        (c) => _db.policyDao.insertPolicy(
+          db.PoliciesCompanion.insert(
+            id: id,
+            propertyId: policy.propertyId,
+            provider: policy.provider,
+            policyNumber: Value(policy.policyNumber),
+            coverageAmountCents: Value(policy.coverageAmountCents),
+            deductibleCents: Value(policy.deductibleCents),
+            premiumCents: Value(policy.premiumCents),
+            expiryDate: Value(policy.expiryDate),
+            createdAt: now,
+            modifiedAt: now,
+          ),
+          crdt: c,
         ),
       );
       final created = await _db.policyDao.getById(id);
@@ -59,17 +67,20 @@ class PolicyRepositoryImpl implements PolicyRepository {
   Future<Result<Policy>> update(Policy policy) async {
     try {
       final now = DateTime.now();
-      final ok = await _db.policyDao.updatePolicy(
-        db.PoliciesCompanion(
-          id: Value(policy.id),
-          propertyId: Value(policy.propertyId),
-          provider: Value(policy.provider),
-          policyNumber: Value(policy.policyNumber),
-          coverageAmountCents: Value(policy.coverageAmountCents),
-          deductibleCents: Value(policy.deductibleCents),
-          premiumCents: Value(policy.premiumCents),
-          expiryDate: Value(policy.expiryDate),
-          modifiedAt: Value(now),
+      final ok = await _stamp.write(
+        (c) => _db.policyDao.updatePolicy(
+          db.PoliciesCompanion(
+            id: Value(policy.id),
+            propertyId: Value(policy.propertyId),
+            provider: Value(policy.provider),
+            policyNumber: Value(policy.policyNumber),
+            coverageAmountCents: Value(policy.coverageAmountCents),
+            deductibleCents: Value(policy.deductibleCents),
+            premiumCents: Value(policy.premiumCents),
+            expiryDate: Value(policy.expiryDate),
+            modifiedAt: Value(now),
+          ),
+          crdt: c,
         ),
       );
       if (!ok) return const Err(DatabaseFailure('Policy not found'));
@@ -83,7 +94,7 @@ class PolicyRepositoryImpl implements PolicyRepository {
   @override
   Future<Result<void>> delete(String id) async {
     try {
-      await _db.policyDao.deletePolicy(id);
+      await _stamp.write((c) => _db.policyDao.deletePolicy(id, crdt: c));
       return const Success(null);
     } catch (e) {
       return Err(DatabaseFailure('Failed to delete policy: $e'));

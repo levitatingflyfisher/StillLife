@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../../../core/errors/failures.dart';
 import '../../../../core/errors/result.dart';
+import '../../../../core/sync/sync_stamp.dart';
 import '../../../../services/database/database.dart' as db;
 import '../../../../services/storage/photo_storage_service.dart';
 import '../../domain/entities/item.dart';
@@ -14,11 +15,12 @@ const _uuid = Uuid();
 /// provenance [source] ('manual' | 'llm_estimate' | ...).
 Future<void> _recordPrice(
   db.AppDatabase database,
+  SyncStamp stamp,
   String itemId,
   int valueCents, {
   String source = 'manual',
 }) {
-  return database.priceHistoryDao.insertPriceEntry(
+  return stamp.write((crdt) => database.priceHistoryDao.insertPriceEntry(
     db.PriceHistoryEntriesCompanion.insert(
       id: _uuid.v4(),
       itemId: itemId,
@@ -26,14 +28,25 @@ Future<void> _recordPrice(
       source: source,
       recordedAt: DateTime.now(),
     ),
-  );
+    crdt: crdt,
+  ));
 }
 
 class ItemRepositoryImpl implements ItemRepository {
   final db.AppDatabase _db;
-  final PhotoStorageService _photoStorage;
 
-  ItemRepositoryImpl(this._db, this._photoStorage);
+  /// [photoStorage] is no longer used: a delete is soft and keeps the photo
+  /// files so it can be undone. The parameter stays so the many call sites
+  /// and test fakes need no churn.
+  ///
+  /// [stamp] gives every write its sync stamp (see [SyncStamp]).
+  ItemRepositoryImpl(
+    this._db,
+    PhotoStorageService photoStorage, {
+    SyncStamp stamp = SyncStamp.none,
+  }) : _stamp = stamp;
+
+  final SyncStamp _stamp;
 
   @override
   Stream<List<Item>> watchItems(ItemQuery query) {
@@ -120,9 +133,15 @@ class ItemRepositoryImpl implements ItemRepository {
         createdAt: now,
         modifiedAt: now,
       );
-      await _db.itemDao.insertItem(companion);
+      await _stamp.write((c) => _db.itemDao.insertItem(companion, crdt: c));
       if (item.currentValueCents != null) {
-        await _recordPrice(_db, id, item.currentValueCents!, source: priceSource);
+        await _recordPrice(
+          _db,
+          _stamp,
+          id,
+          item.currentValueCents!,
+          source: priceSource,
+        );
       }
       return getItem(id);
     } catch (e) {
@@ -137,7 +156,7 @@ class ItemRepositoryImpl implements ItemRepository {
       final existing = await _db.itemDao.getItemById(item.id);
       if (item.currentValueCents != null &&
           item.currentValueCents != existing?.currentValueCents) {
-        await _recordPrice(_db, item.id, item.currentValueCents!);
+        await _recordPrice(_db, _stamp, item.id, item.currentValueCents!);
       }
 
       final companion = db.ItemsCompanion(
@@ -169,7 +188,7 @@ class ItemRepositoryImpl implements ItemRepository {
         lowStockThreshold: Value(item.lowStockThreshold),
         modifiedAt: Value(DateTime.now()),
       );
-      await _db.itemDao.updateItem(companion);
+      await _stamp.write((c) => _db.itemDao.updateItem(companion, crdt: c));
       return getItem(item.id);
     } catch (e) {
       return Err(DatabaseFailure('Failed to update item: $e'));
@@ -179,12 +198,9 @@ class ItemRepositoryImpl implements ItemRepository {
   @override
   Future<Result<void>> deleteItem(String id) async {
     try {
-      // Delete photo files from disk before soft-deleting the DB rows.
-      final paths = await _db.photoDao.getPhotoFilePathsForItem(id);
-      for (final path in paths) {
-        await _photoStorage.deletePhoto(path);
-      }
-      await _db.itemDao.deleteItem(id);
+      // Soft delete only. The photo files stay on disk so Undo and Recently
+      // deleted can bring the item back whole (RecentlyDeletedRepository).
+      await _stamp.write((c) => _db.itemDao.deleteItem(id, crdt: c));
       return const Success(null);
     } catch (e) {
       return Err(DatabaseFailure('Failed to delete item: $e'));
@@ -194,13 +210,8 @@ class ItemRepositoryImpl implements ItemRepository {
   @override
   Future<Result<void>> deleteItems(List<String> itemIds) async {
     try {
-      for (final id in itemIds) {
-        final paths = await _db.photoDao.getPhotoFilePathsForItem(id);
-        for (final path in paths) {
-          await _photoStorage.deletePhoto(path);
-        }
-      }
-      await _db.itemDao.deleteItems(itemIds);
+      // Soft delete; photo files are kept for a restore (see deleteItem).
+      await _stamp.write((c) => _db.itemDao.deleteItems(itemIds, crdt: c));
       return const Success(null);
     } catch (e) {
       return Err(DatabaseFailure('Failed to delete items: $e'));
@@ -210,7 +221,9 @@ class ItemRepositoryImpl implements ItemRepository {
   @override
   Future<Result<void>> moveItems(List<String> itemIds, String newRoomId) async {
     try {
-      await _db.itemDao.moveItemsToRoom(itemIds, newRoomId);
+      await _stamp.write(
+        (c) => _db.itemDao.moveItemsToRoom(itemIds, newRoomId, crdt: c),
+      );
       return const Success(null);
     } catch (e) {
       return Err(DatabaseFailure('Failed to move items: $e'));
@@ -286,7 +299,7 @@ class ItemRepositoryImpl implements ItemRepository {
   @override
   Future<Result<Item>> decrementQuantity(String id) async {
     try {
-      await _db.itemDao.decrementQuantity(id);
+      await _stamp.write((c) => _db.itemDao.decrementQuantity(id, crdt: c));
       return getItem(id);
     } catch (e) {
       return Err(DatabaseFailure('Failed to decrement quantity: $e'));

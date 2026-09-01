@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:openhearth_design/openhearth_design.dart';
 import 'package:still_life/core/providers/sync_providers.dart';
 import 'package:still_life/features/sync/domain/entities/sync_peer.dart';
 import 'package:still_life/features/sync/presentation/controllers/sync_controller.dart';
@@ -31,7 +32,7 @@ class _FakeSyncController extends SyncController {
   Future<void> addManualPeer(String host, int port) async {}
 }
 
-Widget buildSubject(SyncState initialState) {
+Widget buildSubject(SyncState initialState, {ThemeData? theme}) {
   final fakeServer = _MockLanSyncServer();
   when(() => fakeServer.start()).thenAnswer((_) async {});
   when(() => fakeServer.stop()).thenAnswer((_) async {});
@@ -50,7 +51,7 @@ Widget buildSubject(SyncState initialState) {
       lanSyncServerProvider.overrideWithValue(fakeServer),
       lanDiscoveryProvider.overrideWithValue(fakeDiscovery),
     ],
-    child: const MaterialApp(home: SyncScreen()),
+    child: MaterialApp(theme: theme, home: const SyncScreen()),
   );
 }
 
@@ -147,6 +148,35 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
 
       expect(find.textContaining('Last synced'), findsOneWidget);
+    });
+
+    testWidgets('sync code draws in the real code face under OhTheme', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        buildSubject(const SyncState(), theme: OhTheme.light()),
+      );
+      await tester.pumpAndSettle();
+      final code = tester.widget<Text>(find.text('test-sync-code'));
+      expect(code.style?.fontFamily, OhTypography.code().fontFamily);
+    });
+
+    // writing-is-designing-08 / ADR-0007: the code is the key that seals
+    // what devices send each other. The card said only that codes must
+    // match, which gave no reason to keep it secret.
+    testWidgets('sync code card says to treat the code like a password', (
+      tester,
+    ) async {
+      await tester.pumpWidget(buildSubject(const SyncState()));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('key to your catalogue'), findsOneWidget);
+      expect(find.textContaining('Treat it like a password'), findsOneWidget);
+      // The sentence comes before the code and the Copy button.
+      final sentence = tester.getTopLeft(
+        find.textContaining('Treat it like a password'),
+      );
+      final code = tester.getTopLeft(find.text('test-sync-code'));
+      expect(sentence.dy, lessThan(code.dy));
     });
   });
 }

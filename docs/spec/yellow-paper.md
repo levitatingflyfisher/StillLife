@@ -54,16 +54,21 @@ Every syncable row carries a **stamp** `σ = ⟨nodeId, hlc, isDeleted⟩`:
 
 A **row** `r` is `⟨id, σ, payload⟩` with `id ∈ String` a client-assigned UUID (§ why UUID:
 6.4). A **syncable table** `T` is a set of rows keyed by `id`. The **LWW table set**
-`𝒯_lww` is the 12 tables filtered during a merge (§4.2):
+`𝒯_lww` is the 15 tables filtered during a merge (§4.2), i.e. every synced table:
 
 ```
 { properties, rooms, storage_containers, categories, tags, items,
-  photos, receipts, price_history_entries, policies, maintenance_logs, loans }
+  photos, receipts, price_history_entries, policies, maintenance_logs, loans,
+  profiles, appraisals, item_tags }
 ```
 
-`item_tags` (composite key) is intentionally excluded and joined idempotently.
-`video_analyses` and `product_lookup_cache` are not synced. `profiles` and `appraisals`
-carry stamps and cross the wire but currently fall **outside** `𝒯_lww` (§6.2).
+`item_tags` is keyed by the pair `(item_id, tag_id)` instead of `id`: one row per pair,
+stamped, with a tombstone, so tag links are an LWW-element-set (a remove and a re-add of
+the same tag are decided by time). Local writes never hard-delete a link; removing a tag,
+deleting an item or deleting a tag tombstones the links, stamped. (Add-wins was the
+alternative; it needs a unique id per add, which the pair key cannot hold.)
+`video_analyses` and `product_lookup_cache` are not synced. *(2026-09: `profiles`, then
+`appraisals` and `item_tags`, joined `𝒯_lww` once their local writes were stamped.)*
 
 ### 2.3 Clock
 
@@ -91,17 +96,31 @@ For an incoming row with id `i` and stamp hlc `h_in` targeting table `T`, the pr
 
 ```
 shouldWrite(T, i, h_in) =
-    ⊤,                       if h_in = ""          -- (L1) legacy incoming: blind-apply
-    ⊤,                       if localRow(T, i) = ∅ -- (L2) no local row
-    ⊤,                       if h_loc = ""         -- (L3) local unstamped
-    ⊤,                       if h_in >ₗₑₓ h_loc    -- (L4) incoming strictly newer
-    ⊥,                       otherwise             -- (L5) local newer-or-equal: keep local
+    ⊥,                       if wall(h_in) > now + Δ  -- (L0) stamped too far ahead: hold back
+    ⊤,                       if localRow(T, i) = ∅    -- (L2) no local row: fill the hole
+    ⊥,                       if h_in = ""             -- (L1) unstamped incoming: never overwrite
+    ⊤,                       if h_loc = ""            -- (L3) local unstamped: stamped row wins
+    ⊤,                       if h_in >ₗₑₓ h_loc       -- (L4) incoming strictly newer
+    ⊥,                       otherwise                -- (L5) local newer-or-equal: keep local
 ```
+
+The cases are tried top to bottom. A stamp that does not parse as an HLC counts as `""`
+(as a raw string, `"zzz"` would sort after every real stamp and win forever).
 
 Rule **(L4)** is the heart: an incoming row is applied **only if strictly greater** by
 HLC. Ties (`h_in = h_loc`) keep local (L5); because an HLC embeds its `nodeId`, two
 *distinct* concurrent writes never produce equal strings, so a tie means the *same* write
 and keeping local is both correct and idempotent.
+
+Rule **(L1)** is Peckish's `_wins` rule, adopted 2026-09: an unstamped row can only fill a
+hole. Before, an unstamped incoming row blind-applied, so any peer could bypass LWW by
+sending `hlc: ""`.
+
+Rule **(L0)** is the future-clock bound, `Δ = ImportService.maxFutureSkew = 10 min` (the
+sync kernel design's `MAX_FUTURE_SKEW`). It applies even to a hole: a row stamped a year
+ahead would otherwise win every later edit of that row. The row is held back, not
+rejected: every changeset is a full snapshot, so the peer offers it again next sync and
+it lands once local time has caught up (`now` is this device's wall clock).
 
 ## 4. The merge
 
@@ -121,6 +140,15 @@ merge(χ):
 Before any write, for each `T ∈ 𝒯_lww` and each incoming row `r ∈ χ.data[T]`, drop `r`
 unless `shouldWrite(T, r.id, r.hlc)`. Rows in tables ∉ `𝒯_lww` are not filtered here.
 
+Then, walking tables parents-first, drop every surviving row whose non-null foreign key
+names a parent that is neither stored locally (tombstoned counts) nor surviving in `χ`.
+SQLite enforces the declared foreign keys (`PRAGMA foreign_keys = ON`, set in
+`beforeOpen`), so such an orphan would otherwise fail the whole merge. A child therefore
+waits with a parent held back by (L0), transitively (room → items → photos), and lands on
+a later sync once the parent does. The references are read from `PRAGMA
+foreign_key_list`, so this step cannot drift from the schema. A file import (`lww=⊥`)
+does not drop orphans: one orphan fails the import and nothing is written.
+
 ### 4.3 Stage 2 — transactional upsert
 Inside **one** database transaction (§5, invariant **A**), insert the surviving rows in
 **foreign-key dependency order** (properties → rooms → storage_containers → categories →
@@ -132,6 +160,8 @@ writes winners, so:
 > **(LWW soundness, intended.)** After `merge(χ)`, for every `T ∈ 𝒯_lww` and id `i`, the
 > stored row is the `≻`-greater of the pre-merge local row and `χ`'s row — never a
 > strictly-older overwrite, and never a resurrected newer tombstone.
+> Two deliberate exceptions (§3): a row stamped beyond the future bound is held back
+> (L0), and an unstamped incoming row never replaces an existing local row (L1).
 
 ### 4.4 The per-row join
 The effective join is a **last-writer-wins register at row granularity**:
@@ -174,6 +204,12 @@ changesets — i.e. partially-untrusted input. It upholds:
 
 ## 6. The transport & protocol
 
+> **Superseded wire (see the addendum above and ADR-0007).** The table and the
+> Authentication bullet below describe the original plaintext transport. Today
+> `/sync/status` returns `{nodeId, hlc, proto, challenge}`, the export and import bodies
+> are AEAD frames, and possession of the key replaces the Bearer gate. The merge
+> semantics are unchanged.
+
 The LAN sync server (`shelf`, bound `0.0.0.0:8420`) exposes three endpoints behind a
 shared-secret gate:
 
@@ -209,27 +245,40 @@ is commutative/idempotent, repeated pairwise syncs drive both replicas toward th
 - **Deterministic resolution:** the `<ₗₑₓ` order with embedded `nodeId` is total on
   distinct writes, so conflicts resolve identically regardless of sync direction/order —
   and hence converge on `𝒯_lww`.
-- Covered by `merge_engine_test`, `crdt_manager_test`, `lan_sync_{server,client}_test`,
+- Covered by `untimestamped_rows_test` (L0–L3), `merge_engine_test`, `crdt_manager_test`, `lan_sync_{server,client}_test`,
   `import_service_path_traversal_test`, and the export/import round-trip tests.
 
 **Not guaranteed / out of scope (honest edges):**
 - **Per-row, not per-field.** Concurrent edits to different fields of one row do not
   merge; the newer row wins wholesale and the other field edit is lost.
-- **Tables outside `𝒯_lww`.** `profiles`, `appraisals`, and `item_tags` cross the wire but
-  are not LWW-filtered — under merge they are effectively *last-received-wins*, so their
-  convergence depends on sync recency, not HLC. This is a known asymmetry, not a
-  guarantee.
-- **Unstamped rows blind-apply.** By (L1)/(L3) a row with `hlc = ""` is applied (or
-  overwritten) unconditionally — a legacy-compatibility hole; a peer sending `hlc: ""`
-  bypasses LWW. Stamps should be non-empty on all live rows.
+- **Unstamped rows fill holes only.** *(Updated 2026-09.)* By (L1) a row with
+  `hlc = ""` never overwrites a local row on the sync path; it is inserted only where
+  the id is absent. By (L3) a stamped incoming row still replaces an unstamped local
+  one. Every local write through a repository stamps (`SyncStamp`); unstamped rows now
+  come only from writes made while the keystore is unavailable (stamping degrades to an
+  unstamped write rather than failing the save) and from an explicit old-file import.
+  An explicit file import (`lww=⊥`) still applies unstamped rows wholesale, after the
+  UI warns that the file's records will replace the device's own. Two devices that both
+  hold an unstamped copy of one id keep their own copies: that row does not converge
+  until someone edits it.
+- **Seeded defaults sync as the same rows everywhere.** The default categories,
+  the first home and its rooms, the consumables starter kit and the import
+  fallbacks get an id derived from what they are (UUID v5 of
+  `stilllife:seed:<kind>:<key>`) and a fixed stamp `seedHlc` (year 2000, node
+  `seed`) that is older than any real edit and non-empty. Two devices that seed
+  separately hold identical rows: a sync merges them (a tie keeps local, L5), so
+  defaults neither duplicate nor fight, and any real edit beats the seed on every
+  device, even one that seeds later. Rows seeded before this change keep their
+  random ids; two such devices still show two sets of defaults.
 - **State-based, not delta.** A changeset is a full snapshot; there is no incremental
   sync, so cost grows with database size.
 - **Media is not state.** Photo/receipt *files* are not in `data` (`photosIncluded:false`);
   replicas converge on metadata only.
-- **Transport is plaintext on the LAN.** No TLS, no end-to-end encryption; confidentiality
-  rests on trusting the local network and keeping the shared code secret. The Bearer
-  comparison is an ordinary string compare (not constant-time) — a minor consideration on
-  a trusted LAN, noted for completeness.
+- **Transport is encrypted but not forward-secret.** *(Rewritten for ADR-0007; the
+  original said "plaintext on the LAN".)* Bodies are ChaCha20-Poly1305 frames under a
+  static key derived from the shared code, so confidentiality rests on keeping that code
+  secret; a later compromise exposes previously captured frames. The Bearer gate and its
+  non-constant-time compare are gone.
 - **Clock monotonicity depends on persistence.** If the persisted HLC/secure storage is
   wiped, the clock resets; `merge(C, h)` re-raises it on the next sync, but a replica that
   regresses and writes before syncing could momentarily produce lower stamps.

@@ -173,7 +173,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
-    expect(find.text('Ambiguous amount — use 1234 or 1,234.00'), findsOneWidget,
+    expect(find.text('Ambiguous amount. Use 1234 or 1,234.00'), findsOneWidget,
         reason: 'the filter must refuse the ambiguous reading too');
     expect(popped, isFalse,
         reason: 'the dialog must not apply an ambiguous money filter');

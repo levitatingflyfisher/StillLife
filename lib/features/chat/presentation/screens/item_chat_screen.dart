@@ -8,6 +8,7 @@ import '../../../../core/providers/chat_providers.dart';
 import '../../../../core/providers/repository_providers.dart';
 import '../../../inventory/domain/entities/item.dart';
 import '../../../../services/chat/item_chat_service.dart';
+import 'package:still_life/core/widgets/failure_feedback.dart';
 
 /// Streaming single-item chat screen. Ephemeral — messages live only in the
 /// widget's state for the session.
@@ -90,7 +91,12 @@ class _ItemChatScreenState extends ConsumerState<ItemChatScreen> {
         if (!mounted) return;
         setState(() {
           _messages.removeLast();
-          _messages.add(ChatMessage(role: 'assistant', content: 'Error: $e'));
+          _messages.add(
+            ChatMessage(
+              role: 'assistant',
+              content: failureSentence("Couldn’t get an answer", e),
+            ),
+          );
           _streaming = false;
         });
       },
@@ -137,62 +143,65 @@ class _ItemChatScreenState extends ConsumerState<ItemChatScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: _messages.isEmpty
-                ? const Center(
-                    child: Padding(
-                      padding: OhSpacing.insetLg,
-                      child: Text(
-                        'Ask anything about this item — maintenance tips, '
-                        'warranty questions, troubleshooting, etc.',
-                        textAlign: TextAlign.center,
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: Column(
+          children: [
+            Expanded(
+              child: _messages.isEmpty
+                  ? const Center(
+                      child: Padding(
+                        padding: OhSpacing.insetLg,
+                        child: Text(
+                          'Ask anything about this item—maintenance tips, '
+                          'warranty questions, troubleshooting, etc.',
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      controller: _scroll,
+                      padding: const EdgeInsets.all(12),
+                      itemCount: _messages.length,
+                      itemBuilder: (_, i) => _MessageBubble(
+                        msg: _messages[i],
+                        interrupted: _interruptedIndices.contains(i),
                       ),
                     ),
-                  )
-                : ListView.builder(
-                    controller: _scroll,
-                    padding: const EdgeInsets.all(12),
-                    itemCount: _messages.length,
-                    itemBuilder: (_, i) => _MessageBubble(
-                      msg: _messages[i],
-                      interrupted: _interruptedIndices.contains(i),
-                    ),
-                  ),
-          ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _controller,
-                      enabled: !_streaming && _item != null,
-                      decoration: const InputDecoration(
-                        hintText: 'Type a question…',
-                        border: OutlineInputBorder(),
+            ),
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _controller,
+                        enabled: !_streaming && _item != null,
+                        decoration: const InputDecoration(
+                          hintText: 'Type a question…',
+                          border: OutlineInputBorder(),
+                        ),
+                        onSubmitted: (_) => _send(),
                       ),
-                      onSubmitted: (_) => _send(),
                     ),
-                  ),
-                  const SizedBox(width: OhSpacing.sm),
-                  OhIconButton.filled(
-                    onPressed: _streaming || _item == null ? null : _send,
-                    icon: _streaming
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.send),
-                  ),
-                ],
+                    const SizedBox(width: OhSpacing.sm),
+                    OhIconButton.filled(
+                      onPressed: _streaming || _item == null ? null : _send,
+                      icon: _streaming
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.send),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

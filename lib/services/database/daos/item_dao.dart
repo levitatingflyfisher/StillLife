@@ -229,8 +229,8 @@ class ItemDao extends DatabaseAccessor<AppDatabase> with _$ItemDaoMixin {
         .then((rows) => rows > 0);
   }
 
-  /// Soft-delete an item and its associated photos and appraisals
-  /// (itemTags are hard-deleted).
+  /// Soft-delete an item, its associated photos and appraisals, and its tag
+  /// links.
   ///
   /// When [crdt] is provided, stamps `nodeId`/`hlc` on the item tombstone and
   /// each related photo/appraisal tombstone so the CRDT merge engine can
@@ -243,9 +243,11 @@ class ItemDao extends DatabaseAccessor<AppDatabase> with _$ItemDaoMixin {
       final now = DateTime.now();
       // Soft-delete associated photos (keeps tombstones for sync).
       // Each photo row gets its own CRDT stamp so peers can merge the tombstones.
+      // Only the live ones: a photo deleted on its own earlier keeps its
+      // own delete time, so restoring the item does not bring it back.
       final photoRows = await (select(
         photos,
-      )..where((t) => t.itemId.equals(id))).get();
+      )..where((t) => t.itemId.equals(id) & t.isDeleted.equals(false))).get();
       for (final photo in photoRows) {
         var entry = PhotosCompanion(
           id: Value(photo.id),
@@ -287,8 +289,9 @@ class ItemDao extends DatabaseAccessor<AppDatabase> with _$ItemDaoMixin {
           appraisals,
         )..where((t) => t.id.equals(appraisal.id))).write(entry);
       }
-      // Hard-delete junction rows (not individually synced).
-      await (delete(itemTags)..where((t) => t.itemId.equals(id))).go();
+      // Tombstone the tag links (stamped), so the removal syncs instead of
+      // being refilled by a peer that still holds them.
+      await db.tagDao.tombstoneLinksOfItem(id, crdt: crdt);
       // Soft-delete the item itself.
       var itemEntry = ItemsCompanion(
         id: Value(id),

@@ -22,8 +22,20 @@ import 'package:still_life/features/locations/presentation/controllers/location_
 import 'package:still_life/services/import/import_fallback_seeder.dart';
 
 import '../../../../test_setup.dart';
+import 'package:still_life/core/providers/sync_providers.dart';
+import 'package:still_life/core/sync/sync_stamp.dart';
+import 'package:crdt/crdt.dart';
+import 'package:still_life/services/sync/crdt_manager.dart';
 
 class _MockItemRepository extends Mock implements ItemRepository {}
+
+class _FixedClock extends Mock implements CrdtManager {
+  @override
+  Future<String> getNodeId() async => 'node-test';
+
+  @override
+  Future<Hlc> nextHlc() async => Hlc(DateTime.utc(2030), 0, 'node-test');
+}
 
 class _MockImportFallbackSeeder extends Mock implements ImportFallbackSeeder {}
 
@@ -79,6 +91,7 @@ void main() {
     _MockImportFallbackSeeder? seeder,
     ImportReviewReceipt? receipt,
     AppDatabase? db,
+    SyncStamp stamp = SyncStamp.none,
   }) {
     final mockRepo = repo ?? _MockItemRepository();
     final mockSeeder = seeder ?? _MockImportFallbackSeeder();
@@ -114,6 +127,9 @@ void main() {
         itemRepositoryProvider.overrideWithValue(mockRepo),
         importFallbackSeederProvider.overrideWithValue(mockSeeder),
         if (db != null) databaseProvider.overrideWithValue(db),
+        // No keystore in widget tests: writes go unstamped unless a test
+        // hands in a fake clock.
+        syncStampProvider.overrideWithValue(stamp),
       ],
       child: MaterialApp.router(routerConfig: router),
     );
@@ -219,6 +235,7 @@ void main() {
         makeItems(2),
         repo: mockRepo,
         db: db,
+        stamp: SyncStamp(_FixedClock()),
         receipt: ImportReviewReceipt(
           engineLabel: 'Pattern-matched',
           storeName: 'Kroger',
@@ -245,6 +262,10 @@ void main() {
     expect(receipt.ocrText, 'KROGER\nItem 0  5.00\nItem 1  10.00');
     expect(receipt.photoBytes, imageBytes);
     expect(receipt.itemId, isNull);
+    // Stamped like every other local write, so the receipt syncs under
+    // last-writer-wins instead of blind-applying.
+    expect(receipt.hlc, isNotEmpty);
+    expect(receipt.nodeId, 'node-test');
 
     // Every accepted item points at that row.
     final savedItems =
@@ -388,7 +409,9 @@ void main() {
     await tester.tap(find.byType(FloatingActionButton));
     await tester.pump(const Duration(milliseconds: 200));
 
-    expect(find.textContaining('Import failed'), findsOneWidget);
+    expect(find.textContaining('Couldn’t import these items'), findsOneWidget);
+    // A plain sentence; the raw exception is logged, never shown (C10).
+    expect(find.textContaining('database is locked'), findsNothing);
     expect(find.byType(ImportReviewScreen), findsOneWidget,
         reason: 'no silent pop — the user retries from here');
   });

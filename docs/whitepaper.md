@@ -117,7 +117,7 @@ A white paper that overclaims is marketing. Honestly, as of schema v14:
 **Built, tested, load-bearing** (~162 test files): the offline catalogue with the full
 place hierarchy, categories/tags, photos/receipts, and value tracking; the financial
 dashboard, depreciation, insurance policies with gap detection, and PDF/CSV/JSON export;
-LAN sync (HLC last-writer-wins, tombstones, shared-secret auth); the data-safety net
+LAN sync (HLC last-writer-wins, tombstones, an encrypted wire keyed from the shared code); the data-safety net
 (boot-resilience retry, sandboxed transactional import, formula-injection-safe CSV); QR
 labels, loans, maintenance, and opt-in cache-first barcode lookup. Zero telemetry, by
 absence.

@@ -32,12 +32,14 @@ void main() {
 
   ProviderContainer makeContainer({SecureKeyStore? keyStore}) {
     final c = ProviderContainer(overrides: [
+      // StillLife's wiring first: it now carries the app-scoped key-store
+      // override, and the later, test-specific key store must win.
+      ...sanctuaryBackupOverrides(),
       databaseProvider.overrideWithValue(db),
       secureKeyStoreProvider.overrideWithValue(keyStore ??
           InMemorySecureKeyStore(mnemonic: _phrase, acknowledged: true)),
       cryptoServiceProvider.overrideWithValue(FakeCryptoService()),
       vaultStoreProvider.overrideWithValue(store),
-      ...sanctuaryBackupOverrides(),
     ]);
     addTearDown(c.dispose);
     return c;

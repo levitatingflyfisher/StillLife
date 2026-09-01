@@ -6,9 +6,10 @@ import 'package:oh_fleet_conformance/oh_fleet_conformance.dart';
 
 void main() => runFleetConformance(const FleetAppConfig(
       appId: 'stilllife',
-      // Bundles its own type, so nothing falls back to a web font — a
-      // character the bundled families cannot draw is a box on a
-      // real phone. C7 sweeps lib/ for any.
+      // Takes its type from openhearth_design's package fonts (Lora,
+      // Nunito), so nothing falls back to a web font — a character the
+      // bundled families cannot draw is a box on a real phone. C7 sweeps
+      // lib/ for any, against the package faces.
       // C8 rides along with the bundled-font set: StillLife builds on
       // OhTheme, whose app-wide iconTheme paints a bare IconButton.filled
       // glyph in the same colour as its own fill. Three of this app's
@@ -17,6 +18,26 @@ void main() => runFleetConformance(const FleetAppConfig(
       checks: {
         ...FleetAppConfig.withBundledFonts,
         FleetCheck.c8IconButtons,
+        // No raw exception text on screen: failures go through
+        // OhErrorState / ohFriendlyErrorMessage (core/widgets/
+        // failure_feedback.dart) and the exception is logged.
+        FleetCheck.c10RawErrors,
+        // Strict C11: every top-bar command shows its word (OhBarAction,
+        // or the worded OhBarOverflow menu); a tooltip is not a name.
+        FleetCheck.c11StrictBarLabels,
+        // Every routed screen has a way in (no dead routes).
+        FleetCheck.c9Routes,
+        // The accent stays distinguishable from error red (ΔE ≥ 12).
+        FleetCheck.c12AccentVsError,
+        // Primary actions reachable at 360 dp x 1.3 (test/a11y/).
+        FleetCheck.c5PrimaryScreens,
+      },
+      primaryActionScreens: {
+        'InventoryScreen',
+        'ItemEditScreen',
+        'DashboardScreen',
+        'RoomsScreen',
+        'ReportsScreen',
       },
       styleTier: StyleTier.full,
       // The exact <uses-permission> surface of the main AndroidManifest —

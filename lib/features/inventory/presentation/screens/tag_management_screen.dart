@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/entities/tag.dart';
 import '../controllers/tag_controller.dart';
+import 'package:still_life/core/widgets/failure_feedback.dart';
+import '../../../recently_deleted/presentation/undo_providers.dart';
+import 'package:openhearth_design/openhearth_design.dart';
 
 class TagManagementScreen extends ConsumerWidget {
   const TagManagementScreen({super.key});
@@ -14,77 +17,92 @@ class TagManagementScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Tags')),
-      body: tagsAsync.when(
-        data: (tags) {
-          if (tags.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.label_outline,
-                    size: 64,
-                    color: theme.colorScheme.onSurface.withAlpha(80),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No tags yet',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      color: theme.colorScheme.onSurface.withAlpha(150),
+      body: OhPage(
+        padding: EdgeInsets.zero,
+        child: tagsAsync.when(
+          data: (tags) {
+            if (tags.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.label_outline,
+                      size: 64,
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Tap + to create your first tag',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurface.withAlpha(120),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No tags yet',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        color: theme.colorScheme.onSurface.withAlpha(150),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return ListView.builder(
-            itemCount: tags.length,
-            itemBuilder: (context, index) {
-              final tag = tags[index];
-              final tagColor = tag.color != null ? Color(tag.color!) : null;
-
-              return ListTile(
-                leading: Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    color: tagColor ?? theme.colorScheme.primaryContainer,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                title: Text(tag.name),
-                trailing: PopupMenuButton(
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                    const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Choose New tag to create your first one.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
                   ],
-                  onSelected: (action) {
-                    if (action == 'edit') {
-                      _showTagDialog(context, ref, tag: tag);
-                    } else if (action == 'delete') {
-                      _confirmDelete(context, ref, tag);
-                    }
-                  },
                 ),
-                onTap: () => _showTagDialog(context, ref, tag: tag),
               );
-            },
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+            }
+
+            return ListView.builder(
+              itemCount: tags.length,
+              itemBuilder: (context, index) {
+                final tag = tags[index];
+                final tagColor = tag.color != null ? Color(tag.color!) : null;
+
+                return ListTile(
+                  leading: Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: tagColor ?? theme.colorScheme.primaryContainer,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  title: Text(tag.name),
+                  trailing: PopupMenuButton(
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Text('Delete tag'),
+                      ),
+                    ],
+                    onSelected: (action) {
+                      if (action == 'edit') {
+                        _showTagDialog(context, ref, tag: tag);
+                      } else if (action == 'delete') {
+                        _delete(ref, tag);
+                      }
+                    },
+                  ),
+                  onTap: () => _showTagDialog(context, ref, tag: tag),
+                );
+              },
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, st) => loadFailure(
+            e,
+            st,
+            title: "Couldn’t load tags",
+            onRetry: () => ref.invalidate(tagsProvider),
+          ),
+        ),
       ),
-      floatingActionButton: FloatingActionButton(
+      bottomNavigationBar: OhUndoBar(
+        controller: ref.watch(screenUndoControllerProvider('tags')),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showTagDialog(context, ref),
-        child: const Icon(Icons.add),
+        icon: const Icon(Icons.add),
+        label: const Text('New tag'),
       ),
     );
   }
@@ -125,37 +143,19 @@ class TagManagementScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _confirmDelete(
-    BuildContext context,
-    WidgetRef ref,
-    Tag tag,
-  ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Tag'),
-        content: Text(
-          'Delete "${tag.name}"? Items with this tag will not be deleted.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+  /// A menu choice is deliberate: delete softly, no question, and offer
+  /// Undo until the person leaves this screen. The tag's links to items are
+  /// removed by the delete, so they are captured first for the Undo.
+  Future<void> _delete(WidgetRef ref, Tag tag) async {
+    final trash = ref.read(recentlyDeletedRepositoryProvider);
+    final undo = ref.read(screenUndoControllerProvider('tags'));
+    final tagged = await trash.itemsTagged(tag.id);
+    final ok = await ref.read(tagControllerProvider.notifier).deleteTag(tag.id);
+    if (!ok) return;
+    undo.show(
+      message: 'Deleted tag “${tag.name}”. Your items are untouched.',
+      onUndo: () => trash.restoreTag(tag.id, itemIds: tagged),
     );
-
-    if (confirmed == true) {
-      await ref.read(tagControllerProvider.notifier).deleteTag(tag.id);
-    }
   }
 }
 

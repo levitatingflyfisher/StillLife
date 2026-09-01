@@ -11,19 +11,21 @@ Still Life has two backup shapes. Pick by what you need:
 | **Export with photos** | Records **+** photo/receipt images | `stilllife-backup-<date>.ohbkz` | A complete copy before wiping/switching phones |
 | Export Data (plaintext) | Inventory records, **unencrypted** | `still_life_backup_<time>.json` | Moving data to another tool you trust |
 
-All three live under **Settings → Encrypted Backup**. The plaintext JSON export stays in
+All three live under **Settings → Backup**. The plaintext JSON export stays in
 **Data Management** and is clearly labelled unencrypted.
 
 ## First: set up your recovery words
 
-1. **Settings → Encrypted Backup → Set up encrypted backup.**
+1. **Settings → Backup → Set up encrypted backup.** Until the words are saved and
+   checked, the Dashboard shows a one-line "finish setup" reminder; Dismiss hides it
+   for 30 days, then it comes back.
 2. Write down the **12 words** shown. They *are* your key — there is no server that holds
    a copy, and no way to reset them. Store the paper somewhere safe.
 3. Re-enter the words to confirm your copy is correct. Backup and restore unlock now.
 
 ## Make a backup
 
-- **Encrypted backup** → shares a `.ohbk` file (records only — small).
+- **Export backup** → shares a `.ohbk` file (records only — small).
 - **Export with photos** → shows a size estimate first (how many images, roughly how
   large), then shares a `.ohbkz`. Images over 10 MB are skipped and reported, never
   silently dropped. Save the file wherever you keep backups (another device, a drive, a

@@ -88,7 +88,7 @@ void main() {
     await t.pumpAndSettle();
 
     expect(find.byType(UsageMeter), findsOneWidget);
-    expect(find.text('Pro — active'), findsOneWidget);
+    expect(find.text('Pro: active'), findsOneWidget);
     expect(find.text('Rotate bearer'), findsOneWidget);
     expect(find.text('Delete Pro account'), findsOneWidget);
   });
