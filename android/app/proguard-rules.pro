@@ -25,3 +25,15 @@
 -dontwarn com.google.mlkit.vision.text.korean.KoreanTextRecognizerOptions$Builder
 -dontwarn com.google.mlkit.vision.text.korean.KoreanTextRecognizerOptions
 -dontwarn org.tensorflow.lite.gpu.GpuDelegateFactory$Options
+
+# ── ffmpeg_kit_flutter_new ────────────────────────────────────────────────────
+# The plugin ships keep rules but never declares them as consumer rules, so R8
+# renamed its classes. Its JNI_OnLoad then cannot find them and throws a
+# java.lang.Error while plugins are registered; that aborts registration of
+# every plugin after it (share-to-Still-Life went dead with it). Found by
+# booting the release APK on the emulator, October 2026.
+-keep class com.antonkarpenko.ffmpegkit.** { *; }
+-dontwarn com.antonkarpenko.ffmpegkit.**
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
