@@ -136,6 +136,18 @@ problems endure.
   what remains is device verification, latency/quality tuning, and extending it to
   multi-item shelf photos. Move sync from full-snapshot to delta so a large library
   doesn't re-ship on every merge.
+- **Near — answer "am I covered?" the way a policy actually pays.** The coverage-gap
+  widget divides coverage by the sum of `currentValueCents`, but most contents policies
+  pay replacement cost, so a depreciated total overstates how well a household is
+  covered; it should sum `replacementCostCents` (falling back to current value).
+  `InsuranceGapService` ranks items by an `isInsured` flag, yet renters and homeowners
+  contents cover is blanket: everything is covered up to the limit except categories
+  with sublimits. The gap that matters is "your jewelry totals $4,200 against a $1,500
+  theft sublimit" (firearms, cash, collectibles, electronics alike), and nothing models
+  that. `Policy` holds one coverage figure plus deductible, premium and expiry; it needs
+  per-category sublimits, and eventually settlement basis (ACV vs replacement),
+  liability and exclusions. Sublimit warnings are the highest-leverage piece, and no
+  app in the README's comparison does them.
 - **Far — trust beyond the LAN without becoming a cloud account.** The LAN wire is
   already encrypted (ADR-0007); what is missing is forward secrecy and a way to let two
   homes reconcile over the internet through a dumb, zero-knowledge relay
