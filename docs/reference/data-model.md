@@ -1,7 +1,7 @@
 # Reference: data model
 
 The on-device schema, precisely. Source of truth: `lib/services/database/tables.dart`
-and `lib/services/database/database.dart` (`schemaVersion => 11`). This is a lookup
+and `lib/services/database/database.dart` (`schemaVersion => 17`). This is a lookup
 reference; for the *ideas*, read [concepts.md](../concepts.md).
 
 ## Tables (17)
@@ -16,7 +16,7 @@ Declared on `AppDatabase` (`@DriftDatabase`), accessed through 13 DAOs.
 | `Categories` | Item category (a tree) | self-nesting via `parentId` |
 | `Tags` | Flat labels | many-to-many with items via `ItemTags` |
 | `Items` | A single possession | → `Categories`, `Rooms`, optional `StorageContainers`, optional creator/owner `Profiles` |
-| `ItemTags` | Item↔tag join | composite PK (`itemId`,`tagId`) |
+| `ItemTags` | Item↔tag join | composite PK (`itemId`,`tagId`); `deletedWithItemAt` marks links an item's delete took, for a restore |
 | `Photos` | Item image (file path + metadata) | → `Items`; one `isPrimary` |
 | `Receipts` | Receipt image + OCR (store/date/total) | → `Items` (optional) |
 | `PriceHistoryEntries` | Value over time | → `Items` |
@@ -27,6 +27,7 @@ Declared on `AppDatabase` (`@DriftDatabase`), accessed through 13 DAOs.
 | `Appraisals` | LLM valuation (mode, value, sources, TTL) | → `Items` |
 | `VideoAnalyses` | AI video-walkthrough results | → `Items` |
 | `ProductLookupCache` | Cached barcode → product | local cache only (not synced) |
+| `ItemDrafts` | Unsaved Add Item form, kept as it is typed | local only (not synced, not exported) |
 
 ## The place hierarchy
 
@@ -80,9 +81,10 @@ currently fall *outside* the LWW filter — see the yellow paper's honesty note.
 
 ## Migrations
 
-`schemaVersion` is **11**; the `onUpgrade` ladder in `database.dart` is explicit and
+`schemaVersion` is **17**; the `onUpgrade` ladder in `database.dart` is explicit and
 testable. Notable steps: v4 added the `isDeleted` tombstone to every table and
 `nodeId`/`hlc` to maintenance logs; v6 added storage containers; v7 loans; v8 quantity
 fields; v9 profiles; v10 appraisals; v11 backfilled nullable `nodeId`/`hlc` on
-appraisals. **A new syncable table must add the three stamp columns and a migration
+appraisals; v12 photo bytes; v13 brand/model/ASIN; v14 receipt link; v15 money in
+cents; v16 `ItemTags.deletedWithItemAt`; v17 the device-local `ItemDrafts`. **A new syncable table must add the three stamp columns and a migration
 step**, and be wired into the import round-trip.

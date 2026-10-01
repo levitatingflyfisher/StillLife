@@ -139,8 +139,15 @@ class ImportService {
 
   /// Returns [content] with every CRDT table's rows filtered to only those that
   /// win last-writer-wins against the current local row (see [_lwwShouldWrite]).
-  Future<Map<String, dynamic>> _lwwFilter(Map<String, dynamic> content) async {
+  ///
+  /// Also returns how many rows were held back for a later sync: stamped
+  /// too far ahead ([maxFutureSkew]), or waiting for a parent that is not
+  /// here yet ([_holdBackOrphans]). Rows that simply lost LWW are not
+  /// counted; they are older, not waiting.
+  Future<(Map<String, dynamic>, int)> _lwwFilter(
+      Map<String, dynamic> content) async {
     final out = Map<String, dynamic>.from(content);
+    var heldBack = 0;
     for (final entry in _lwwTables.entries) {
       final rows = content[entry.key];
       if (rows is! List) continue;
@@ -160,12 +167,21 @@ class ImportService {
         if (key.length != keys.length ||
             await _lwwShouldWrite(table, key, hlc)) {
           kept.add(row);
+        } else if (_isAhead(hlc)) {
+          heldBack++;
         }
       }
       out[entry.key] = kept;
     }
-    await _holdBackOrphans(out);
-    return out;
+    heldBack += await _holdBackOrphans(out);
+    return (out, heldBack);
+  }
+
+  /// True when [incomingHlc] is stamped beyond [maxFutureSkew].
+  bool _isAhead(String incomingHlc) {
+    final stamp = _parseStamp(incomingHlc);
+    return stamp != null &&
+        stamp.dateTime.isAfter(_clock().toUtc().add(maxFutureSkew));
   }
 
   /// Parents before children: the order the upsert below writes in.
@@ -185,7 +201,8 @@ class ImportService {
   /// The references come from SQLite itself (PRAGMA foreign_key_list), so
   /// this cannot drift from the schema. A tombstoned local parent counts as
   /// present: the key checks existence, not liveness.
-  Future<void> _holdBackOrphans(Map<String, dynamic> out) async {
+  Future<int> _holdBackOrphans(Map<String, dynamic> out) async {
+    var dropped = 0;
     assert(_parentsFirst.toSet().containsAll(_lwwTables.keys));
     final arriving = <String, Set<String>>{}; // SQL table -> kept ids
     for (final jsonKey in _parentsFirst) {
@@ -215,13 +232,17 @@ class ImportService {
             break;
           }
         }
-        if (!parentsPresent) continue;
+        if (!parentsPresent) {
+          dropped++;
+          continue;
+        }
         kept.add(row);
         final id = row['id'];
         if (id is String) (arriving[table] ??= {}).add(id);
       }
       out[jsonKey] = kept;
     }
+    return dropped;
   }
 
   /// `creator_profile_id` -> `creatorProfileId`: SQL column to JSON key.
@@ -303,13 +324,16 @@ class ImportService {
       var loansCount = 0;
       var profilesCount = 0;
       var appraisalsCount = 0;
+      var heldBack = 0;
 
       await _db.transaction(() async {
         // For a sync merge, drop incoming rows that are not strictly newer than
         // the local row (HLC last-writer-wins). The upsert loop below then only
         // ever writes winning rows, so a stale peer can't clobber newer local
         // edits or flip a newer tombstone back to live.
-        final content = lww ? await _lwwFilter(content0) : content0;
+        final (content, held) =
+            lww ? await _lwwFilter(content0) : (content0, 0);
+        heldBack = held;
         // Import in dependency order:
         // properties → rooms → storageContainers → categories → tags → items → itemTags → photos → receipts → priceHistory
 
@@ -569,6 +593,11 @@ class ImportService {
                   nodeId: Value(map['nodeId'] as String? ?? ''),
                   hlc: Value(map['hlc'] as String? ?? ''),
                   isDeleted: Value(map['isDeleted'] as bool? ?? false),
+                  deletedWithItemAt: Value(
+                    map['deletedWithItemAt'] is String
+                        ? DateTime.parse(map['deletedWithItemAt'] as String)
+                        : null,
+                  ),
                 ),
               );
         }
@@ -787,6 +816,7 @@ class ImportService {
           loans: loansCount,
           profiles: profilesCount,
           appraisals: appraisalsCount,
+          heldBack: heldBack,
         ),
       );
     } on FormatException {
@@ -811,6 +841,10 @@ class ImportSummary {
   final int profiles;
   final int appraisals;
 
+  /// Rows a sync held back for a later one (see `_lwwFilter`); not counted
+  /// in [totalRecords].
+  final int heldBack;
+
   const ImportSummary({
     this.properties = 0,
     this.rooms = 0,
@@ -824,6 +858,7 @@ class ImportSummary {
     this.loans = 0,
     this.profiles = 0,
     this.appraisals = 0,
+    this.heldBack = 0,
   });
 
   int get totalRecords =>

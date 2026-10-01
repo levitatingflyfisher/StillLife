@@ -90,11 +90,39 @@ class TagDao extends DatabaseAccessor<AppDatabase> with _$TagDaoMixin {
     });
   }
 
-  /// Tombstones every live link of [itemId] (the item is being deleted).
-  Future<void> tombstoneLinksOfItem(String itemId, {CrdtManager? crdt}) async {
+  /// Tombstones every live link of [itemId] (the item is being deleted at
+  /// [deletedAt], the item tombstone's `modifiedAt`), marking each with that
+  /// time so a later restore of the item revives exactly these links.
+  Future<void> tombstoneLinksOfItem(
+    String itemId, {
+    required DateTime deletedAt,
+    CrdtManager? crdt,
+  }) async {
     for (final tagId in await getItemTagIds(itemId)) {
-      await _writeLink(itemId, tagId, deleted: true, crdt: crdt);
+      await _writeLink(
+        itemId,
+        tagId,
+        deleted: true,
+        deletedWithItemAt: deletedAt,
+        crdt: crdt,
+      );
     }
+  }
+
+  /// Tag ids of [itemId]'s links tombstoned by the item's delete at
+  /// [deletedAt] (see [tombstoneLinksOfItem]).
+  Future<List<String>> tagIdsDeletedWithItem(
+    String itemId,
+    DateTime deletedAt,
+  ) async {
+    final rows = await (select(itemTags)..where(
+          (t) =>
+              t.itemId.equals(itemId) &
+              t.isDeleted.equals(true) &
+              t.deletedWithItemAt.equals(deletedAt),
+        ))
+        .get();
+    return [for (final r in rows) r.tagId];
   }
 
   /// Upserts one (item, tag) link as live or tombstoned, stamped when [crdt]
@@ -103,6 +131,7 @@ class TagDao extends DatabaseAccessor<AppDatabase> with _$TagDaoMixin {
     String itemId,
     String tagId, {
     required bool deleted,
+    DateTime? deletedWithItemAt,
     CrdtManager? crdt,
   }) async {
     var row = ItemTagsCompanion.insert(
@@ -110,6 +139,7 @@ class TagDao extends DatabaseAccessor<AppDatabase> with _$TagDaoMixin {
       tagId: tagId,
       createdAt: DateTime.now(),
       isDeleted: Value(deleted),
+      deletedWithItemAt: Value(deletedWithItemAt),
     );
     if (crdt != null) {
       final nodeId = await crdt.getNodeId();
@@ -121,6 +151,7 @@ class TagDao extends DatabaseAccessor<AppDatabase> with _$TagDaoMixin {
       onConflict: DoUpdate(
         (_) => ItemTagsCompanion(
           isDeleted: row.isDeleted,
+          deletedWithItemAt: row.deletedWithItemAt,
           nodeId: row.nodeId,
           hlc: row.hlc,
         ),

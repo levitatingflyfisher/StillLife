@@ -18,6 +18,7 @@ import '../../../../core/providers/repository_providers.dart';
 import '../../../../services/product_lookup/product_lookup_service.dart';
 import '../../../locations/domain/entities/room.dart';
 import '../../../locations/presentation/controllers/location_controller.dart';
+import '../../data/item_draft_store.dart';
 import '../../domain/entities/category.dart' as domain;
 import '../../domain/entities/item.dart';
 import '../../domain/entities/item_suggestion.dart';
@@ -28,6 +29,8 @@ import '../controllers/photo_controller.dart';
 import '../controllers/tag_controller.dart';
 import '../widgets/photo_gallery_widget.dart';
 import '../widgets/tag_selector_widget.dart';
+import 'dart:convert';
+
 import 'package:collection/collection.dart';
 import 'package:still_life/core/widgets/failure_feedback.dart';
 
@@ -150,6 +153,118 @@ class _ItemEditScreenState extends ConsumerState<ItemEditScreen> {
 
   String _snapshot() => _textFields.map((c) => c.text).join('\u0000');
 
+  // ── The Add Item draft (about-face-07, ruling Q-S4) ──────────────────────
+  // A plain Add keeps what is typed as a device-local draft, so leaving by
+  // any route loses nothing; the next plain Add picks it up. Any form that
+  // opens with content of its own (a photo or voice add, a barcode scan, a
+  // room's or a container's Add) neither drafts nor resumes one: a kept
+  // draft must never overwrite a scanned code or move the item to another
+  // room. An edit already has its item.
+  static const _draftKey = 'new';
+  bool get _drafting =>
+      !widget.isEditing &&
+      widget.initialSuggestion == null &&
+      widget.initialBarcode == null &&
+      widget.initialRoomId == null &&
+      widget.initialContainerId == null;
+  ItemDraftStore? _drafts;
+  bool _draftReady = false;
+  bool _resumed = false;
+
+  /// The form as it opened (after any prefill): what Start over returns to,
+  /// and the "nothing typed" a draft is measured against.
+  Map<String, Object?>? _opening;
+
+  Map<String, Object?> _draftMap() => {
+        'text': [for (final c in _textFields) c.text],
+        'category': _selectedCategoryId,
+        'room': _selectedRoomId,
+        'container': _selectedContainerId,
+        'condition': _selectedCondition?.name,
+        'purchaseDate': _purchaseDate?.toIso8601String(),
+        'warranty': _warrantyExpiration?.toIso8601String(),
+        'insured': _isInsured,
+        'tags': _selectedTagIds,
+        'trackQuantity': _trackQuantity,
+      };
+
+  void _applyDraft(Map<String, Object?> d) {
+    final text = (d['text'] as List?)?.cast<String>() ?? const [];
+    for (var i = 0; i < _textFields.length && i < text.length; i++) {
+      _textFields[i].text = text[i];
+    }
+    _selectedCategoryId = d['category'] as String?;
+    _selectedRoomId = d['room'] as String?;
+    _selectedContainerId = d['container'] as String?;
+    final cond = d['condition'] as String?;
+    _selectedCondition = cond == null
+        ? null
+        : ItemCondition.values.firstWhereOrNull((c) => c.name == cond);
+    _purchaseDate = DateTime.tryParse(d['purchaseDate'] as String? ?? '');
+    _warrantyExpiration = DateTime.tryParse(d['warranty'] as String? ?? '');
+    _isInsured = d['insured'] as bool? ?? false;
+    _selectedTagIds = (d['tags'] as List?)?.cast<String>().toList() ?? [];
+    _trackQuantity = d['trackQuantity'] as bool? ?? false;
+  }
+
+  Future<void> _loadDraft() async {
+    final store = ref.read(itemDraftStoreProvider);
+    _drafts = store;
+    final opening = _opening = _draftMap();
+    final kept = await store.read(_draftKey);
+    if (!mounted) return;
+    if (kept != null && jsonEncode(kept) != jsonEncode(opening)) {
+      _applyDraft(kept);
+      _resumed = true;
+    }
+    _baseline = _snapshot();
+    _draftReady = true;
+    setState(() {});
+  }
+
+  /// Writes the form as a draft, or clears it once it is back to how it
+  /// opened. Runs on every keystroke and every setState.
+  void _keepDraft() {
+    final store = _drafts;
+    if (!_drafting || !_draftReady || store == null) return;
+    final now = _draftMap();
+    if (jsonEncode(now) == jsonEncode(_opening)) {
+      store.clear(_draftKey);
+    } else {
+      store.write(_draftKey, now);
+    }
+  }
+
+  void _startOver() {
+    final opening = _opening;
+    if (opening == null) return;
+    _applyDraft(opening);
+    _drafts?.clear(_draftKey);
+    _baseline = _snapshot();
+    setState(() => _resumed = false);
+  }
+
+  @override
+  void setState(VoidCallback fn) {
+    super.setState(fn);
+    _keepDraft();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    for (final c in _textFields) {
+      c.addListener(_keepDraft);
+    }
+    // After the first frame, so the widget prefill (a room, a barcode) is
+    // part of how the form opened.
+    if (_drafting) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _loadDraft();
+      });
+    }
+  }
+
   /// A photo or voice add arrives with the form already filled (and maybe
   /// a photo waiting to attach): that is unsaved work before a key is
   /// pressed, so it counts from the start.
@@ -177,7 +292,11 @@ class _ItemEditScreenState extends ConsumerState<ItemEditScreen> {
       cancelLabel: 'Keep editing',
       destructive: true,
     );
-    if (discard && mounted) Navigator.of(context).pop();
+    if (discard && mounted) {
+      // Discarding is a decision: the draft goes with the form.
+      await _drafts?.clear(_draftKey);
+      if (mounted) Navigator.of(context).pop();
+    }
   }
 
   /// Tapping the search icon: check cache first (free), then ask for consent
@@ -422,6 +541,21 @@ class _ItemEditScreenState extends ConsumerState<ItemEditScreen> {
                 controller: _scrollController,
                 padding: OhSpacing.insetMd,
                 children: [
+                  if (_resumed)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: OhSpacing.sm),
+                      child: Row(
+                        children: [
+                          const Expanded(
+                            child: Text('Picked up where you left off.'),
+                          ),
+                          TextButton(
+                            onPressed: _startOver,
+                            child: const Text('Start over'),
+                          ),
+                        ],
+                      ),
+                    ),
                   // Photos section (only when editing an existing item)
                   if (widget.isEditing) ...[
                     _PhotosSection(itemId: widget.itemId!),
@@ -1160,6 +1294,11 @@ class _ItemEditScreenState extends ConsumerState<ItemEditScreen> {
         }
       }
 
+      if (success) {
+        // Saved, so the draft has done its job.
+        _draftReady = false;
+        await _drafts?.clear(_draftKey);
+      }
       if (success && mounted) {
         context.pop();
       }

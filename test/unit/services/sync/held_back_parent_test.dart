@@ -83,11 +83,13 @@ void main() {
     expect(r.isSuccess, isTrue, reason: r.error);
     expect(await count('items', 'i1'), 0);
     expect(await count('photos', 'ph1'), 0);
+    expect(r.heldBack, 2, reason: 'the sync line says what is waiting');
 
     final later = await sync(ahead, data);
     expect(later.isSuccess, isTrue, reason: later.error);
     expect(await count('items', 'i1'), 1);
     expect(await count('photos', 'ph1'), 1);
+    expect(later.heldBack, 0);
   });
 
   test('a held-back parent holds back grandchildren too', () async {
@@ -119,6 +121,7 @@ void main() {
     expect(r.isSuccess, isTrue, reason: r.error);
     expect(await count('items', 'i3'), 1);
     expect(await count('photos', 'ph3'), 0);
+    expect(r.heldBack, 1);
   });
 
   test('a file import with an orphan fails closed, writing nothing', () async {

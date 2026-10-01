@@ -65,7 +65,9 @@ A **row** `r` is `⟨id, σ, payload⟩` with `id ∈ String` a client-assigned 
 `item_tags` is keyed by the pair `(item_id, tag_id)` instead of `id`: one row per pair,
 stamped, with a tombstone, so tag links are an LWW-element-set (a remove and a re-add of
 the same tag are decided by time). Local writes never hard-delete a link; removing a tag,
-deleting an item or deleting a tag tombstones the links, stamped. (Add-wins was the
+deleting an item or deleting a tag tombstones the links, stamped. A link tombstoned by
+its item's delete also carries `deleted_with_item_at` (the item tombstone's
+`modifiedAt`), synced with the row, so restoring the item revives exactly those links. (Add-wins was the
 alternative; it needs a unique id per add, which the pair key cannot hold.)
 `video_analyses` and `product_lookup_cache` are not synced. *(2026-09: `profiles`, then
 `appraisals` and `item_tags`, joined `𝒯_lww` once their local writes were stamped.)*
@@ -145,7 +147,9 @@ names a parent that is neither stored locally (tombstoned counts) nor surviving 
 SQLite enforces the declared foreign keys (`PRAGMA foreign_keys = ON`, set in
 `beforeOpen`), so such an orphan would otherwise fail the whole merge. A child therefore
 waits with a parent held back by (L0), transitively (room → items → photos), and lands on
-a later sync once the parent does. The references are read from `PRAGMA
+a later sync once the parent does. The merge counts what (L0) and this step held back
+and the sync line says it ("3 changes wait for a later sync"), so a sync with rows
+waiting does not read as complete. The references are read from `PRAGMA
 foreign_key_list`, so this step cannot drift from the schema. A file import (`lww=⊥`)
 does not drop orphans: one orphan fails the import and nothing is written.
 

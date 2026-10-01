@@ -134,6 +134,13 @@ class ItemTags extends Table {
   TextColumn get hlc => text().withDefault(const Constant(''))();
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
 
+  /// When the link was tombstoned by deleting its item: the item's delete
+  /// time, so a restore from Recently deleted (days later, long after the
+  /// Undo) can bring back exactly the tags the delete took, as photos come
+  /// back by matching `modifiedAt`. Null for a live link and for a tag
+  /// removed by hand, which a restore must not revive. Synced with the row.
+  DateTimeColumn get deletedWithItemAt => dateTime().nullable()();
+
   @override
   Set<Column> get primaryKey => {itemId, tagId};
 }
@@ -359,4 +366,17 @@ class Appraisals extends Table {
 
   @override
   Set<Column> get primaryKey => {id};
+}
+
+/// Unsaved Add Item work, kept as it is typed (about-face-07): one row per
+/// form (`new`), JSON of the fields. Local to this device on purpose: not a
+/// synced table and not in the export, so a half-typed item never reaches
+/// another device or a backup.
+class ItemDrafts extends Table {
+  TextColumn get key => text()();
+  TextColumn get data => text()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {key};
 }

@@ -291,7 +291,7 @@ class ItemDao extends DatabaseAccessor<AppDatabase> with _$ItemDaoMixin {
       }
       // Tombstone the tag links (stamped), so the removal syncs instead of
       // being refilled by a peer that still holds them.
-      await db.tagDao.tombstoneLinksOfItem(id, crdt: crdt);
+      await db.tagDao.tombstoneLinksOfItem(id, deletedAt: now, crdt: crdt);
       // Soft-delete the item itself.
       var itemEntry = ItemsCompanion(
         id: Value(id),

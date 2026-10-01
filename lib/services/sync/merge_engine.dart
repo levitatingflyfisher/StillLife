@@ -9,7 +9,15 @@ class MergeResult {
   final int recordsApplied;
   final String? error;
 
-  const MergeResult({required this.recordsApplied, this.error});
+  /// Rows held back for a later sync: stamped too far ahead, or waiting for
+  /// a parent that has not arrived. The sync line says how many.
+  final int heldBack;
+
+  const MergeResult({
+    required this.recordsApplied,
+    this.error,
+    this.heldBack = 0,
+  });
 
   bool get isSuccess => error == null;
 }
@@ -57,7 +65,10 @@ class MergeEngine {
       await _crdtManager.mergeHlc(remote.senderHlc);
 
       return result.when(
-        success: (summary) => MergeResult(recordsApplied: summary.totalRecords),
+        success: (summary) => MergeResult(
+          recordsApplied: summary.totalRecords,
+          heldBack: summary.heldBack,
+        ),
         failure: (f) => MergeResult(recordsApplied: 0, error: f.message),
       );
     } catch (e) {

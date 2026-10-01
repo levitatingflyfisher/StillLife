@@ -20,7 +20,7 @@ void main() {
   group('AppDatabase', () {
     test('creates in-memory database successfully', () {
       expect(db, isNotNull);
-      expect(db.schemaVersion, 15);
+      expect(db.schemaVersion, 17);
     });
 
     test('creates all tables', () async {

@@ -150,6 +150,47 @@ void main() {
       expect(find.textContaining('Last synced'), findsOneWidget);
     });
 
+    // Sync used to report success while rows waited silently for a parent
+    // (or a clock) that had not arrived; the result line now says so.
+    testWidgets('the sync line says how many changes wait', (tester) async {
+      final peers = [
+        SyncPeer(
+          nodeId: 'node-1',
+          host: '192.168.1.10',
+          port: 8420,
+          deviceName: 'Kitchen Tablet',
+          lastSyncAt: DateTime(2025, 6, 1, 14, 30),
+          lastHeldBack: 3,
+        ),
+        SyncPeer(
+          nodeId: 'node-2',
+          host: '192.168.1.11',
+          port: 8420,
+          deviceName: 'Den Phone',
+          lastSyncAt: DateTime(2025, 6, 1, 14, 31),
+          lastHeldBack: 1,
+        ),
+        SyncPeer(
+          nodeId: 'node-3',
+          host: '192.168.1.12',
+          port: 8420,
+          deviceName: 'Attic Laptop',
+          lastSyncAt: DateTime(2025, 6, 1, 14, 32),
+        ),
+      ];
+
+      await tester.pumpWidget(buildSubject(SyncState(peers: peers)));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(find.textContaining('3 changes wait for a later sync'),
+          findsOneWidget);
+      expect(find.textContaining('1 change waits for a later sync'),
+          findsOneWidget);
+      expect(find.textContaining('wait'), findsNWidgets(2),
+          reason: 'a clean sync says nothing extra');
+    });
+
     testWidgets('sync code draws in the real code face under OhTheme', (
       tester,
     ) async {

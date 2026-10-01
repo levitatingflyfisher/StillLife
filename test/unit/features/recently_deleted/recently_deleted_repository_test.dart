@@ -137,6 +137,34 @@ void main() {
     expect(await db.tagDao.getItemTagIds('i1'), ['t1']);
   });
 
+  test('a restore from Recently deleted brings back the tags the delete '
+      'took, and only those', () async {
+    await seedItem('i1', 'TV');
+    for (final (id, name) in [('t1', 'Gift'), ('t2', 'Insured'), ('t3', 'Old')]) {
+      await db
+          .into(db.tags)
+          .insert(
+            TagsCompanion.insert(
+              id: id,
+              name: name,
+              createdAt: t0,
+              modifiedAt: t0,
+            ),
+          );
+    }
+    await db.tagDao.setItemTags('i1', ['t1', 't2', 't3']);
+    // Removed by hand before the delete: a restore must not revive it.
+    await db.tagDao.setItemTags('i1', ['t1', 't2']);
+
+    await items.deleteItem('i1');
+    expect(await db.tagDao.getItemTagIds('i1'), isEmpty);
+
+    // No snapshot: this is the lasting path, days after the Undo is gone.
+    await trash.restoreItem('i1');
+
+    expect((await db.tagDao.getItemTagIds('i1')).toSet(), {'t1', 't2'});
+  });
+
   test(
     'restore leaves a photo deleted on its own before stays deleted',
     () async {

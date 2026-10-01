@@ -256,6 +256,35 @@ void main() {
     expect(row.lowStockThreshold, 2.0);
   });
 
+  // Synced with the row, so a restore on a peer brings the tags back too.
+  test('a tag link\'s deletedWithItemAt round-trips through export + import',
+      () async {
+    await db.into(db.items).insert(
+          ItemsCompanion.insert(
+            id: 'tv',
+            name: 'TV',
+            categoryId: 'cat1',
+            roomId: 'room1',
+            createdAt: DateTime(2025),
+            modifiedAt: DateTime(2025),
+          ),
+        );
+    await db.into(db.tags).insert(TagsCompanion.insert(
+        id: 't1', name: 'Gift', createdAt: DateTime(2025),
+        modifiedAt: DateTime(2025)));
+    await db.tagDao.setItemTags('tv', ['t1']);
+    await db.itemDao.deleteItem('tv');
+    final at = (await db.select(db.itemTags).getSingle()).deletedWithItemAt;
+    expect(at, isNotNull);
+
+    final exported = await exporter.exportToJson();
+    await db.delete(db.itemTags).go();
+    expect((await importer.importFromJson(exported)).isSuccess, isTrue);
+    final row = await db.select(db.itemTags).getSingle();
+    expect(row.isDeleted, isTrue);
+    expect(row.deletedWithItemAt, at);
+  });
+
   test('brand/model/asin round-trip through JSON export + import', () async {
     await db.into(db.items).insert(
           ItemsCompanion.insert(

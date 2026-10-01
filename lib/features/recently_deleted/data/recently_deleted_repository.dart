@@ -17,8 +17,10 @@ class DeletedItem {
   });
 }
 
-/// What an Undo needs that the tombstone alone does not keep: the item's
-/// tag links, which the delete removes outright (they are not synced).
+/// The item's live tag links at the moment of an Undo-able delete. A
+/// restore without it still finds them (each link the delete tombstoned
+/// carries `deletedWithItemAt`); the snapshot keeps the immediate Undo exact
+/// even if a peer touched a link in between.
 class ItemDeletion {
   final List<String> itemIds;
   final Map<String, List<String>> tagIdsByItem;
@@ -87,8 +89,9 @@ class RecentlyDeletedRepository {
     }
   }
 
-  /// Restores one item and the photos that were deleted with it. A photo
-  /// deleted on its own earlier has a different `modifiedAt` and stays
+  /// Restores one item and the photos and tag links that were deleted with
+  /// it. A photo deleted on its own earlier has a different `modifiedAt`,
+  /// and a tag removed by hand has no `deletedWithItemAt`; both stay
   /// deleted.
   Future<void> restoreItem(String id, {List<String>? tagIds}) async {
     final row = await (_db.select(
@@ -128,8 +131,13 @@ class RecentlyDeletedRepository {
           hlc: stamp == null ? const Value.absent() : Value(stamp.hlc),
         ),
       );
-      if (tagIds != null && tagIds.isNotEmpty) {
-        await _db.tagDao.setItemTags(id, tagIds, crdt: await _clock());
+      // The Undo's snapshot when there is one; otherwise the links the
+      // delete marked with its time, so a restore days later from Recently
+      // deleted brings the tags back too (and not one removed by hand).
+      final restoreTags =
+          tagIds ?? await _db.tagDao.tagIdsDeletedWithItem(id, deletedAt);
+      if (restoreTags.isNotEmpty) {
+        await _db.tagDao.setItemTags(id, restoreTags, crdt: await _clock());
       }
     });
   }

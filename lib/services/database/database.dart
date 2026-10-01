@@ -39,6 +39,7 @@ part 'database.g.dart';
     Loans,
     Profiles,
     Appraisals,
+    ItemDrafts,
   ],
   daos: [
     ItemDao,
@@ -79,7 +80,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 15;
+  int get schemaVersion => 17;
 
   @override
   MigrationStrategy get migration {
@@ -266,6 +267,23 @@ class AppDatabase extends _$AppDatabase {
               appraisals.valueCents: centsOf('value'),
             }));
           }
+        }
+        if (from < 16) {
+          // Which tag links an item's delete took, for a lasting restore.
+          // Guarded like the v15 step: a database without the table (the
+          // older-schema fixtures the ladder tests build) has nothing to add
+          // the column to.
+          final hasItemTags = await customSelect(
+            "SELECT name FROM sqlite_master WHERE type = 'table' "
+            "AND name = 'item_tags'",
+          ).get();
+          if (hasItemTags.isNotEmpty) {
+            await m.addColumn(itemTags, itemTags.deletedWithItemAt);
+          }
+        }
+        if (from < 17) {
+          // Add Item drafts (device-local, never synced).
+          await m.createTable(itemDrafts);
         }
       },
     );

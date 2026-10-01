@@ -63,9 +63,10 @@ current implementation, which you should verify against the tests before relying
   else. For policies, maintenance entries, categories and tags it lasts until you
   leave that screen. A swipe that deletes a maintenance entry asks first.
 - **Recently deleted covers items only.** Settings → Recently deleted lists every
-  deleted item with Restore. A restored item gets its photos back, but not its tags:
-  the delete removes tag links, and only the Undo right after the delete puts them
-  back. Rooms, policies, entries, categories and tags have no lasting list yet.
+  deleted item with Restore. A restored item gets its photos and tags back (each tag
+  link the delete took is marked with the delete's time; a tag you removed by hand
+  before stays off). Rooms, policies, entries, categories and tags have no lasting
+  list yet.
 
 ## Sync
 

@@ -166,7 +166,10 @@ class LanSyncClient {
   /// 1. Negotiate over `/sync/status` — refuse a peer that cannot encrypt.
   /// 2. Fetch their export → merge into our DB.
   /// 3. Push our export → they merge into theirs.
-  Future<void> syncWith(String host, int port) async {
+  ///
+  /// Returns how many of the peer's rows this device held back for a later
+  /// sync (see [MergeResult.heldBack]).
+  Future<int> syncWith(String host, int port) async {
     final status = await getStatus(host, port);
     if (!status.supportsEncryptedSync) {
       throw SyncProtocolException();
@@ -179,7 +182,7 @@ class LanSyncClient {
 
     // Step 1: Pull from remote.
     final remote = await fetchExport(host, port);
-    await mergeEngine.apply(remote);
+    final merged = await mergeEngine.apply(remote);
 
     // Step 2: Push to remote.
     final nodeId = await _crdtManager.getNodeId();
@@ -194,5 +197,6 @@ class LanSyncClient {
       data: exportData['data'] as Map<String, dynamic>? ?? {},
     );
     await pushExport(host, port, cs, challenge: status.challenge!);
+    return merged.heldBack;
   }
 }

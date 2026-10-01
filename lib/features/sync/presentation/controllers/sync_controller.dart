@@ -74,11 +74,13 @@ class SyncController extends AsyncNotifier<SyncState> {
 
     try {
       final client = ref.read(lanSyncClientProvider);
-      await client.syncWith(peer.host, peer.port);
+      final heldBack = await client.syncWith(peer.host, peer.port);
 
       final now = DateTime.now();
       final updatedPeers = current.peers.map((p) {
-        return p.nodeId == peer.nodeId ? p.copyWith(lastSyncAt: now) : p;
+        return p.nodeId == peer.nodeId
+            ? p.copyWith(lastSyncAt: now, lastHeldBack: heldBack)
+            : p;
       }).toList();
 
       state = AsyncValue.data(

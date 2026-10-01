@@ -403,8 +403,14 @@ class _PeerCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // A sync that held rows back says so, instead of reading as complete.
+    final waiting = switch (peer.lastHeldBack) {
+      0 => '',
+      1 => ' · 1 change waits for a later sync',
+      final n => ' · $n changes wait for a later sync',
+    };
     final lastSyncLabel = peer.lastSyncAt != null
-        ? 'Last synced ${DateFormat.jm().format(peer.lastSyncAt!)}'
+        ? 'Last synced ${DateFormat.jm().format(peer.lastSyncAt!)}$waiting'
         : 'Not yet synced';
 
     return Card(

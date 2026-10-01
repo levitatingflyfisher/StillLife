@@ -89,7 +89,7 @@ the code, run the test) before you rely on it. As of schema v14:
   a transient documents-directory failure instead of caching it forever.
 - **Deletes can be undone**: every delete is soft, so a deliberate delete acts at
   once and offers an Undo with no timer, and Settings → Recently deleted restores any
-  deleted item with its photos (tags come back only through the immediate Undo).
+  deleted item with its photos and tags.
   There is no "delete forever", by design: hard-deleting a synced tombstone lets a
   peer send the row back. See [limitations](docs/limitations.md#deleting).
 - QR labels (memorable `adjective-adjective-noun` IDs), barcode scan with cache-first

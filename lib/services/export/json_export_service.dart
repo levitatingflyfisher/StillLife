@@ -198,6 +198,7 @@ class JsonExportService {
     'nodeId': it.nodeId,
     'hlc': it.hlc,
     'isDeleted': it.isDeleted,
+    'deletedWithItemAt': it.deletedWithItemAt?.toIso8601String(),
   };
 
   Map<String, dynamic> _photoToMap(Photo p) => {
