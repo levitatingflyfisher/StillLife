@@ -127,7 +127,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Choose emoji',
+              'Choose avatar',
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 12),
@@ -144,7 +144,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 return GestureDetector(
                   onTap: () => Navigator.of(context).pop(emoji),
                   child: Center(
-                    child: Text(emoji, style: const TextStyle(fontSize: 28)),
+                    child: ProfileAvatarIcon(emoji, size: 32),
                   ),
                 );
               },
@@ -197,7 +197,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           ),
           const SizedBox(height: 32),
 
-          // Large tappable emoji
+          // Large tappable avatar
           GestureDetector(
             onTap: _showEmojiPicker,
             child: Container(
@@ -212,9 +212,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 ),
               ),
               child: Center(
-                child: Text(
+                child: ProfileAvatarIcon(
                   _selectedEmoji,
-                  style: const TextStyle(fontSize: 48),
+                  size: 52,
+                  color: profileColor(_selectedColor),
                 ),
               ),
             ),
@@ -263,12 +264,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             style: FilledButton.styleFrom(
               minimumSize: const Size.fromHeight(52),
             ),
-            child: const Text("That’s me \u2192"),
+            child: const Text("That’s me"),
           ),
           const SizedBox(height: 12),
 
           // Skip button
-          TextButton(onPressed: _next, child: const Text('Skip \u2192')),
+          TextButton(onPressed: _next, child: const Text('Skip')),
           const SizedBox(height: 32),
         ],
       ),

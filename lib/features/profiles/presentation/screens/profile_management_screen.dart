@@ -160,7 +160,7 @@ class _ProfileTile extends StatelessWidget {
     return ListTile(
       leading: CircleAvatar(
         backgroundColor: profileColor(profile.colorHex),
-        child: Text(profile.avatarEmoji, style: const TextStyle(fontSize: 20)),
+        child: ProfileAvatarIcon(profile.avatarEmoji, size: 22, color: Colors.white),
       ),
       title: Text(profile.name),
       trailing: Row(
@@ -307,15 +307,16 @@ class _ProfileEditSheetState extends ConsumerState<ProfileEditSheet> {
               CircleAvatar(
                 radius: 24,
                 backgroundColor: profileColor(_selectedColor),
-                child: Text(
+                child: ProfileAvatarIcon(
                   _selectedEmoji,
-                  style: const TextStyle(fontSize: 24),
+                  size: 26,
+                  color: Colors.white,
                 ),
               ),
               const SizedBox(width: 12),
               TextButton(
                 onPressed: _showEmojiPicker,
-                child: const Text('Change emoji'),
+                child: const Text('Change avatar'),
               ),
             ],
           ),
@@ -344,7 +345,7 @@ class _ProfileEditSheetState extends ConsumerState<ProfileEditSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Choose emoji',
+              'Choose avatar',
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 12),
@@ -361,7 +362,7 @@ class _ProfileEditSheetState extends ConsumerState<ProfileEditSheet> {
                 return GestureDetector(
                   onTap: () => Navigator.of(context).pop(emoji),
                   child: Center(
-                    child: Text(emoji, style: const TextStyle(fontSize: 28)),
+                    child: ProfileAvatarIcon(emoji, size: 32),
                   ),
                 );
               },

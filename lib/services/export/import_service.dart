@@ -441,7 +441,7 @@ class ImportService {
               id: Value(map['id'] as String),
               name: Value(map['name'] as String),
               colorHex: Value(map['colorHex'] as String? ?? '#6750A4'),
-              avatarEmoji: Value(map['avatarEmoji'] as String? ?? '👤'),
+              avatarEmoji: Value(map['avatarEmoji'] as String? ?? '👤'), // not-rendered: an avatar id
               isDefault: Value(map['isDefault'] as bool? ?? false),
               createdAt: Value(DateTime.parse(map['createdAt'] as String)),
               modifiedAt: Value(DateTime.parse(map['modifiedAt'] as String)),

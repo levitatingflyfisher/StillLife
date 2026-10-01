@@ -9,6 +9,7 @@ import '../../../../core/extensions/date_extensions.dart';
 import '../../domain/entities/item.dart';
 import '../../domain/entities/photo.dart';
 import '../../../../core/providers/profile_providers.dart';
+import '../../../profiles/presentation/profile_ui_constants.dart';
 import '../../../../core/providers/repository_providers.dart';
 import '../../../../core/utils/label_id.dart';
 import '../../../../features/profiles/domain/entities/profile.dart';
@@ -404,14 +405,15 @@ class ItemDetailScreen extends ConsumerWidget {
       padding: const EdgeInsets.only(top: 8),
       child: ActionChip(
         label: Text(
-          owner != null ? '${owner.avatarEmoji} ${owner.name}' : 'Unassigned',
+          owner != null ? owner.name : 'Unassigned',
         ),
         avatar: owner != null
             ? CircleAvatar(
                 backgroundColor: _parseColor(owner.colorHex),
-                child: Text(
+                child: ProfileAvatarIcon(
                   owner.avatarEmoji,
-                  style: const TextStyle(fontSize: 10),
+                  size: 14,
+                  color: Colors.white,
                 ),
               )
             : const CircleAvatar(child: Icon(Icons.person_outline, size: 14)),
@@ -473,7 +475,10 @@ class ItemDetailScreen extends ConsumerWidget {
                 return ListTile(
                   leading: CircleAvatar(
                     backgroundColor: _parseColor(profile.colorHex),
-                    child: Text(profile.avatarEmoji),
+                    child: ProfileAvatarIcon(
+                      profile.avatarEmoji,
+                      color: Colors.white,
+                    ),
                   ),
                   title: Text(profile.name),
                   trailing: isSelected ? const Icon(Icons.check) : null,

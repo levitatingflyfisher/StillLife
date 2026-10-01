@@ -482,7 +482,7 @@ class _InventoryMoreMenu extends ConsumerWidget {
           child: Text(
             profile == null
                 ? 'Who is using the app'
-                : 'Using as ${profile.avatarEmoji} ${profile.name}',
+                : 'Using as ${profile.name}',
           ),
         ),
         const PopupMenuDivider(),

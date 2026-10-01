@@ -324,7 +324,7 @@ class Profiles extends Table {
   TextColumn get id => text()();
   TextColumn get name => text().withLength(min: 1, max: 200)();
   TextColumn get colorHex => text().withDefault(const Constant('#6750A4'))();
-  TextColumn get avatarEmoji => text().withDefault(const Constant('👤'))();
+  TextColumn get avatarEmoji => text().withDefault(const Constant('👤'))(); // not-rendered: an avatar id, drawn as an icon
   BoolColumn get isDefault => boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get modifiedAt => dateTime()();

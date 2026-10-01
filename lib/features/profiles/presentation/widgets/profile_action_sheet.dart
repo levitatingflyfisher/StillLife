@@ -41,7 +41,7 @@ class ProfileActionSheet extends ConsumerWidget {
             (profile) => ListTile(
               leading: CircleAvatar(
                 backgroundColor: profileColor(profile.colorHex),
-                child: Text(profile.avatarEmoji),
+                child: ProfileAvatarIcon(profile.avatarEmoji, color: Colors.white),
               ),
               title: Text(profile.name),
               trailing: activeProfile?.id == profile.id

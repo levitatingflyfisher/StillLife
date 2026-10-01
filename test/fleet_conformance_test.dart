@@ -16,6 +16,9 @@ void main() => runFleetConformance(const FleetAppConfig(
       // buttons shipped that way — the quantity minus, the chat send, and
       // the inline add — so the guard stays on permanently.
       checks: {
+        // C13: the PWA loads nothing from Google's CDNs. web/flutter_bootstrap.js
+        // points CanvasKit and the engine's fallback fonts at this origin.
+        FleetCheck.c13WebSelfHosted,
         ...FleetAppConfig.withBundledFonts,
         FleetCheck.c8IconButtons,
         // No raw exception text on screen: failures go through

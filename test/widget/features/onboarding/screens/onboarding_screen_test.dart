@@ -47,8 +47,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Who’s setting this up?'), findsOneWidget);
-      expect(find.text('That’s me \u2192'), findsOneWidget);
-      expect(find.text('Skip \u2192'), findsOneWidget);
+      expect(find.text('That’s me'), findsOneWidget);
+      expect(find.text('Skip'), findsOneWidget);
     });
 
     testWidgets('skip on profile page navigates to features page', (
@@ -60,7 +60,7 @@ void main() {
       await tester.tap(find.text('Get Started'));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Skip \u2192'));
+      await tester.tap(find.text('Skip'));
       await tester.pumpAndSettle();
 
       expect(find.text('Everything in one place'), findsOneWidget);
@@ -75,7 +75,7 @@ void main() {
       await tester.pump();
       await tester.tap(find.text('Get Started'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Skip \u2192'));
+      await tester.tap(find.text('Skip'));
       await tester.pumpAndSettle();
 
       expect(find.text('Inventory'), findsOneWidget);
@@ -88,7 +88,7 @@ void main() {
       await tester.pump();
       await tester.tap(find.text('Get Started'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Skip \u2192'));
+      await tester.tap(find.text('Skip'));
       await tester.pumpAndSettle();
 
       expect(find.textContaining('no account'), findsOneWidget);
@@ -105,8 +105,10 @@ void main() {
       await tester.tap(find.text('Get Started'));
       await tester.pumpAndSettle();
 
-      // The default emoji is shown as large display
-      expect(find.text('\u{1F464}'), findsWidgets);
+      // The default avatar is drawn as an icon, never as emoji text: the
+      // web build has no colour-emoji font, so an emoji would be a box.
+      expect(find.byIcon(Icons.person), findsWidgets);
+      expect(find.text('\u{1F464}'), findsNothing);
       // Name field with hint text
       expect(
         find.byWidgetPredicate(
@@ -138,8 +140,8 @@ void main() {
           'Test User',
         );
 
-        // Step 3: tap "That's me →"
-        await tester.tap(find.text('That’s me \u2192'));
+        // Step 3: tap "That's me"
+        await tester.tap(find.text('That’s me'));
 
         // Step 4: pump to settle without pumpAndSettle (avoids animation timeout)
         // — first pump lets async futures (createProfile + setActive) resolve,
