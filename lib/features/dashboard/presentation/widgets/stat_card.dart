@@ -26,6 +26,7 @@ class StatCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Icon(icon, size: 20, color: color),
                 const SizedBox(width: OhSpacing.sm),
@@ -35,19 +36,28 @@ class StatCard extends StatelessWidget {
                     style: theme.textTheme.labelMedium?.copyWith(
                       color: theme.colorScheme.onSurface.withAlpha(150),
                     ),
-                    overflow: TextOverflow.ellipsis,
+                    // The title is what tells four tiles apart: it wraps,
+                    // never ellipsizes ("Replacement …", audit finding 7).
+                    softWrap: true,
                   ),
                 ),
               ],
             ),
             const SizedBox(height: OhSpacing.sm),
-            Text(
-              value,
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: color,
+            // A money figure must be read exactly: it shrinks to fit rather
+            // than losing digits to an ellipsis.
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: AlignmentDirectional.centerStart,
+              child: Text(
+                value,
+                maxLines: 1,
+                softWrap: false,
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
               ),
-              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),

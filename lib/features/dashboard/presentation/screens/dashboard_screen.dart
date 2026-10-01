@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:openhearth_design/openhearth_design.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -52,7 +53,9 @@ class DashboardScreen extends ConsumerWidget {
           ref.invalidate(dashboardSummaryProvider);
         },
         child: summaryAsync.when(
-          data: (summary) => ListView(
+          data: (summary) => summary.totalItems == 0
+              ? const _FirstRun()
+              : ListView(
             padding: OhSpacing.insetMd,
             children: [
               // Unfinished backup setup (recovery words not saved or not
@@ -208,42 +211,6 @@ class DashboardScreen extends ConsumerWidget {
                 ],
               ),
 
-              // Empty state
-              if (summary.totalItems == 0) ...[
-                const SizedBox(height: 48),
-                Center(
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.inventory_2_outlined,
-                        size: 64,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(height: OhSpacing.md),
-                      Text(
-                        'No items yet',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          color: theme.colorScheme.onSurface.withAlpha(150),
-                        ),
-                      ),
-                      const SizedBox(height: OhSpacing.sm),
-                      Text(
-                        'Add items manually or record a video\nwalkthrough to get started.',
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: OhSpacing.lg),
-                      FilledButton.icon(
-                        onPressed: () => context.pushNamed('addItem'),
-                        icon: const Icon(Icons.add),
-                        label: const Text('Add Your First Item'),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
             ],
           ),
           loading: () => const Center(child: CircularProgressIndicator()),
@@ -256,6 +223,58 @@ class DashboardScreen extends ConsumerWidget {
         ),
       ),
       ),
+    );
+  }
+}
+
+/// The Dashboard before the first item (audit finding 6; ruling 48, open
+/// into the task). Four \$0.00 tiles and a column of "nothing" cards told
+/// a new household it had nothing six times before offering one way to
+/// fix it. This says what the app is for and puts the ways to begin first.
+class _FirstRun extends StatelessWidget {
+  const _FirstRun();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ListView(
+      padding: OhSpacing.insetMd,
+      children: [
+        const BackupSetupReminder(),
+        const SizedBox(height: OhSpacing.md),
+        Text('Start your catalogue', style: theme.textTheme.titleLarge),
+        const SizedBox(height: OhSpacing.md),
+        // The way to begin comes before the explanation, so it stays on
+        // screen at large text sizes.
+        FilledButton.icon(
+          onPressed: () => context.pushNamed('addItem'),
+          icon: const Icon(Icons.add),
+          label: const Text('Add item'),
+        ),
+        if (!kIsWeb) ...[
+          const SizedBox(height: OhSpacing.sm),
+          OutlinedButton.icon(
+            onPressed: () => context.pushNamed('videoCapture'),
+            icon: const Icon(Icons.videocam_outlined),
+            label: const Text('Walk a room on video'),
+          ),
+        ],
+        const SizedBox(height: OhSpacing.lg),
+        Text(
+          'Know what’s in your home, where it lives, and what it’s worth, '
+          'so the worst day (a fire, a flood, a claim) starts from a list '
+          'instead of from memory.',
+          style: theme.textTheme.bodyLarge,
+        ),
+        const SizedBox(height: OhSpacing.md),
+        Text(
+          'One room is enough to start. Most people slow down after a few '
+          'dozen items; whatever is listed already counts.',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
     );
   }
 }
